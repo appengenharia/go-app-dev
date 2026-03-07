@@ -808,7 +808,8 @@
     if(user) {
       await initApp(user);
     } else {
-      $("sideNav").classList.add("hidden");$("pillUser").classList.add("hidden");
+      $("sideNav").classList.add("hidden");
+      $("pillUser").classList.add("hidden");
       $("btnLogout").classList.add("hidden");
       showPage("loginPage");
     }
@@ -1463,6 +1464,7 @@
   const EMAILJS_TEMPLATE = "template_4f1db2i";
   const EMAILJS_KEY      = "ja6wdJjmvOxLKziFp";
   const RESEND_API_KEY   = "re_7rgRJtoC_7KSxY8bBvjapypfPn3ZNDLKa";
+  const APPS_SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbxSKJcHOAKREo7vxsWg1fu878nAc-bB-XmgGA0zyhRhrwXAvyVPzJxc8rlJLHSv95TauA/exec";
 
   if(typeof emailjs !== "undefined") emailjs.init(EMAILJS_KEY);
 
@@ -1924,28 +1926,22 @@
   </div>
 </div>`;
 
-      // ── ENVIAR VIA RESEND ──────────────────────────────────
+      // ── ENVIAR VIA GOOGLE APPS SCRIPT ─────────────────────
       setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
-      const resp = await fetch("https://api.resend.com/emails", {
+      const resp = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer "+RESEND_API_KEY
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "GO Gestão de Obras <onboarding@resend.dev>",
-          to: emails,
-          subject: "Relatório GO — "+obraNome+" — "+periodoLabel,
-          html: htmlBody,
-          attachments: [{
-            filename: nomeArquivo,
-            content: pdfBase64
-          }]
+          emails:      emails,
+          assunto:     "Relatório GO — "+obraNome+" — "+periodoLabel,
+          corpo:       htmlBody,
+          pdf:         pdfBase64,
+          nomeArquivo: nomeArquivo
         })
       });
 
       const result = await resp.json();
-      if(!resp.ok) throw new Error(result.message || "Erro ao enviar");
+      if(!result.ok) throw new Error(result.erro || "Erro ao enviar");
 
       await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{
         obra_nome: obraNome,
