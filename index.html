@@ -808,8 +808,7 @@
     if(user) {
       await initApp(user);
     } else {
-      $("sideNav").classList.add("hidden");
-      $("pillUser").classList.add("hidden");
+      $("sideNav").classList.add("hidden");$("pillUser").classList.add("hidden");
       $("btnLogout").classList.add("hidden");
       showPage("loginPage");
     }
@@ -1463,6 +1462,7 @@
   const EMAILJS_SERVICE  = "service_3termna";
   const EMAILJS_TEMPLATE = "template_4f1db2i";
   const EMAILJS_KEY      = "ja6wdJjmvOxLKziFp";
+  const RESEND_API_KEY   = "re_7rgRJtoC_7KSxY8bBvjapypfPn3ZNDLKa";
 
   if(typeof emailjs !== "undefined") emailjs.init(EMAILJS_KEY);
 
@@ -1770,26 +1770,56 @@
   }
 
   async function enviarRelatorioEmail() {
-    setMsg("relMsg","⏳ Preparando e-mail...");
+    setMsg("relMsg","⏳ Gerando PDF e preparando e-mail...");
     try {
       const lancs = await getLancsFiltrados();
       if(!lancs.length){ setMsg("relMsg","⚠️ Nenhum lançamento no período."); return; }
       const cfgSnap = await getDoc(doc(db,"configuracoes","email"));
       const emails  = cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
       if(!emails.length){ setMsg("relMsg","⚠️ Configure os e-mails primeiro."); return; }
+
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
-      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
-      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
+      const deFmt    = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
+      const ateFmt   = $("relAte")?.value ? formatDate($("relAte").value) : "—";
       const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat={}; cats.forEach(c=>totCat[c]=0);
       let totalGeral=0,totalReemb=0,totalEmp=0;
-      lancs.forEach(l=>{ const v=Number(l.valor||0),cat=cats.includes(l.categoria)?l.categoria:"Outros gastos"; totCat[cat]+=v;totalGeral+=v; if(l.reembolsavel)totalReemb+=v;else totalEmp+=v; });
-      // Montar mensagem de texto simples e limpa
+      lancs.forEach(l=>{
+        const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
+        totCat[cat]+=v; totalGeral+=v;
+        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+      });
       const dataEnvio = new Date().toLocaleDateString("pt-BR");
-      const separador = "─".repeat(45);
 
-      // Resumo por colaborador
+      // ── GERAR PDF ──────────────────────────────────────────
+      const { jsPDF } = window.jspdf;
+      const doc2 = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+
+      // Cabeçalho
+      doc2.setFillColor(15,52,96);
+      doc2.rect(0,0,210,28,"F");
+      doc2.setTextColor(255,255,255);
+      doc2.setFontSize(14); doc2.setFont("helvetica","bold");
+      doc2.text("GO — Gestão de Obras", 14, 11);
+      doc2.setFontSize(10); doc2.setFont("helvetica","normal");
+      doc2.text("Relatório de Despesas — "+obraNome, 14, 18);
+      doc2.text("Período: "+deFmt+" a "+ateFmt+" | Emitido em: "+dataEnvio, 14, 24);
+      doc2.setTextColor(0,0,0);
+
+      // Resumo financeiro
+      let y = 36;
+      doc2.setFontSize(10); doc2.setFont("helvetica","bold");
+      doc2.text("RESUMO FINANCEIRO", 14, y); y+=6;
+      doc2.setFont("helvetica","normal"); doc2.setFontSize(9);
+      doc2.text("Empresa:       "+brl(totalEmp), 14, y); y+=5;
+      doc2.text("Reembolsável:  "+brl(totalReemb), 14, y); y+=5;
+      doc2.setFont("helvetica","bold");
+      doc2.text("TOTAL GERAL:   "+brl(totalGeral), 14, y); y+=5;
+      doc2.setFont("helvetica","normal");
+      doc2.text("Lançamentos:   "+lancs.length, 14, y); y+=8;
+
+      // Tabela por colaborador
       const porColab = {};
       lancs.forEach(l => {
         const nome = l.colaborador_nome || "Sem nome";
@@ -1800,80 +1830,139 @@
         porColab[nome].itens.push(l);
       });
 
-      let resumoColab = "";
-      for(const [nome, dados] of Object.entries(porColab)) {
-        resumoColab += `  ${nome}\n`;
-        resumoColab += `    Empresa:      ${brl(dados.empresa)}\n`;
-        resumoColab += `    Reembolsável: ${brl(dados.reemb)}\n`;
-        resumoColab += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
+      doc2.setFontSize(10); doc2.setFont("helvetica","bold");
+      doc2.text("LANÇAMENTOS POR COLABORADOR", 14, y); y+=4;
+
+      for(const [colaborador, dados] of Object.entries(porColab)) {
+        doc2.setFontSize(9); doc2.setFont("helvetica","bold");
+        doc2.setTextColor(15,52,96);
+        doc2.text("Colaborador: "+colaborador, 14, y); y+=4;
+        doc2.setTextColor(0,0,0);
+
+        const rows = dados.itens.map(l => [
+          formatDate(l.data),
+          l.categoria||"—",
+          (l.descricao||"—").substring(0,35),
+          brl(l.valor),
+          l.reembolsavel ? "REIMB." : "EMPRESA"
+        ]);
+        const totalColab = dados.empresa + dados.reemb;
+        rows.push(["","TOTAL","", brl(totalColab), ""]);
+
+        doc2.autoTable({
+          startY: y,
+          head:[["Data","Categoria","Descrição","Valor","Tipo"]],
+          body: rows,
+          styles:{fontSize:8,cellPadding:2},
+          headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
+          alternateRowStyles:{fillColor:[245,247,250]},
+          columnStyles:{3:{halign:"right",fontStyle:"bold"},4:{halign:"center"}},
+          didParseCell:(data)=>{
+            if(data.column.index===4 && data.cell.raw==="REIMB."){
+              data.cell.styles.textColor=[180,120,0];
+              data.cell.styles.fillColor=[255,251,230];
+            }
+            if(data.row.index===rows.length-1){
+              data.cell.styles.fontStyle="bold";
+              data.cell.styles.fillColor=[230,240,255];
+            }
+          },
+          margin:{left:14,right:14}
+        });
+        y = doc2.lastAutoTable.finalY + 6;
+        if(y > 250){ doc2.addPage(); y = 20; }
       }
 
-      // Resumo por colaborador - só reembolsável
-      let resumoColabTxt = "";
-      for(const [nome, dados] of Object.entries(porColab)) {
-        if(dados.reemb > 0) {
-          resumoColabTxt += `  ${nome}\n`;
-          resumoColabTxt += `    Reembolsável: ${brl(dados.reemb)}\n`;
-          resumoColabTxt += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
-        } else {
-          resumoColabTxt += `  ${nome}\n`;
-          resumoColabTxt += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
-        }
+      // Rodapé
+      const pageCount = doc2.internal.getNumberOfPages();
+      for(let i=1;i<=pageCount;i++){
+        doc2.setPage(i);
+        doc2.setFillColor(15,52,96);
+        doc2.rect(0,285,210,12,"F");
+        doc2.setTextColor(255,255,255);
+        doc2.setFontSize(7);
+        doc2.text("GO — Gestão de Obras | Gerado em "+dataEnvio, 14, 291);
+        doc2.text("Pág. "+i+"/"+pageCount, 196, 291, {align:"right"});
       }
 
-      // Links dos comprovantes — só URLs
+      // Converter PDF para base64
+      const pdfBase64 = doc2.output("datauristring").split(",")[1];
+      const nomeArquivo = "Relatorio_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+"_a_"+ateFmt.replace(/\//g,"-")+".pdf";
+
+      // ── MONTAR CORPO DO E-MAIL ─────────────────────────────
+      const deDate  = $("relDe")?.value  ? new Date($("relDe").value+"T12:00:00")  : new Date();
+      const ateDate = $("relAte")?.value ? new Date($("relAte").value+"T12:00:00") : new Date();
+      const meses   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+      const periodoLabel = meses[deDate.getMonth()]+"-"+deDate.getFullYear()
+        + (deDate.getMonth()!==ateDate.getMonth() ? " a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear() : "");
+
+      // Links comprovantes
       const comprovantes = lancs.filter(l=>l.comprovante?.url);
       const linksComp = comprovantes.length > 0
-        ? comprovantes.map(l => `  ${l.comprovante.url}`).join("\n")
-        : "  Nenhum comprovante anexado.";
+        ? comprovantes.map(l => `<a href="${l.comprovante.url}" style="color:#0f3460">${l.comprovante.url}</a>`).join("<br>")
+        : "Nenhum comprovante anexado.";
 
-      const message =
-`RELATÓRIO DE GASTOS — ${obraNome.toUpperCase()}
-${separador}
-Período:    ${deFmt} a ${ateFmt}
-Emitido em: ${dataEnvio}
-${separador}
+      const htmlBody = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+  <div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2>
+    <p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p>
+  </div>
+  <div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none">
+    <p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p>
+    <p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+    <p style="margin:4px 0"><strong>Empresa:</strong> ${brl(totalEmp)}</p>
+    <p style="margin:4px 0"><strong>Reembolsável:</strong> ${brl(totalReemb)}</p>
+    <p style="margin:8px 0 4px;font-size:16px;font-weight:bold;color:#e94560">TOTAL GERAL: ${brl(totalGeral)}</p>
+    <p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+    <p style="margin:0 0 6px"><strong>Comprovantes (notas fiscais):</strong></p>
+    <p style="font-size:12px;line-height:1.8">${linksComp}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+    <p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p>
+  </div>
+</div>`;
 
-RESUMO FINANCEIRO
-  Empresa:        ${brl(totalEmp)}
-  Reembolsável:   ${brl(totalReemb)}
-${separador}
-  TOTAL GERAL:    ${brl(totalGeral)}
-${separador}
-  Lançamentos:    ${lancs.length}
+      // ── ENVIAR VIA RESEND ──────────────────────────────────
+      setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
+      const resp = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer "+RESEND_API_KEY
+        },
+        body: JSON.stringify({
+          from: "GO Gestão de Obras <onboarding@resend.dev>",
+          to: emails,
+          subject: "Relatório GO — "+obraNome+" — "+periodoLabel,
+          html: htmlBody,
+          attachments: [{
+            filename: nomeArquivo,
+            content: pdfBase64
+          }]
+        })
+      });
 
-${separador}
-COMPROVANTES (notas fiscais)
-${linksComp}
+      const result = await resp.json();
+      if(!resp.ok) throw new Error(result.message || "Erro ao enviar");
 
-${separador}
-CFO — Controle Financeiro de Obras`;
+      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{
+        obra_nome: obraNome,
+        periodo_de: $("relDe")?.value,
+        periodo_ate: $("relAte")?.value,
+        total: totalGeral,
+        enviado_por: currentUser.uid,
+        enviado_em: serverTimestamp(),
+        destinatarios: emails
+      });
 
-            if(typeof emailjs==="undefined"){ setMsg("relMsg","❌ EmailJS não carregado."); return; }
-      emailjs.init(EMAILJS_KEY);
-      let enviados=0;
-      for(const email of emails){
-        // Período no formato Mês/Ano para o subject
-        const deDate  = $("relDe")?.value  ? new Date($("relDe").value+"T12:00:00")  : new Date();
-        const ateDate = $("relAte")?.value ? new Date($("relAte").value+"T12:00:00") : new Date();
-        const meses   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-        const periodoSubject = meses[deDate.getMonth()]+"-"+deDate.getFullYear()
-          + (deDate.getMonth()!==ateDate.getMonth() ? " a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear() : "");
-        await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-          to_email: email,
-          obra_nome: obraNome,
-          periodo: periodoSubject,
-          message
-        });
-        enviados++;
-      }
-      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome, periodo_de:$("relDe")?.value, periodo_ate:$("relAte")?.value, total:totalGeral, enviado_por:currentUser.uid, enviado_em:serverTimestamp(), destinatarios:emails});
-      toast("✅ Relatório enviado para "+enviados+" e-mail(s)!");
-      setMsg("relMsg","✅ Enviado para "+enviados+" destinatário(s)!",true);
+      toast("✅ Relatório enviado com PDF para "+emails.length+" e-mail(s)!");
+      setMsg("relMsg","✅ Enviado para "+emails.length+" destinatário(s) com PDF anexado!",true);
     } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao enviar: "+e.message); }
   }
 
-  async function verificarFechamentoMensal() {
+    async function verificarFechamentoMensal() {
     if(currentRole !== "ADMIN") return;
     try {
       const hoje = new Date();
