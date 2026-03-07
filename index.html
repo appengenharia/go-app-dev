@@ -14,13 +14,13 @@
 <body>
 
 <div class="loading-screen" id="loadingScreen">
-  <div class="l-logo">CF<span>O</span></div>
+  <div class="l-logo">G<span>O</span></div>
   <div class="spinner"></div>
   <p>Carregando...</p>
 </div>
 
 <div class="topbar hidden" id="topbar">
-  <div class="topbar-brand"><span class="dot"></span>CFO — Controle Financeiro</div>
+  <div class="topbar-brand"><span class="dot"></span>GO — Gestão de Obras</div>
   <div class="topbar-right">
     <div id="pillUser" class="pill hidden"></div>
     <button class="btn btn-ghost sm hidden" id="btnLogout" onclick="App.logout()">Sair</button>
@@ -38,8 +38,8 @@
   <div class="deco deco-1"></div><div class="deco deco-2"></div>
   <div class="auth-box">
     <div class="auth-logo">
-      <div class="icon">💼</div>
-      <div><div class="name">CFO</div><div class="sub">Controle Financeiro de Obras</div></div>
+      <div class="icon">🏗️</div>
+      <div><div class="name">GO</div><div class="sub">Gestão de Obras</div></div>
     </div>
     <h2>Bem-vindo</h2>
     <p class="subtitle">Entre com seu e-mail e senha para continuar.</p>
@@ -50,9 +50,116 @@
       <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
       <button class="eye-btn" type="button" onclick="App.togglePass('loginPass')">👁</button>
     </div>
-    <button class="btn btn-primary full" id="btnLogin" onclick="App.login()">Entrar</button>
+    <button class="btn btn-primary full" id="btnLogin" onclick="App.login()">Entrar no Sistema</button>
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0">
+      <div style="flex:1;height:1px;background:#e0e0e0"></div>
+      <span style="font-size:11px;color:#aaa">ou</span>
+      <div style="flex:1;height:1px;background:#e0e0e0"></div>
+    </div>
+    <button class="btn btn-outline full" id="btnIrPonto" onclick="App.irParaPonto()" style="border-color:#0f3460;color:#0f3460">
+      🕐 Registrar Ponto
+    </button>
     <div class="msg" id="loginMsg"></div>
     <p class="login-hint">Problemas para entrar? Fale com o administrador.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA DE REGISTRO DE PONTO
+     ═══════════════════════════════════════════════════════ -->
+<div class="auth-page hidden" id="pontoPage">
+  <div class="deco deco-1"></div><div class="deco deco-2"></div>
+  <div class="auth-box" style="max-width:420px">
+    <div class="auth-logo">
+      <div class="icon">🕐</div>
+      <div><div class="name">Ponto</div><div class="sub">Registro de Presença</div></div>
+    </div>
+
+    <!-- STEP 1: Login -->
+    <div id="pontoStepLogin">
+      <h2 style="margin-bottom:4px">Identificação</h2>
+      <p class="subtitle">Entre com suas credenciais para registrar o ponto.</p>
+      <label>E-mail</label>
+      <input id="pontoEmail" type="email" class="input" placeholder="seu@email.com" autocomplete="username">
+      <label>Senha</label>
+      <div class="pass-wrap">
+        <input id="pontoSenha" type="password" class="input" placeholder="••••••••">
+        <button class="eye-btn" type="button" onclick="App.togglePass('pontoSenha')">👁</button>
+      </div>
+      <button class="btn btn-primary full" onclick="App.loginPonto()" style="margin-top:8px">Continuar →</button>
+      <div class="msg" id="pontoLoginMsg"></div>
+      <p class="login-hint" style="margin-top:12px">
+        <a href="#" onclick="App.voltarLogin()" style="color:#0f3460;text-decoration:none">← Voltar ao login</a>
+      </p>
+    </div>
+
+    <!-- STEP 2: Câmera + GPS -->
+    <div id="pontoStepCamera" class="hidden">
+      <div id="pontoInfoColaborador" style="background:#f0f4ff;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-weight:700;color:#0f3460" id="pontoNomeColab">—</div>
+        <div style="font-size:12px;color:#666" id="pontoObraColab">—</div>
+        <div style="font-size:12px;color:#888;margin-top:4px" id="pontoDataHora">—</div>
+      </div>
+
+      <!-- Status GPS -->
+      <div id="pontoGpsStatus" style="font-size:12px;color:#888;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span id="pontoGpsIcon">📍</span>
+        <span id="pontoGpsTxt">Obtendo localização...</span>
+      </div>
+
+      <!-- Aviso geofencing -->
+      <div id="pontoGeoAviso" class="hidden" style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:12px;color:#856404;margin-bottom:8px">
+        ⚠️ Você está fora do raio da obra. O ponto será registrado com sua localização atual.
+      </div>
+
+      <!-- Câmera -->
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:10px">
+        <video id="pontoVideo" autoplay playsinline style="width:100%;border-radius:12px;display:block"></video>
+        <canvas id="pontoCanvas" style="display:none"></canvas>
+        <div id="pontoFotoPreview" class="hidden" style="position:relative">
+          <img id="pontoFotoImg" style="width:100%;border-radius:12px;display:block" alt="Foto do ponto">
+          <button onclick="App.retirarFoto()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:white;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px">✕</button>
+        </div>
+      </div>
+
+      <div id="pontoBotoesCamera">
+        <button id="btnTirarFoto" class="btn btn-outline full" onclick="App.tirarFoto()" style="margin-bottom:8px">📸 Tirar Foto</button>
+      </div>
+
+      <!-- Fase do ponto -->
+      <div id="pontoFaseInfo" style="background:#e8f4fd;border-radius:8px;padding:10px 14px;margin-bottom:10px;text-align:center">
+        <div style="font-size:13px;color:#666">Próximo registro:</div>
+        <div id="pontoFaseLabel" style="font-size:18px;font-weight:700;color:#0f3460">—</div>
+        <div id="pontoHorarioEsperado" style="font-size:11px;color:#888;margin-top:2px">—</div>
+      </div>
+
+      <button id="btnRegistrarPonto" class="btn btn-primary full" onclick="App.confirmarPonto()" disabled>
+        ✅ Confirmar Ponto
+      </button>
+      <div class="msg" id="pontoCameraMsg"></div>
+    </div>
+
+    <!-- STEP 3: Confirmação -->
+    <div id="pontoStepOk" class="hidden" style="text-align:center;padding:20px 0">
+      <div style="font-size:56px;margin-bottom:12px">✅</div>
+      <h2 id="pontoOkTitulo" style="color:#10b981;margin-bottom:4px">Ponto Registrado!</h2>
+      <p id="pontoOkMsg" style="color:#666;font-size:14px">—</p>
+      <button class="btn btn-outline full" onclick="App.voltarLogin()" style="margin-top:20px">Fechar</button>
+    </div>
+
+    <!-- STEP 4: Justificativa pendente -->
+    <div id="pontoStepJustificativa" class="hidden">
+      <h2 style="color:#e94560;margin-bottom:4px">⚠️ Justificativa Pendente</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:12px" id="pontoJustMsg">—</p>
+      <label>Motivo</label>
+      <textarea id="pontoJustTexto" class="input" rows="3" placeholder="Descreva o motivo..." style="resize:vertical"></textarea>
+      <label style="margin-top:8px">Documento (opcional)</label>
+      <input id="pontoJustDoc" type="file" accept="image/*,application/pdf" class="input" style="padding:6px">
+      <button class="btn btn-primary full" onclick="App.salvarJustificativa()" style="margin-top:8px">Enviar Justificativa</button>
+      <button class="btn btn-outline full" onclick="App.voltarLogin()" style="margin-top:6px">Agora não</button>
+      <div class="msg" id="pontoJustMsgResult"></div>
+    </div>
+
   </div>
 </div>
 
@@ -87,6 +194,7 @@
     <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span> Lançamentos</button>
     <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span> Relatórios</button>
     <div class="nav-divider"></div>
+    <button class="nav-item hidden" id="sidePonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span> Cartão de Ponto</button>
     <button class="nav-item hidden" id="sideAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span> Administração</button>
   </nav>
 
@@ -265,7 +373,75 @@
       </div>
     </div>
 
-    <div class="tab-panel" id="tab-admin">
+    <div class="tab-panel" id="tab-ponto">
+  <div class="page-header"><h1>🕐 Cartão de Ponto</h1><p>Gerencie e visualize os registros de ponto por colaborador e obra.</p></div>
+
+  <!-- Filtros -->
+  <div class="card" style="padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Obra</label>
+        <select id="pontoFiltroObra" class="input" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+      </div>
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Colaborador</label>
+        <select id="pontoFiltroColab" class="input" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+      </div>
+      <div style="flex:1;min-width:120px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Mês</label>
+        <input id="pontoFiltroMes" type="month" class="input" onchange="App.loadCartaoPonto()" style="margin:0">
+      </div>
+      <button class="btn btn-outline" onclick="App.exportarCartaoPDF()" style="white-space:nowrap">📄 Exportar PDF</button>
+      <button class="btn btn-primary" onclick="App.enviarCartaoEmail()" style="white-space:nowrap">📧 Enviar E-mail</button>
+    </div>
+  </div>
+
+  <!-- Resumo -->
+  <div id="pontoResumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px"></div>
+
+  <!-- Tabela -->
+  <div class="card" style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px" id="pontoTabela">
+      <thead>
+        <tr style="background:#0f3460;color:white">
+          <th style="padding:10px 12px;text-align:left">Dia</th>
+          <th style="padding:10px 12px;text-align:center">Entrada</th>
+          <th style="padding:10px 12px;text-align:center">Almoço</th>
+          <th style="padding:10px 12px;text-align:center">Retorno</th>
+          <th style="padding:10px 12px;text-align:center">Saída</th>
+          <th style="padding:10px 12px;text-align:center">H. Extra</th>
+          <th style="padding:10px 12px;text-align:center">Status</th>
+          <th style="padding:10px 12px;text-align:center">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="pontoTabelaBody">
+        <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Selecione obra e colaborador</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal correção admin -->
+  <div class="modal-overlay hidden" id="modalCorrecaoPonto">
+    <div class="modal" style="max-width:400px">
+      <h3>✏️ Corrigir Ponto</h3>
+      <p id="correcaoInfo" style="font-size:13px;color:#666"></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">
+        <div><label style="font-size:12px">Entrada</label><input id="corEntrada" type="time" class="input" style="margin:2px 0"></div>
+        <div><label style="font-size:12px">Almoço</label><input id="corAlmoco" type="time" class="input" style="margin:2px 0"></div>
+        <div><label style="font-size:12px">Retorno</label><input id="corRetorno" type="time" class="input" style="margin:2px 0"></div>
+        <div><label style="font-size:12px">Saída</label><input id="corSaida" type="time" class="input" style="margin:2px 0"></div>
+      </div>
+      <label style="font-size:12px">Observação da correção</label>
+      <textarea id="corObs" class="input" rows="2" style="margin:4px 0 12px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="App.salvarCorrecaoPonto()">💾 Salvar</button>
+        <button class="btn btn-outline" onclick="App.closeModal('modalCorrecaoPonto')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-admin">
       <div class="page-header"><h1>Administração</h1><p>Gerencie obras e colaboradores do sistema.</p></div>
       <div class="admin-tabs">
         <button class="admin-tab-btn active" onclick="App.adminTab('obras')">🏗️ Obras</button>
@@ -561,6 +737,7 @@
     if(currentRole==="ADMIN"){
       $("sideAdmin")?.classList.remove("hidden");
       $("bottomAdmin")?.classList.remove("hidden");
+      $("sidePonto")?.classList.remove("hidden");
     }
 
     try {
@@ -1603,7 +1780,7 @@
       doc.setFillColor(15,52,96); doc.rect(0,0,210,28,"F");
       doc.setTextColor(255,255,255);
       doc.setFontSize(16); doc.setFont("helvetica","bold");
-      doc.text("CFO — Controle Financeiro de Obras", 14, 12);
+      doc.text("GO — Gestão de Obras", 14, 12);
       doc.setFontSize(10); doc.setFont("helvetica","normal");
       doc.text("Obra: "+obraNome, 14, 20);
       doc.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
@@ -1939,11 +2116,17 @@
         nomeArquivo: nomeArquivo
       };
 
-      // Criar formulário oculto e submeter para o Apps Script
+      // Usar iframe oculto para não abrir nova aba
+      const iframeName = "emailFrame_" + Date.now();
+      const iframe = document.createElement("iframe");
+      iframe.name  = iframeName;
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+
       const form = document.createElement("form");
       form.method = "POST";
       form.action = APPS_SCRIPT_URL;
-      form.target = "_blank";
+      form.target = iframeName;
       form.style.display = "none";
 
       const input = document.createElement("input");
@@ -1956,8 +2139,9 @@
       form.submit();
       document.body.removeChild(form);
 
-      // Aguardar 3 segundos
-      await new Promise(r => setTimeout(r, 3000));
+      // Aguardar 4 segundos para o envio completar
+      await new Promise(r => setTimeout(r, 4000));
+      document.body.removeChild(iframe);
 
       await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{
         obra_nome: obraNome,
@@ -1990,6 +2174,524 @@
       await enviarRelatorioEmail();
       localStorage.setItem(chave,"1");
     } catch(e){ console.error("Erro no fechamento mensal:",e); }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // MÓDULO DE PONTO
+  // ══════════════════════════════════════════════════════════
+
+  const HORARIOS = {
+    // 0=Dom,1=Seg,2=Ter,3=Qua,4=Qui,5=Sex,6=Sab
+    entrada:  "07:00",
+    almoco:   "12:00",
+    retorno:  "13:00",
+    saida:    { 0:"17:00", 1:"17:00", 2:"17:00", 3:"17:00", 4:"17:00", 5:"17:00", 6:"17:00" },
+    saidaMax: { 0:"17:00", 1:"17:00", 2:"17:00", 3:"17:00", 4:"17:00", 5:"17:00", 6:"17:00" }
+    // Sexta: saída às 16:00 ainda conta como dia normal
+  };
+
+  let pontoUser     = null;  // usuário logado no módulo ponto
+  let pontoStream   = null;  // stream da câmera
+  let pontoFotoB64  = null;  // foto tirada
+  let pontoGPS      = null;  // {lat, lng}
+  let pontoFaseAtual = null; // fase atual do ponto
+  let pontoObraData  = null; // dados da obra do colaborador
+  let correcaoDia   = null;  // dia sendo corrigido pelo admin
+  let justPontoId   = null;  // id do ponto aguardando justificativa
+
+  function irParaPonto() {
+    showPage("pontoPage");
+    $("pontoStepLogin").classList.remove("hidden");
+    $("pontoStepCamera").classList.add("hidden");
+    $("pontoStepOk").classList.add("hidden");
+    $("pontoStepJustificativa").classList.add("hidden");
+  }
+
+  function voltarLogin() {
+    pararCamera();
+    showPage("loginPage");
+  }
+
+  async function loginPonto() {
+    const email = $("pontoEmail").value.trim();
+    const senha = $("pontoSenha").value;
+    if(!email || !senha) { setMsg("pontoLoginMsg","Preencha e-mail e senha."); return; }
+    setMsg("pontoLoginMsg","⏳ Verificando...");
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, senha);
+      pontoUser  = cred.user;
+      const prof = await loadProfile(pontoUser.uid);
+      if(!prof || prof.ativo===false) {
+        await signOut(auth);
+        setMsg("pontoLoginMsg","⛔ Conta inativa.");
+        return;
+      }
+
+      // Verificar justificativa pendente do dia anterior
+      const justPendente = await verificarJustificativaPendente(pontoUser.uid);
+      if(justPendente) {
+        $("pontoStepLogin").classList.add("hidden");
+        $("pontoJustMsg").textContent = justPendente.msg;
+        justPontoId = justPendente.id;
+        $("pontoStepJustificativa").classList.remove("hidden");
+        return;
+      }
+
+      // Carregar obra do colaborador
+      const obras = prof.obras?.length ? prof.obras : (prof.obra_id ? [prof.obra_id] : []);
+      if(obras.length > 0) {
+        const obraSnap = await getDoc(doc(db,"obras",obras[0]));
+        pontoObraData = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
+      }
+
+      // Determinar fase atual
+      pontoFaseAtual = await determinarFase(pontoUser.uid);
+
+      // Atualizar UI
+      $("pontoNomeColab").textContent = prof.nome || email;
+      $("pontoObraColab").textContent = pontoObraData?.nome || "Sem obra definida";
+      atualizarDataHoraPonto();
+      atualizarFaseLabel();
+
+      // Iniciar câmera e GPS
+      $("pontoStepLogin").classList.add("hidden");
+      $("pontoStepCamera").classList.remove("hidden");
+      await iniciarCamera();
+      await obterGPS();
+      setMsg("pontoLoginMsg","");
+    } catch(e) {
+      const msgs = {"auth/invalid-credential":"E-mail ou senha incorretos.","auth/too-many-requests":"Muitas tentativas. Aguarde."};
+      setMsg("pontoLoginMsg", msgs[e.code] || "Erro: "+e.message);
+    }
+  }
+
+  function atualizarDataHoraPonto() {
+    const agora = new Date();
+    $("pontoDataHora").textContent = agora.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"}) + " — " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  }
+
+  function atualizarFaseLabel() {
+    const fases = { entrada:"🟢 Entrada", almoco:"🟡 Saída para Almoço", retorno:"🔵 Retorno do Almoço", saida:"🔴 Saída", extra:"🟠 Hora Extra" };
+    const horarios = { entrada:"07:00", almoco:"12:00", retorno:"13:00", saida: getSaidaPrevista(), extra:"após 17:00" };
+    $("pontoFaseLabel").textContent  = fases[pontoFaseAtual]  || "Sem fase";
+    $("pontoHorarioEsperado").textContent = "Previsto: " + (horarios[pontoFaseAtual] || "—");
+  }
+
+  function getSaidaPrevista() {
+    const dia = new Date().getDay();
+    return dia === 5 ? "16:00 (dia normal até 17:00)" : "17:00";
+  }
+
+  async function determinarFase(uid) {
+    const hoje = new Date().toISOString().split("T")[0];
+    const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",hoje));
+    const snap = await getDocs(q);
+    if(snap.empty) return "entrada";
+    const pontoHoje = snap.docs[0].data();
+    if(!pontoHoje.entrada) return "entrada";
+    if(!pontoHoje.almoco)  return "almoco";
+    if(!pontoHoje.retorno) return "retorno";
+    if(!pontoHoje.saida)   return "saida";
+    return "extra";
+  }
+
+  async function verificarJustificativaPendente(uid) {
+    const ontem = new Date(); ontem.setDate(ontem.getDate()-1);
+    const ontemStr = ontem.toISOString().split("T")[0];
+    const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",ontemStr));
+    const snap = await getDocs(q);
+    if(snap.empty) return null;
+    const p = snap.docs[0];
+    const d = p.data();
+    if(!d.saida && !d.justificativa && !d.justificativaEnviada) {
+      return { id: p.id, msg: `Você não registrou a saída em ${ontem.toLocaleDateString("pt-BR")}. Por favor justifique.` };
+    }
+    return null;
+  }
+
+  async function iniciarCamera() {
+    try {
+      pontoStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:640, height:480 }, audio:false });
+      $("pontoVideo").srcObject = pontoStream;
+      $("pontoVideo").style.display = "block";
+      $("pontoFotoPreview").classList.add("hidden");
+    } catch(e) {
+      setMsg("pontoCameraMsg","⚠️ Câmera não disponível: "+e.message);
+    }
+  }
+
+  function pararCamera() {
+    if(pontoStream) { pontoStream.getTracks().forEach(t=>t.stop()); pontoStream=null; }
+  }
+
+  async function obterGPS() {
+    $("pontoGpsTxt").textContent = "Obtendo localização...";
+    if(!navigator.geolocation) { $("pontoGpsTxt").textContent = "GPS não disponível"; return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        pontoGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+        $("pontoGpsIcon").textContent = "✅";
+        $("pontoGpsTxt").textContent = `Localização obtida (±${Math.round(pos.coords.accuracy)}m)`;
+        // Verificar geofencing
+        if(pontoObraData?.lat && pontoObraData?.lng) {
+          const dist = calcularDistancia(pontoGPS.lat, pontoGPS.lng, pontoObraData.lat, pontoObraData.lng);
+          if(dist > 100) {
+            $("pontoGeoAviso").classList.remove("hidden");
+          }
+        }
+      },
+      err => {
+        $("pontoGpsIcon").textContent = "⚠️";
+        $("pontoGpsTxt").textContent = "Localização não obtida";
+        pontoGPS = null;
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
+
+  function calcularDistancia(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2-lat1)*Math.PI/180;
+    const dLng = (lng2-lng1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function tirarFoto() {
+    const video  = $("pontoVideo");
+    const canvas = $("pontoCanvas");
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    pontoFotoB64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
+    $("pontoFotoImg").src = "data:image/jpeg;base64," + pontoFotoB64;
+    $("pontoVideo").style.display = "none";
+    $("pontoFotoPreview").classList.remove("hidden");
+    $("btnRegistrarPonto").disabled = false;
+    setMsg("pontoCameraMsg","");
+  }
+
+  function retirarFoto() {
+    pontoFotoB64 = null;
+    $("pontoFotoImg").src = "";
+    $("pontoFotoPreview").classList.add("hidden");
+    $("pontoVideo").style.display = "block";
+    $("btnRegistrarPonto").disabled = true;
+  }
+
+  async function confirmarPonto() {
+    if(!pontoFotoB64) { setMsg("pontoCameraMsg","⚠️ Tire uma foto primeiro."); return; }
+    $("btnRegistrarPonto").disabled = true;
+    $("btnRegistrarPonto").textContent = "⏳ Registrando...";
+    try {
+      const agora   = new Date();
+      const hoje    = agora.toISOString().split("T")[0];
+      const horaStr = agora.toTimeString().substring(0,5);
+      const dia     = agora.getDay();
+
+      // Upload da foto para Cloudinary
+      let fotoUrl = "";
+      try {
+        const fd = new FormData();
+        fd.append("file", "data:image/jpeg;base64,"+pontoFotoB64);
+        fd.append("upload_preset", CLOUDINARY_PRESET);
+        fd.append("folder", "pontos");
+        const cr = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {method:"POST",body:fd});
+        const cj = await cr.json();
+        fotoUrl = cj.secure_url || "";
+      } catch(e) { console.warn("Foto não enviada:", e.message); }
+
+      // Verificar se já existe ponto hoje
+      const q = query(collection(db,"pontos"), where("uid","==",pontoUser.uid), where("data","==",hoje));
+      const snap = await getDocs(q);
+
+      // Calcular hora extra e status
+      const isAnomalia = verificarAnomalia(horaStr, pontoFaseAtual, dia);
+
+      if(snap.empty) {
+        // Primeiro ponto do dia — criar documento
+        await addDoc(collection(db,"pontos"), {
+          uid:             pontoUser.uid,
+          colaborador_nome: $("pontoNomeColab").textContent,
+          obra_id:         pontoObraData?.id || "",
+          obra_nome:       pontoObraData?.nome || "",
+          data:            hoje,
+          diaSemana:       dia,
+          entrada:         horaStr,
+          fotoEntrada:     fotoUrl,
+          gpsEntrada:      pontoGPS,
+          almoco:          null, retorno: null, saida: null,
+          horaExtra:       "0h00",
+          status:          isAnomalia ? "anomalia" : "ok",
+          anomalias:       isAnomalia ? [pontoFaseAtual] : [],
+          criadoEm:        serverTimestamp()
+        });
+      } else {
+        // Atualizar ponto existente
+        const pontoRef = snap.docs[0].ref;
+        const upd = {};
+        upd[pontoFaseAtual]         = horaStr;
+        upd["foto"+capitalize(pontoFaseAtual)] = fotoUrl;
+        upd["gps"+capitalize(pontoFaseAtual)]  = pontoGPS;
+        if(isAnomalia) {
+          const anoAtual = snap.docs[0].data().anomalias || [];
+          upd.anomalias = [...anoAtual, pontoFaseAtual];
+          upd.status = "anomalia";
+        }
+        // Calcular hora extra na saída
+        if(pontoFaseAtual === "saida" || pontoFaseAtual === "extra") {
+          const pontoData = snap.docs[0].data();
+          upd.horaExtra = calcularHoraExtra(pontoData.entrada, horaStr, dia);
+          if(upd.horaExtra !== "0h00") upd.status = upd.status==="anomalia" ? "anomalia" : "ok";
+        }
+        await updateDoc(pontoRef, upd);
+      }
+
+      pararCamera();
+      $("pontoStepCamera").classList.add("hidden");
+      $("pontoOkTitulo").textContent = "Ponto Registrado!";
+      const faseNome = {entrada:"Entrada",almoco:"Saída p/ Almoço",retorno:"Retorno",saida:"Saída",extra:"Hora Extra"}[pontoFaseAtual];
+      $("pontoOkMsg").textContent = `${faseNome} registrada — ${agora.toLocaleDateString("pt-BR")} às ${horaStr}`;
+      $("pontoStepOk").classList.remove("hidden");
+    } catch(e) {
+      setMsg("pontoCameraMsg","❌ Erro: "+e.message);
+      $("btnRegistrarPonto").disabled = false;
+      $("btnRegistrarPonto").textContent = "✅ Confirmar Ponto";
+    }
+  }
+
+  function capitalize(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  function verificarAnomalia(hora, fase, dia) {
+    const toMin = h => { const [hh,mm]=h.split(":").map(Number); return hh*60+mm; };
+    const m = toMin(hora);
+    if(fase==="entrada" && m > toMin("07:30")) return true; // atraso
+    if(fase==="almoco"  && m < toMin("11:30")) return true; // saiu cedo
+    if(fase==="retorno" && m > toMin("13:30")) return true; // voltou tarde
+    if(fase==="saida") {
+      const saidaNormal = dia===5 ? toMin("16:00") : toMin("17:00");
+      if(m < saidaNormal - 15) return true; // saiu mais cedo
+    }
+    return false;
+  }
+
+  function calcularHoraExtra(entrada, saida, dia) {
+    if(!entrada || !saida) return "0h00";
+    const toMin = h => { const [hh,mm]=h.split(":").map(Number); return hh*60+mm; };
+    const saidaPrevista = dia===5 ? toMin("17:00") : toMin("17:00"); // sexta 16:00 = normal, mas extra só após 17
+    const totalTrab = toMin(saida) - toMin(entrada) - 60; // descontar 1h almoço
+    const normalMin = (dia===5 ? toMin("16:00") : toMin("17:00")) - toMin("07:00") - 60;
+    const extra = Math.max(0, totalTrab - normalMin);
+    if(extra <= 0) return "0h00";
+    return Math.floor(extra/60)+"h"+String(extra%60).padStart(2,"0");
+  }
+
+  async function salvarJustificativa() {
+    const texto = $("pontoJustTexto").value.trim();
+    if(!texto) { setMsg("pontoJustMsgResult","⚠️ Informe o motivo."); return; }
+    setMsg("pontoJustMsgResult","⏳ Enviando...");
+    try {
+      let docUrl = "";
+      const file = $("pontoJustDoc").files[0];
+      if(file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("upload_preset", CLOUDINARY_PRESET);
+        fd.append("folder","justificativas");
+        const cr = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`,{method:"POST",body:fd});
+        const cj = await cr.json();
+        docUrl = cj.secure_url || "";
+      }
+      await updateDoc(doc(db,"pontos",justPontoId), {
+        justificativa: texto,
+        justificativaDoc: docUrl,
+        justificativaEnviada: true,
+        justificativaEm: serverTimestamp()
+      });
+      setMsg("pontoJustMsgResult","✅ Justificativa enviada!");
+      setTimeout(()=>voltarLogin(), 2000);
+    } catch(e) { setMsg("pontoJustMsgResult","❌ Erro: "+e.message); }
+  }
+
+  async function obterLocalizacaoObra() {
+    if(!navigator.geolocation) { alert("GPS não disponível"); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        $("obraLat").value = pos.coords.latitude.toFixed(6);
+        $("obraLng").value = pos.coords.longitude.toFixed(6);
+        toast("📍 Localização capturada!");
+      },
+      () => alert("Não foi possível obter localização")
+    );
+  }
+
+  // ── CARTÃO DE PONTO (ADMIN) ────────────────────────────
+  async function loadCartaoPonto() {
+    const obraId = $("pontoFiltroObra")?.value;
+    const colabId = $("pontoFiltroColab")?.value;
+    const mes = $("pontoFiltroMes")?.value;
+    if(!colabId || !mes) return;
+
+    const [ano, mesNum] = mes.split("-").map(Number);
+    const inicio = `${ano}-${String(mesNum).padStart(2,"0")}-01`;
+    const fim    = new Date(ano, mesNum, 0).toISOString().split("T")[0];
+
+    const q = query(collection(db,"pontos"),
+      where("uid","==",colabId),
+      where("data",">=",inicio),
+      where("data","<=",fim)
+    );
+    const snap = await getDocs(q);
+    const pontosMes = {};
+    snap.forEach(d => { pontosMes[d.data().data] = {...d.data(), id: d.id}; });
+
+    renderCartaoPonto(ano, mesNum, pontosMes);
+  }
+
+  function renderCartaoPonto(ano, mes, pontos) {
+    const diasMes = new Date(ano, mes, 0).getDate();
+    const semanas = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    let rows = "";
+    let diasTrab=0, horasNorm=0, horasExtra=0, faltas=0, atrasos=0, justifs=0;
+
+    for(let d=1; d<=diasMes; d++) {
+      const dataStr = `${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const dt = new Date(dataStr+"T12:00:00");
+      const diaSem = dt.getDay();
+      const nomeDia = semanas[diaSem];
+      const p = pontos[dataStr];
+      const isFimSemana = diaSem===0||diaSem===6;
+
+      let bgRow = "";
+      let statusBadge = "";
+      let horaExtraCell = "—";
+
+      if(isFimSemana && !p) {
+        bgRow = "background:#f5f5f5;color:#aaa";
+        statusBadge = '<span style="background:#e0e0e0;color:#888;padding:2px 8px;border-radius:10px;font-size:11px">FOLGA</span>';
+      } else if(!p) {
+        faltas++;
+        bgRow = "background:#fff0f0";
+        statusBadge = '<span style="background:#ffebee;color:#e94560;padding:2px 8px;border-radius:10px;font-size:11px">FALTA</span>';
+      } else {
+        diasTrab++;
+        if(p.horaExtra && p.horaExtra!=="0h00") {
+          horasExtra++;
+          horaExtraCell = `<span style="color:#f59e0b;font-weight:600">${p.horaExtra}</span>`;
+        }
+        if(p.status==="anomalia") {
+          atrasos++;
+          bgRow = "background:#fffbeb";
+          statusBadge = '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px">ATRASO</span>';
+        } else {
+          statusBadge = '<span style="background:#ecfdf5;color:#10b981;padding:2px 8px;border-radius:10px;font-size:11px">OK</span>';
+        }
+        if(p.justificativa) justifs++;
+      }
+
+      const acoes = currentRole==="ADMIN"
+        ? `<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px" title="Corrigir">✏️</button>`
+        : "—";
+
+      rows += `<tr style="${bgRow}">
+        <td style="padding:8px 12px">
+          <div style="font-weight:600">${String(d).padStart(2,"0")}</div>
+          <div style="font-size:11px;color:#888">${nomeDia}</div>
+        </td>
+        <td style="text-align:center;padding:8px">${p?.entrada||"—"}</td>
+        <td style="text-align:center;padding:8px">${p?.almoco||"—"}</td>
+        <td style="text-align:center;padding:8px">${p?.retorno||"—"}</td>
+        <td style="text-align:center;padding:8px">${p?.saida||"—"}</td>
+        <td style="text-align:center;padding:8px">${horaExtraCell}</td>
+        <td style="text-align:center;padding:8px">${statusBadge}</td>
+        <td style="text-align:center;padding:8px">${acoes}</td>
+      </tr>`;
+    }
+
+    $("pontoTabelaBody").innerHTML = rows;
+
+    // Resumo
+    $("pontoResumo").innerHTML = [
+      {label:"Dias Trab.", valor:diasTrab, cor:"#10b981"},
+      {label:"H. Extras",  valor:horasExtra+"h", cor:"#f59e0b"},
+      {label:"Faltas",     valor:faltas, cor:"#e94560"},
+      {label:"Atrasos",    valor:atrasos, cor:"#d97706"},
+      {label:"Justif.",    valor:justifs, cor:"#6366f1"},
+    ].map(i=>`
+      <div style="background:white;border-radius:8px;padding:12px 16px;border-left:4px solid ${i.cor};box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-size:11px;color:#888;text-transform:uppercase">${i.label}</div>
+        <div style="font-size:22px;font-weight:700;color:${i.cor}">${i.valor}</div>
+      </div>`).join("");
+  }
+
+  async function abrirCorrecao(dataStr) {
+    correcaoDia = dataStr;
+    const colabId = $("pontoFiltroColab")?.value;
+    if(!colabId) return;
+    const q = query(collection(db,"pontos"),where("uid","==",colabId),where("data","==",dataStr));
+    const snap = await getDocs(q);
+    $("correcaoInfo").textContent = "Dia: " + new Date(dataStr+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+    if(!snap.empty) {
+      const p = snap.docs[0].data();
+      $("corEntrada").value  = p.entrada  || "";
+      $("corAlmoco").value   = p.almoco   || "";
+      $("corRetorno").value  = p.retorno  || "";
+      $("corSaida").value    = p.saida    || "";
+    }
+    $("corObs").value = "";
+    $("modalCorrecaoPonto").classList.remove("hidden");
+  }
+
+  async function salvarCorrecaoPonto() {
+    const colabId = $("pontoFiltroColab")?.value;
+    if(!colabId || !correcaoDia) return;
+    try {
+      const q = query(collection(db,"pontos"),where("uid","==",colabId),where("data","==",correcaoDia));
+      const snap = await getDocs(q);
+      const upd = {
+        entrada:  $("corEntrada").value  || null,
+        almoco:   $("corAlmoco").value   || null,
+        retorno:  $("corRetorno").value  || null,
+        saida:    $("corSaida").value    || null,
+        corrigidoPor:  currentUser.uid,
+        corrigidoEm:   serverTimestamp(),
+        obsCorrecao:   $("corObs").value,
+        status: "corrigido"
+      };
+      if(snap.empty) {
+        await addDoc(collection(db,"pontos"),{...upd, uid:colabId, data:correcaoDia, diaSemana: new Date(correcaoDia+"T12:00:00").getDay()});
+      } else {
+        await updateDoc(snap.docs[0].ref, upd);
+      }
+      closeModal("modalCorrecaoPonto");
+      toast("✅ Ponto corrigido!");
+      await loadCartaoPonto();
+    } catch(e) { alert("Erro: "+e.message); }
+  }
+
+  async function fillPontoFiltros() {
+    const obraSel = $("pontoFiltroObra");
+    const colabSel = $("pontoFiltroColab");
+    if(!obraSel || !colabSel) return;
+
+    // Obras
+    const obrasSnap = await getDocs(collection(db,"obras"));
+    obraSel.innerHTML = '<option value="">Todas as obras</option>';
+    obrasSnap.forEach(d => {
+      if(d.data().status==="ativa") obraSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
+    });
+
+    // Colaboradores
+    const usersSnap = await getDocs(collection(db,"usuarios"));
+    colabSel.innerHTML = '<option value="">Selecione colaborador</option>';
+    usersSnap.forEach(d => {
+      if(d.data().ativo!==false && d.data().role!=="ADMIN")
+        colabSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
+    });
+
+    // Mês atual
+    const hoje = new Date();
+    $("pontoFiltroMes").value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
   }
 
   window.App = {
