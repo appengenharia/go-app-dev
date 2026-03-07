@@ -694,7 +694,8 @@
       toast("Colaborador cadastrado! 👤");
       await loadUsers();
       const snap=await getDocs(collection(db,"usuarios"));
-      $("statUsers").textContent=snap.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+      const statEl = $("statUsers");
+      if(statEl) statEl.textContent=snap.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
     } catch(e){
       const msgs={"auth/email-already-in-use":"Este e-mail já está cadastrado.","auth/invalid-email":"E-mail inválido.","auth/weak-password":"Senha fraca."};
       setMsg("userMsg",msgs[e.code]||"Erro: "+e.message);
