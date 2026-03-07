@@ -1927,22 +1927,23 @@
   </div>
 </div>`;
 
-      // ── ENVIAR VIA GOOGLE APPS SCRIPT ─────────────────────
+      // ── ENVIAR VIA GOOGLE APPS SCRIPT (no-cors) ──────────
       setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          emails:      emails,
-          assunto:     "Relatório GO — "+obraNome+" — "+periodoLabel,
-          corpo:       htmlBody,
-          pdf:         pdfBase64,
-          nomeArquivo: nomeArquivo
-        })
-      });
 
-      const result = await resp.json();
-      if(!result.ok) throw new Error(result.erro || "Erro ao enviar");
+      // Apps Script não suporta CORS direto — usamos no-cors via FormData
+      const formData = new FormData();
+      formData.append("emails",      JSON.stringify(emails));
+      formData.append("assunto",     "Relatório GO — "+obraNome+" — "+periodoLabel);
+      formData.append("corpo",       htmlBody);
+      formData.append("pdf",         pdfBase64);
+      formData.append("nomeArquivo", nomeArquivo);
+
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode:   "no-cors",
+        body:   formData
+      });
+      // no-cors não retorna resposta legível — assumimos sucesso se não lançar erro
 
       await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{
         obra_nome: obraNome,
