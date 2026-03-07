@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GO – Gestão de Obras [DEV]</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}:root{--brand:#0f3460;--brand2:#16213e;--accent:#e94560;--accent2:#f5a623;--bg:#f0f2f7;--card:#ffffff;--text:#1a1a2e;--muted:#6b7280;--border:#e5e7eb;--success:#10b981;--danger:#ef4444;--radius:14px;--shadow:0 4px 24px rgba(15,52,96,.10);}html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}.hidden{display:none !important;}.topbar{position:fixed;top:0;left:0;right:0;z-index:100;height:58px;background:var(--brand2);display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-shadow:0 2px 12px rgba(0,0,0,.25);}.topbar-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:#fff;display:flex;align-items:center;gap:8px;}.topbar-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}.topbar-right{display:flex;align-items:center;gap:10px;}.pill{background:rgba(255,255,255,.12);color:#fff;font-size:.78rem;font-weight:500;padding:4px 12px;border-radius:20px;}.offline-banner{position:fixed;top:58px;left:0;right:0;z-index:99;background:var(--accent2);color:#fff;text-align:center;font-size:.82rem;font-weight:500;padding:6px 16px;}.sync-banner{position:fixed;top:58px;left:0;right:0;z-index:99;background:var(--success);color:#fff;text-align:center;font-size:.82rem;font-weight:500;padding:6px 16px;}.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;border:none;cursor:pointer;transition:all .18s;}.btn:disabled{opacity:.55;cursor:not-allowed;}.btn.full{width:100%;}.btn.sm{padding:6px 12px;font-size:.8rem;border-radius:8px;}.btn-primary{background:var(--brand);color:#fff;box-shadow:0 4px 14px rgba(15,52,96,.3);}.btn-primary:hover:not(:disabled){background:#0a2744;transform:translateY(-1px);}.btn-danger{background:var(--danger);color:#fff;}.btn-danger:hover:not(:disabled){background:#dc2626;}.btn-success{background:var(--success);color:#fff;}.btn-success:hover:not(:disabled){background:#059669;}.btn-ghost{background:transparent;color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.25);}.btn-ghost:hover{background:rgba(255,255,255,.1);color:#fff;}.btn-outline{background:transparent;color:var(--brand);border:1.5px solid var(--border);}.btn-outline:hover{border-color:var(--brand);}label{display:block;font-size:.82rem;font-weight:500;color:var(--muted);margin-bottom:6px;margin-top:16px;}label:first-of-type{margin-top:0;}input,select,textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.92rem;background:#f8f9fc;color:var(--text);transition:border-color .18s,box-shadow .18s;outline:none;}input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(15,52,96,.1);background:#fff;}.pass-row{position:relative;}.pass-row input{padding-right:44px;}.eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted);padding:4px;}.eye-btn:hover{color:var(--brand);}.row{display:flex;gap:10px;}.row>*{flex:1;}.msg{font-size:.84rem;margin-top:10px;min-height:20px;border-radius:8px;}.msg.ok{color:var(--success);background:#ecfdf5;padding:8px 12px;}.msg.err{color:var(--danger);background:#fef2f2;padding:8px 12px;}.loading-screen{position:fixed;inset:0;z-index:9999;background:var(--brand2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}.loading-screen .l-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;color:#fff;}.loading-screen .l-logo span{color:var(--accent);}.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}@keyframes spin{to{transform:rotate(360deg);}}.loading-screen p{color:rgba(255,255,255,.5);font-size:.85rem;}.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:linear-gradient(135deg,#16213e 0%,#0f3460 60%,#1a1a2e 100%);position:relative;overflow:hidden;}.auth-page::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 80% 20%,rgba(233,69,96,.15) 0%,transparent 60%),radial-gradient(ellipse 40% 40% at 10% 80%,rgba(245,166,35,.10) 0%,transparent 55%);pointer-events:none;}.deco{position:absolute;border-radius:50%;pointer-events:none;}.deco-1{width:320px;height:320px;border:1px solid rgba(255,255,255,.05);top:-80px;right:-80px;}.deco-2{width:200px;height:200px;border:1px solid rgba(233,69,96,.12);bottom:60px;left:-60px;}.auth-box{width:100%;max-width:400px;background:rgba(255,255,255,.97);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:36px 32px;position:relative;z-index:1;animation:slideUp .4s ease;}@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}.auth-logo .icon{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:0 4px 14px rgba(15,52,96,.3);}.auth-logo .name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:var(--brand2);line-height:1.2;}.auth-logo .sub{font-size:.72rem;color:var(--muted);}.auth-box h2{font-family:'Syne',sans-serif;font-weight:700;font-size:1.4rem;color:var(--text);margin-bottom:4px;}.auth-box .subtitle{font-size:.88rem;color:var(--muted);margin-bottom:20px;}.auth-box .btn-primary{margin-top:20px;padding:13px;font-size:.95rem;font-weight:600;border-radius:12px;}.login-hint{margin-top:16px;text-align:center;font-size:.78rem;color:var(--muted);}.alert-banner{background:#fff8e1;border:1.5px solid var(--accent2);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:.84rem;color:#92640a;display:flex;align-items:flex-start;gap:8px;}.app-layout{padding-top:58px;min-height:100vh;display:flex;flex-direction:column;}.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--brand2);display:flex;height:60px;box-shadow:0 -2px 12px rgba(0,0,0,.2);}.bottom-nav .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:rgba(255,255,255,.5);font-size:.65rem;font-weight:500;cursor:pointer;border:none;background:none;transition:color .18s;}.bottom-nav .nav-item .nav-icon{font-size:1.2rem;line-height:1;}.bottom-nav .nav-item.active{color:#fff;}@media(min-width:768px){.bottom-nav{display:none;}.app-layout{flex-direction:row;}.side-nav{width:220px;min-height:calc(100vh - 58px);background:var(--brand2);display:flex;flex-direction:column;padding:20px 10px;gap:2px;flex-shrink:0;}.side-nav .nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:rgba(255,255,255,.55);font-size:.88rem;font-weight:500;cursor:pointer;border:none;background:none;transition:all .18s;text-align:left;width:100%;}.side-nav .nav-item .nav-icon{font-size:1.05rem;}.side-nav .nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}.side-nav .nav-item.active{background:var(--brand);color:#fff;}.side-nav .nav-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 0;}}.app-content{flex:1;padding:24px 16px 80px;}@media(min-width:768px){.app-content{padding:28px;}}.tab-panel{display:none;}.tab-panel.active{display:block;animation:fadeIn .2s ease;}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.welcome-card{background:linear-gradient(135deg,var(--brand),#1a4a8a);border-radius:var(--radius);padding:24px 28px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden;}.welcome-card::after{content:'💼';position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:3.5rem;opacity:.12;}.welcome-card h2{font-family:'Syne',sans-serif;font-weight:700;font-size:1.25rem;margin-bottom:4px;}.welcome-card p{font-size:.88rem;opacity:.8;}.welcome-card .badge{display:inline-block;margin-top:12px;background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:.78rem;font-weight:600;}.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}@media(min-width:600px){.stats-grid{grid-template-columns:repeat(4,1fr);}}.stat-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-left:3px solid var(--brand);}.stat-card.c-accent{border-left-color:var(--accent);}.stat-card.c-success{border-left-color:var(--success);}.stat-card.c-warning{border-left-color:var(--accent2);}.stat-label{font-size:.72rem;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}.stat-value{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--text);margin-top:4px;}.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:16px;}.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}.card-header h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;}.card-header p{font-size:.82rem;color:var(--muted);margin-top:2px;}.page-header{margin-bottom:20px;}.page-header h1{font-family:'Syne',sans-serif;font-weight:700;font-size:1.35rem;}.page-header p{font-size:.88rem;color:var(--muted);margin-top:2px;}.admin-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}.admin-tab-btn{padding:8px 16px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:.84rem;font-weight:500;cursor:pointer;transition:all .18s;color:var(--muted);}.admin-tab-btn.active{background:var(--brand);color:#fff;border-color:var(--brand);}.admin-tab-btn:hover:not(.active){border-color:var(--brand);color:var(--brand);}.admin-panel{display:none;}.admin-panel.active{display:block;}.list-item{display:flex;align-items:center;background:#f8f9fc;border:1px solid var(--border);border-radius:10px;padding:12px 16px;gap:10px;margin-bottom:8px;}.list-item.inactive-item{opacity:.65;background:#fafafa;}.list-item-info{flex:1;min-width:0;}.list-item-name{font-weight:600;font-size:.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.list-item-sub{font-size:.78rem;color:var(--muted);margin-top:2px;}.list-item-actions{display:flex;gap:6px;flex-shrink:0;}.badges{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;}.badge-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;}.badge-status.active{background:#ecfdf5;color:var(--success);}.badge-status.inactive{background:#fef2f2;color:var(--danger);}.badge-status.admin{background:#eff6ff;color:var(--brand);}.badge-status.user{background:#f3f4f6;color:var(--muted);}.badge-status.warning{background:#fff8e1;color:#92640a;}.info-box{background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:.82rem;color:#1e40af;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;}.divider{height:1px;background:var(--border);margin:20px 0;}.empty{text-align:center;padding:40px 20px;color:var(--muted);}.empty .empty-icon{font-size:2.5rem;margin-bottom:10px;}.empty p{font-size:.88rem;}.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;}.modal{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:slideUp .2s ease;}.modal h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1.15rem;margin-bottom:20px;}.modal-footer{display:flex;gap:10px;margin-top:24px;justify-content:flex-end;}.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:300;padding:12px 20px;border-radius:12px;font-size:.88rem;font-weight:500;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:toastIn .3s ease;white-space:nowrap;}.toast.ok{background:var(--success);}.toast.err{background:var(--danger);}@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@media(min-width:768px){.toast{bottom:24px;}}.obra-check-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;}.obra-check-item:hover{border-color:var(--brand);background:#f0f7ff;}.obra-check-item.checked{border-color:var(--brand);background:#f0f7ff;}.obra-check-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand);cursor:pointer;flex-shrink:0;}.obra-check-item label{cursor:pointer;font-size:.9rem;font-weight:500;}.dash-table{width:100%;border-collapse:collapse;}.dash-table th{text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px;border-bottom:2px solid var(--border);}.dash-table th:last-child{text-align:right;}.dash-table td{padding:10px 12px;font-size:.88rem;border-bottom:1px solid var(--border);color:var(--text);}.dash-table td:last-child{text-align:right;font-weight:600;font-family:'Syne',sans-serif;}.dash-table tr:last-child td{border-bottom:none;}.dash-table .total-row td{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;color:var(--accent);background:#fff8f9;border-top:2px solid var(--border);}.dash-table tr:hover:not(.total-row) td{background:#f8f9fc;}.cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;}.upload-area{border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .18s;background:#fafafa;margin-top:4px;}.upload-area:hover{border-color:var(--brand);background:#f0f7ff;}.upload-icon{font-size:2rem;margin-bottom:6px;}.upload-text{font-size:.9rem;font-weight:500;color:var(--text);}.upload-sub{font-size:.78rem;color:var(--muted);margin-top:2px;}.file-preview{display:flex;align-items:center;gap:10px;background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-top:8px;}.file-preview .file-name{flex:1;font-size:.85rem;font-weight:500;color:var(--brand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.file-preview .file-remove{background:none;border:none;cursor:pointer;color:var(--danger);font-size:1.1rem;padding:2px;}.reemb-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;margin-top:4px;}.reemb-opt{flex:1;padding:10px 8px;text-align:center;font-size:.8rem;font-weight:500;color:var(--muted);background:#f8f9fc;transition:all .18s;white-space:nowrap;}.reemb-opt.active-opt{background:var(--brand);color:#fff;}.lanc-item{background:#f8f9fc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;}.lanc-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}.lanc-item-info{flex:1;min-width:0;}.lanc-item-cat{font-size:.72rem;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:.5px;}.lanc-item-desc{font-weight:600;font-size:.9rem;color:var(--text);margin-top:2px;}.lanc-item-sub{font-size:.78rem;color:var(--muted);margin-top:3px;}.lanc-item-valor{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--text);white-space:nowrap;}.lanc-item-actions{display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}.badge-reemb{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:600;}.badge-reemb.sim{background:#fff8e1;color:#92640a;}.badge-reemb.nao{background:#ecfdf5;color:var(--success);}</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="l-logo">CF<span>O</span></div>
+  <div class="spinner"></div>
+  <p>Carregando...</p>
+</div>
+
+<div class="topbar hidden" id="topbar">
+  <div class="topbar-brand"><span class="dot"></span>CFO — Controle Financeiro</div>
+  <div class="topbar-right">
+    <div id="pillUser" class="pill hidden"></div>
+    <button class="btn btn-ghost sm hidden" id="btnLogout" onclick="App.logout()">Sair</button>
+  </div>
+</div>
+
+<div class="offline-banner hidden" id="offlineBanner">
+  ⚡ Você está offline — lançamentos serão sincronizados ao reconectar
+</div>
+<div class="sync-banner hidden" id="syncBanner">
+  🔄 Sincronizando lançamentos pendentes...
+</div>
+
+<div class="auth-page hidden" id="loginPage">
+  <div class="deco deco-1"></div><div class="deco deco-2"></div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="icon">💼</div>
+      <div><div class="name">CFO</div><div class="sub">Controle Financeiro de Obras</div></div>
+    </div>
+    <h2>Bem-vindo</h2>
+    <p class="subtitle">Entre com seu e-mail e senha para continuar.</p>
+    <label>E-mail</label>
+    <input id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email">
+    <label>Senha</label>
+    <div class="pass-row">
+      <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+      <button class="eye-btn" type="button" onclick="App.togglePass('loginPass')">👁</button>
+    </div>
+    <button class="btn btn-primary full" id="btnLogin" onclick="App.login()">Entrar</button>
+    <div class="msg" id="loginMsg"></div>
+    <p class="login-hint">Problemas para entrar? Fale com o administrador.</p>
+  </div>
+</div>
+
+<div class="auth-page hidden" id="changePwPage">
+  <div class="deco deco-1"></div><div class="deco deco-2"></div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="icon">🔐</div>
+      <div><div class="name">CFO</div><div class="sub">Primeiro acesso</div></div>
+    </div>
+    <div class="alert-banner">⚠️ Por segurança, crie uma nova senha antes de continuar.</div>
+    <h2>Crie sua senha</h2>
+    <p class="subtitle">Escolha uma senha com pelo menos 6 caracteres.</p>
+    <label>Nova Senha</label>
+    <div class="pass-row">
+      <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres">
+      <button class="eye-btn" type="button" onclick="App.togglePass('newPass1')">👁</button>
+    </div>
+    <label>Confirmar Senha</label>
+    <div class="pass-row">
+      <input id="newPass2" type="password" placeholder="Repita a senha">
+      <button class="eye-btn" type="button" onclick="App.togglePass('newPass2')">👁</button>
+    </div>
+    <button class="btn btn-primary full" id="btnChangePw" onclick="App.changePassword()">Salvar e Entrar</button>
+    <div class="msg" id="changePwMsg"></div>
+  </div>
+</div>
+
+<div class="app-layout hidden" id="appLayout">
+  <nav class="side-nav hidden" id="sideNav">
+    <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span> Dashboard</button>
+    <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span> Lançamentos</button>
+    <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span> Relatórios</button>
+    <div class="nav-divider"></div>
+    <button class="nav-item hidden" id="sideAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span> Administração</button>
+  </nav>
+
+  <main class="app-content">
+
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="welcome-card">
+        <h2 id="welcomeName">Olá! 👋</h2>
+        <p>Acompanhe os gastos das obras em tempo real.</p>
+        <div class="badge" id="welcomeRole">-</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Filtrado</div><div class="stat-value" id="statTotal">R$ 0,00</div></div>
+        <div class="stat-card c-accent"><div class="stat-label">Lançamentos</div><div class="stat-value" id="statCount">0</div></div>
+        <div class="stat-card c-success"><div class="stat-label">Obras Ativas</div><div class="stat-value" id="statObras">0</div></div>
+        <div class="stat-card c-warning"><div class="stat-label">Pendentes Sync</div><div class="stat-value" id="statPending">0</div></div>
+      </div>
+
+      <div class="card" style="padding:16px 20px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:140px">
+            <label style="margin-top:0">Obra</label>
+            <select id="dashObra" onchange="App.onDashObraChange()">
+              <option value="">Todas as obras</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:140px" id="dashColabWrap">
+            <label style="margin-top:0">Colaborador</label>
+            <select id="dashColab" onchange="App.loadDashboard()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="margin-top:0">De</label>
+            <input type="date" id="dashDe" onchange="App.loadDashboard()">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="margin-top:0">Até</label>
+            <input type="date" id="dashAte" onchange="App.loadDashboard()">
+          </div>
+          <button class="btn btn-outline sm" onclick="App.clearDashFilters()" style="margin-bottom:2px">🔄 Limpar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div><h3>Monitoramento por Categoria</h3></div></div>
+        <div id="dashTable">
+          <div class="empty"><div class="empty-icon">📊</div><p>Nenhum lançamento encontrado.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-lancamentos">
+      <div class="page-header"><h1>Registrar Despesa</h1><p>Adicione um novo gasto à obra selecionada.</p></div>
+
+      <div class="card" id="formLancCard">
+        <div class="card-header"><div><h3 id="formLancTitle">Nova Despesa</h3><p>Preencha os dados do gasto.</p></div></div>
+        <div class="row">
+          <div><label>Obra</label><select id="lancObra"></select></div>
+          <div><label>Data</label><input id="lancData" type="date"></div>
+        </div>
+        <label>Categoria</label>
+        <select id="lancCategoria">
+          <option value="">— Selecione —</option>
+          <option>Hospedagem</option>
+          <option>Combustível</option>
+          <option>Locação de automóvel</option>
+          <option>Alimentação</option>
+          <option>Passagem de avião</option>
+          <option>Ferramentas</option>
+          <option>Materiais de construção</option>
+          <option>Outros gastos</option>
+        </select>
+        <label>Descrição</label>
+        <input id="lancDesc" type="text" placeholder="Ex: Almoço com equipe, nota fiscal #123...">
+        <div class="row">
+          <div>
+            <label>Valor (R$)</label>
+            <input id="lancValor" type="number" min="0" step="0.01" placeholder="0,00">
+          </div>
+          <div>
+            <label>Reembolsável?</label>
+            <div class="reemb-toggle" id="reembToggle" onclick="App.toggleReemb()">
+              <div class="reemb-opt active-opt" id="reembNao">✅ Empresa</div>
+              <div class="reemb-opt" id="reembSim">🔄 Reembolsável</div>
+            </div>
+            <input type="hidden" id="lancReemb" value="nao">
+          </div>
+        </div>
+        <label id="lancComprLabel">Comprovante (foto ou PDF)</label>
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('lancFile').click()">
+          <div class="upload-icon">📎</div>
+          <div class="upload-text">Clique para anexar foto do comprovante</div>
+          <div class="upload-sub">Máx. 10MB — JPG ou PNG</div>
+          <input type="file" id="lancFile" accept="image/*" capture="environment" style="display:none" onchange="App.onFileSelect()">
+        </div>
+        <div id="filePreview" class="hidden"></div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-outline hidden" id="btnCancelLanc" onclick="App.cancelLanc()">Cancelar</button>
+          <button class="btn btn-primary full" id="btnSaveLanc" onclick="App.saveLanc()">💾 Salvar Despesa</button>
+        </div>
+        <div class="msg" id="lancMsg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div><h3>Lançamentos</h3></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="filterLancObra" style="padding:6px 10px;font-size:.82rem;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto" onchange="App.loadLancs()">
+              <option value="">Todas as obras</option>
+            </select>
+            <button class="btn btn-outline sm" onclick="App.loadLancs()">🔄</button>
+          </div>
+        </div>
+        <div id="lancList"><div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-relatorios">
+      <div class="page-header"><h1>Relatórios</h1><p>Gere e exporte relatórios de despesas por obra e período.</p></div>
+
+      <div class="card" style="padding:16px 20px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:140px">
+            <label style="margin-top:0">Obra</label>
+            <select id="relObra"></select>
+          </div>
+          <div style="flex:1;min-width:140px" id="relColabWrap">
+            <label style="margin-top:0">Colaborador</label>
+            <select id="relColab">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="margin-top:0">De</label>
+            <input type="date" id="relDe">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="margin-top:0">Até</label>
+            <input type="date" id="relAte">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="App.previewRelatorio()">👁️ Visualizar</button>
+          <button class="btn btn-success" onclick="App.gerarPDF()">📄 Baixar PDF</button>
+          <button class="btn btn-outline" id="btnEnviarEmail" onclick="App.enviarRelatorioEmail()" style="display:none">📧 Enviar Agora</button>
+        </div>
+        <div class="msg" id="relMsg"></div>
+      </div>
+
+      <div class="card hidden" id="relPreview">
+        <div id="relPreviewContent"></div>
+      </div>
+
+      <div class="card hidden" id="relEmailConfig">
+        <div class="card-header">
+          <div><h3>⚙️ Configurações de Envio</h3><p>Destinatários do relatório mensal.</p></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:.82rem;color:var(--muted)">Envio automático</span>
+            <div class="reemb-toggle" style="width:160px">
+              <button class="reemb-opt active-opt" id="envAutoSim" onclick="App.setEnvioAuto(true)">🤖 Automático</button>
+              <button class="reemb-opt" id="envAutoNao" onclick="App.setEnvioAuto(false)">✋ Manual</button>
+            </div>
+          </div>
+        </div>
+        <div id="emailDestinatarios">
+          <label>Destinatários (até 5 e-mails)</label>
+          <div id="emailList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+          <button class="btn btn-outline sm" style="margin-top:10px" onclick="App.addEmailDest()">+ Adicionar e-mail</button>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="App.saveEmailConfig()">💾 Salvar Configurações</button>
+          <span style="font-size:.78rem;color:var(--muted)">⚠️ Clique em Salvar após adicionar ou remover e-mails.</span>
+        </div>
+        <div class="msg" id="emailConfigMsg"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-admin">
+      <div class="page-header"><h1>Administração</h1><p>Gerencie obras e colaboradores do sistema.</p></div>
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" onclick="App.adminTab('obras')">🏗️ Obras</button>
+        <button class="admin-tab-btn" onclick="App.adminTab('usuarios')">👥 Colaboradores</button>
+      </div>
+
+      <div class="admin-panel active" id="adm-obras">
+        <div class="card">
+          <div class="card-header"><div><h3>Cadastrar Obra</h3><p>Adicione uma nova obra ao sistema.</p></div></div>
+          <label>Nome da Obra</label>
+          <input id="obraName" type="text" placeholder="Ex: Residencial Parque Verde">
+          <label>Descrição (opcional)</label>
+          <input id="obraDesc" type="text" placeholder="Ex: Bloco A — 12 apartamentos">
+          <div style="margin-top:16px">
+            <button class="btn btn-primary full" id="btnSaveObra" onclick="App.saveObra()">💾 Salvar Obra</button>
+          </div>
+          <div class="msg" id="obraMsg"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><h3>Obras Cadastradas</h3></div>
+            <button class="btn btn-outline sm" onclick="App.loadObras()">🔄 Atualizar</button>
+          </div>
+          <div id="obraList"><div class="empty"><div class="empty-icon">🏗️</div><p>Nenhuma obra cadastrada ainda.</p></div></div>
+        </div>
+      </div>
+
+      <div class="admin-panel" id="adm-usuarios">
+        <div class="card">
+          <div class="card-header"><div><h3>Cadastrar Colaborador</h3><p>Crie um novo acesso ao sistema.</p></div></div>
+          <div class="info-box">ℹ️ A senha padrão é <strong>user123</strong>. No primeiro acesso o colaborador será obrigado a criar uma nova senha.</div>
+          <label>Nome completo</label>
+          <input id="userNome" type="text" placeholder="Ex: João da Silva">
+          <label>E-mail</label>
+          <input id="userEmail" type="email" placeholder="joao@email.com">
+          <label>Perfil</label>
+          <select id="userRole">
+            <option value="USER">👤 Colaborador</option>
+            <option value="ADMIN">👑 Administrador</option>
+          </select>
+          <label>Alocar em obra (opcional)</label>
+          <select id="userObra">
+            <option value="">— Sem alocação por enquanto —</option>
+          </select>
+          <p style="font-size:.78rem;color:var(--muted);margin-top:6px">💡 Você pode alocar em mais obras depois pela lista de colaboradores.</p>
+          <div style="margin-top:16px">
+            <button class="btn btn-primary full" id="btnSaveUser" onclick="App.saveUser()">💾 Cadastrar Colaborador</button>
+          </div>
+          <div class="msg" id="userMsg"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><h3>Colaboradores</h3></div>
+            <button class="btn btn-outline sm" onclick="App.loadUsers()">🔄 Atualizar</button>
+          </div>
+          
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="admin-tab-btn active" id="filterAll"    onclick="App.filterUsers('all')">Todos</button>
+            <button class="admin-tab-btn"         id="filterActive" onclick="App.filterUsers('active')">✅ Ativos</button>
+            <button class="admin-tab-btn"         id="filterInact"  onclick="App.filterUsers('inactive')">⛔ Inativos</button>
+          </div>
+          <div id="userList"><div class="empty"><div class="empty-icon">👥</div><p>Nenhum colaborador cadastrado ainda.</p></div></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
+    <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span><span>Lançar</span></button>
+    <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span><span>Relatórios</span></button>
+    <button class="nav-item hidden" id="bottomAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span><span>Admin</span></button>
+  </nav>
+</div>
+
+<div class="modal-overlay hidden" id="modalConfirm">
+  <div class="modal">
+    <h3 id="modalTitle">Confirmar ação</h3>
+    <p id="modalText" style="color:var(--muted);font-size:.9rem"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="App.closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modalAlocacao">
+  <div class="modal">
+    <h3 id="alocTitle">Alocar em Obras</h3>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px" id="alocSubtitle"></p>
+    <div id="alocObrasList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="App.closeAlocModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="App.saveAlocacao()">💾 Salvar Alocação</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+           createUserWithEmailAndPassword, updatePassword }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs,
+           updateDoc, deleteDoc, serverTimestamp, query, orderBy }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const SENHA_PADRAO = "user123";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDo9am2JsYE9AX5BavNCGvNjK9FDfVBr-A",
+    authDomain:        "go-app-dev-bc1be.firebaseapp.com",
+    projectId:         "go-app-dev-bc1be",
+    storageBucket:     "go-app-dev-bc1be.firebasestorage.app",
+    messagingSenderId: "908787123120",
+    appId:             "1:908787123120:web:6214f2e5cf548b25008c75"
+  };
+
+  const firebaseMain   = initializeApp(firebaseConfig, "main");
+  const firebaseHelper = initializeApp(firebaseConfig, "helper");
+  const auth    = getAuth(firebaseMain);
+  const authAux = getAuth(firebaseHelper);
+  const db      = getFirestore(firebaseMain);
+
+  // Persistência offline gerenciada pelo IndexedDB próprio do app
+
+  const $ = id => document.getElementById(id);
+
+  function setMsg(id, text, ok=false) {
+    const el=$(id); if(!el) return;
+    if(!text){el.className="msg";el.textContent="";return;}
+    el.className="msg "+(ok?"ok":"err");
+    el.textContent=text;
+  }
+
+  function toast(text, ok=true) {
+    const t=document.createElement("div");
+    t.className="toast "+(ok?"ok":"err");
+    t.textContent=text;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3000);
+  }
+
+  function initOffline() {
+    const b=$("offlineBanner");
+    const upd=()=>b&&b.classList.toggle("hidden",navigator.onLine);
+    window.addEventListener("online",upd);
+    window.addEventListener("offline",upd);
+    upd();
+  }
+
+  function showPage(page) {
+    ["loginPage","changePwPage","appLayout"].forEach(id=>$(id).classList.add("hidden"));
+    $(page).classList.remove("hidden");
+    if(page==="appLayout"){ $("sideNav").classList.remove("hidden"); }
+  }
+
+  function goTab(tab) {
+    // bloqueia acesso ao admin para não-admins
+    if(tab==="admin" && currentRole!=="ADMIN") return;
+    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+    document.querySelectorAll(".nav-item[data-tab]").forEach(b=>b.classList.remove("active"));
+    $(`tab-${tab}`)?.classList.add("active");
+    document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b=>b.classList.add("active"));
+    if(tab==="admin")      { loadObras(); fillObraSelect(); }
+    if(tab==="lancamentos") { fillLancObras(); loadLancs(); setTodayDate(); }
+    if(tab==="dashboard")   { fillDashFilters().then(()=>loadDashboard()); }
+    if(tab==="relatorios")  { fillRelatorioFiltros(); }
+  }
+
+  function adminTab(tab) {
+    document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
+    const btns=document.querySelectorAll(".admin-tab-btn");
+    btns.forEach(b=>b.classList.remove("active"));
+    $(`adm-${tab}`)?.classList.add("active");
+    if(tab==="obras")   { btns[0].classList.add("active"); loadObras(); }
+    if(tab==="usuarios"){ btns[1].classList.add("active"); loadUsers(); fillObraSelect(); }
+  }
+
+  function togglePass(id) {
+    const el=$(id); if(el) el.type=el.type==="password"?"text":"password";
+  }
+
+  function showModal(title, text, cb, btnLabel="Confirmar", danger=true) {
+    $("modalTitle").textContent=title;
+    $("modalText").textContent=text;
+    $("modalConfirm").classList.remove("hidden");
+    const btn=$("modalConfirmBtn");
+    btn.textContent=btnLabel;
+    btn.className="btn "+(danger?"btn-danger":"btn-success");
+    btn.onclick=()=>{ closeModal(); cb(); };
+  }
+  function closeModal(){ $("modalConfirm").classList.add("hidden"); }
+
+  // ── LOGIN ──
+  async function login() {
+    setMsg("loginMsg","");
+    const email=$("loginEmail").value.trim();
+    const password=$("loginPass").value;
+    const btn=$("btnLogin");
+    if(!email){setMsg("loginMsg","Informe o e-mail.");return;}
+    if(!password){setMsg("loginMsg","Informe a senha.");return;}
+    btn.disabled=true; btn.textContent="Entrando...";
+    try {
+      await signInWithEmailAndPassword(auth,email,password);
+    } catch(e) {
+      const msgs={
+        "auth/user-not-found":"Usuário não encontrado.",
+        "auth/wrong-password":"Senha incorreta.",
+        "auth/invalid-email":"E-mail inválido.",
+        "auth/too-many-requests":"Muitas tentativas. Aguarde.",
+        "auth/invalid-credential":"E-mail ou senha incorretos."
+      };
+      setMsg("loginMsg",msgs[e.code]||"Erro: "+e.message);
+    } finally { btn.disabled=false; btn.textContent="Entrar"; }
+  }
+
+  async function logout(){
+    await signOut(auth);
+    // Limpa estado da UI completamente
+    currentUser = null;
+    currentRole = null;
+    // Esconde todas as abas e painéis
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    // Esconde menu admin
+    const adminNav = $("navAdmin");
+    if(adminNav) adminNav.style.display = "none";
+    // Limpa conteúdos dinâmicos
+    ["obraList","userList","lancList","dashTable","relPreviewContent"].forEach(id => {
+      const el = $(id); if(el) el.innerHTML = "";
+    });
+    // Força reload para garantir estado limpo
+    window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+  }
+
+  // ── TROCA DE SENHA ──
+  async function changePassword() {
+    setMsg("changePwMsg","");
+    const p1=$("newPass1").value, p2=$("newPass2").value;
+    const btn=$("btnChangePw");
+    if(p1.length<6){setMsg("changePwMsg","Mínimo 6 caracteres.");return;}
+    if(p1!==p2){setMsg("changePwMsg","As senhas não conferem.");return;}
+    if(p1===SENHA_PADRAO){setMsg("changePwMsg","Escolha uma senha diferente da senha padrão.");return;}
+    btn.disabled=true; btn.textContent="Salvando...";
+    try {
+      await updatePassword(auth.currentUser,p1);
+      await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{primeiro_acesso:false});
+      toast("Senha criada com sucesso! ✅");
+      await initApp(auth.currentUser);
+    } catch(e){ setMsg("changePwMsg","Erro: "+e.message); }
+    finally { btn.disabled=false; btn.textContent="Salvar e Entrar"; }
+  }
+
+  async function loadProfile(uid) {
+    try { const s=await getDoc(doc(db,"usuarios",uid)); if(s.exists()) return s.data(); } catch(_){}
+    return null;
+  }
+
+  let currentUser=null, currentRole="USER";
+
+  async function initApp(user) {
+    currentUser=user;
+    // Resetar UI antes de carregar perfil
+    $("sideAdmin")?.classList.add("hidden");
+    $("bottomAdmin")?.classList.add("hidden");
+    const profile=await loadProfile(user.uid);
+    const nome=profile?.nome||user.email.split("@")[0];
+    currentRole=profile?.role||"USER";
+
+    // ── CONTA DESATIVADA ──
+    if(profile?.ativo===false){
+      await signOut(auth);
+      setMsg("loginMsg","⛔ Sua conta foi desativada. Fale com o administrador.");
+      showPage("loginPage");
+      return;
+    }
+
+    // ── PRIMEIRO ACESSO ──
+    if(profile?.primeiro_acesso===true){
+      showPage("changePwPage");
+      return;
+    }
+
+    $("welcomeName").textContent=`Olá, ${nome}! 👋`;
+    $("welcomeRole").textContent=currentRole==="ADMIN"?"👑 Administrador":"👤 Colaborador";
+    $("pillUser").textContent=nome;
+    $("pillUser").classList.remove("hidden");
+    $("btnLogout").classList.remove("hidden");
+
+    if(currentRole==="ADMIN"){
+      $("sideAdmin")?.classList.remove("hidden");
+      $("bottomAdmin")?.classList.remove("hidden");
+    }
+
+    try {
+      const obras=await getDocs(collection(db,"obras"));
+      $("statObras").textContent=obras.docs.filter(d=>d.data().ativa!==false).length||"0";
+      const users=await getDocs(collection(db,"usuarios"));
+      $("statUsers").textContent=users.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+    } catch(_){}
+
+    showPage("appLayout");
+    await fillDashFilters();
+    loadDashboard();
+    goTab("dashboard");
+    updatePendingCount();
+    setTimeout(syncPendingLancs, 2000);
+    setTimeout(verificarFechamentoMensal, 3000);
+  }
+
+  async function fillObraSelect() {
+    const sel=$("userObra"); if(!sel) return;
+    try {
+      const snap=await getDocs(collection(db,"obras"));
+      sel.innerHTML=`<option value="">— Sem alocação por enquanto —</option>`;
+      snap.forEach(d=>{
+        if(d.data().ativa!==false){
+          const o=document.createElement("option");
+          o.value=d.id; o.textContent=d.data().nome;
+          sel.appendChild(o);
+        }
+      });
+    } catch(_){}
+  }
+
+  // ── OBRAS ──
+  async function saveObra() {
+    setMsg("obraMsg","");
+    const nome=$("obraName").value.trim(), desc=$("obraDesc").value.trim();
+    const btn=$("btnSaveObra");
+    if(!nome){setMsg("obraMsg","Informe o nome da obra.");return;}
+    btn.disabled=true; btn.textContent="Salvando...";
+    try {
+      const id="OBRA_"+Date.now();
+      await setDoc(doc(db,"obras",id),{id,nome,descricao:desc,ativa:true,criadoPor:currentUser.uid,criadoEm:serverTimestamp()});
+      $("obraName").value=""; $("obraDesc").value="";
+      setMsg("obraMsg","✅ Obra cadastrada!",true);
+      toast("Obra cadastrada! 🏗️");
+      await loadObras();
+      const snap=await getDocs(collection(db,"obras"));
+      $("statObras").textContent=snap.docs.filter(d=>d.data().ativa!==false).length;
+    } catch(e){ setMsg("obraMsg","Erro: "+e.message); }
+    finally{ btn.disabled=false; btn.textContent="💾 Salvar Obra"; }
+  }
+
+  async function loadObras() {
+    const el=$("obraList"); if(!el) return;
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
+    try {
+      const snap=await getDocs(query(collection(db,"obras"),orderBy("criadoEm","desc")));
+      if(snap.empty){el.innerHTML=`<div class="empty"><div class="empty-icon">🏗️</div><p>Nenhuma obra cadastrada ainda.</p></div>`;return;}
+      el.innerHTML="";
+      snap.forEach(d=>{
+        const o=d.data();
+        const div=document.createElement("div");
+        div.className="list-item"+(o.ativa===false?" inactive-item":"");
+        div.innerHTML=`
+          <div class="list-item-info">
+            <div class="list-item-name">${o.nome}</div>
+            <div class="list-item-sub">${o.descricao||"Sem descrição"}</div>
+          </div>
+          <span class="badge-status ${o.ativa!==false?"active":"inactive"}">${o.ativa!==false?"✅ Ativa":"⛔ Inativa"}</span>
+          <div class="list-item-actions">
+            <button class="btn btn-outline sm" onclick="App.toggleObra('${d.id}',${o.ativa!==false})">${o.ativa!==false?"Desativar":"Ativar"}</button>
+            <button class="btn btn-danger sm" data-id="${d.id}" data-nome="${o.nome}" onclick="App.deleteObra(this.dataset.id, this.dataset.nome)">🗑️</button>
+          </div>`;
+        el.appendChild(div);
+      });
+    } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar obras.</p>`; }
+  }
+
+  async function deleteObra(id, nome) {
+    showModal(
+      "Excluir obra",
+      "Tem certeza que deseja excluir a obra permanentemente? Esta ação não pode ser desfeita.",
+      async () => {
+        try {
+          await deleteDoc(doc(db,"obras",id));
+          toast("Obra excluída permanentemente.");
+          await loadObras();
+          const snap = await getDocs(collection(db,"obras"));
+          $("statObras").textContent = snap.docs.filter(d=>d.data().ativa!==false).length;
+        } catch(e){ toast("Erro: "+e.message, false); }
+      },
+      true // botão vermelho
+    );
+  }
+
+  async function toggleObra(id,ativa) {
+    try {
+      await updateDoc(doc(db,"obras",id),{ativa:!ativa});
+      toast(ativa?"Obra desativada.":"Obra reativada! ✅",!ativa);
+      await loadObras();
+      const snap=await getDocs(collection(db,"obras"));
+      $("statObras").textContent=snap.docs.filter(d=>d.data().ativa!==false).length;
+    } catch(e){ toast("Erro: "+e.message,false); }
+  }
+
+  // ── COLABORADORES ──
+  let allUsers = [];
+  let currentFilter = "all";
+
+  async function saveUser() {
+    setMsg("userMsg","");
+    const nome=$("userNome").value.trim(), email=$("userEmail").value.trim();
+    const role=$("userRole").value, obra=$("userObra").value;
+    const btn=$("btnSaveUser");
+    if(!nome){setMsg("userMsg","Informe o nome.");return;}
+    if(!email){setMsg("userMsg","Informe o e-mail.");return;}
+    btn.disabled=true; btn.textContent="Cadastrando...";
+    try {
+      const cred=await createUserWithEmailAndPassword(authAux,email,SENHA_PADRAO);
+      await signOut(authAux);
+      await setDoc(doc(db,"usuarios",cred.user.uid),{
+        uid:cred.user.uid, nome, email, role,
+        obra_id: obra||"",           // compatibilidade legada
+        obras:   obra ? [obra] : [], // array de obras (novo)
+        ativo:true, primeiro_acesso:true,
+        criadoPor:currentUser.uid, criadoEm:serverTimestamp()
+      });
+      $("userNome").value=""; $("userEmail").value=""; $("userObra").value="";
+      setMsg("userMsg","✅ Colaborador cadastrado! Senha padrão: user123",true);
+      toast("Colaborador cadastrado! 👤");
+      await loadUsers();
+      const snap=await getDocs(collection(db,"usuarios"));
+      $("statUsers").textContent=snap.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+    } catch(e){
+      const msgs={"auth/email-already-in-use":"Este e-mail já está cadastrado.","auth/invalid-email":"E-mail inválido.","auth/weak-password":"Senha fraca."};
+      setMsg("userMsg",msgs[e.code]||"Erro: "+e.message);
+    } finally{ btn.disabled=false; btn.textContent="💾 Cadastrar Colaborador"; }
+  }
+
+  let obrasMapRender = {};
+  async function loadUsers() {
+    const el=$("userList"); if(!el) return;
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
+    try {
+      // carrega obras para resolver nomes
+      const obrasSnap=await getDocs(collection(db,"obras"));
+      const obrasMap={};
+      obrasSnap.forEach(d=>{ obrasMap[d.id]=d.data().nome; obrasMapRender[d.id]=d.data().nome; });
+
+      const snap=await getDocs(query(collection(db,"usuarios"),orderBy("criadoEm","desc")));
+      allUsers=snap.docs.map(d=>{
+        const data=d.data();
+        return {
+          id:d.id,
+          ...data,
+          obra_nome: data.obra_id ? (obrasMap[data.obra_id]||"Obra não encontrada") : ""
+        };
+      });
+      renderUsers();
+    } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar.</p>`; }
+  }
+
+  function filterUsers(filter) {
+    currentFilter=filter;
+    ["filterAll","filterActive","filterInact"].forEach(id=>$(id)?.classList.remove("active"));
+    $("filter"+filter.charAt(0).toUpperCase()+filter.slice(1))?.classList.add("active");
+    renderUsers();
+  }
+
+  function renderUsers() {
+    const el=$("userList"); if(!el) return;
+    let list=allUsers;
+    if(currentFilter==="active")   list=allUsers.filter(u=>u.ativo!==false);
+    if(currentFilter==="inactive") list=allUsers.filter(u=>u.ativo===false);
+    if(!list.length){
+      el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div><p>Nenhum colaborador encontrado.</p></div>`;
+      return;
+    }
+    el.innerHTML="";
+    list.forEach(u=>{
+      const div=document.createElement("div");
+      div.className="list-item"+(u.ativo===false?" inactive-item":"");
+      const badges=`
+        <div class="badges">
+          <span class="badge-status ${u.role==="ADMIN"?"admin":"user"}">${u.role==="ADMIN"?"👑 Admin":"👤 Colab."}</span>
+          ${u.ativo===false?'<span class="badge-status inactive">⛔ Inativo</span>':''}
+          ${u.primeiro_acesso===true&&u.ativo!==false?'<span class="badge-status warning">⏳ Aguard. 1º acesso</span>':''}
+        </div>`;
+      const acaoBtn = u.ativo===false
+        ? `<button class="btn btn-success sm" onclick="App.toggleUser('${u.id}',false)">✅ Reativar</button>`
+        : `<button class="btn btn-danger sm" onclick="App.toggleUser('${u.id}',true)">⛔ Desativar</button>`;
+      div.innerHTML=`
+        <div class="list-item-info">
+          <div class="list-item-name">${u.nome||"—"}</div>
+          <div class="list-item-sub">${u.email}</div>
+          <div class="list-item-sub" style="margin-top:3px">${(u.obras&&u.obras.length?u.obras.map(id=>obrasMapRender[id]||id).filter(Boolean).map(n=>"🏗️ "+n).join(" · "):"Sem alocação")}</div>
+        </div>
+        ${badges}
+        <div class="list-item-actions">
+          <button class="btn btn-outline sm" data-uid="${u.id}" data-nome="${u.nome||u.email}" onclick="App.openAlocModal(this.dataset.uid, this.dataset.nome)">🏗️ Alocar</button>
+          ${acaoBtn}
+        </div>`;
+      el.appendChild(div);
+    });
+  }
+
+  async function toggleUser(id, isActive) {
+    const u=allUsers.find(x=>x.id===id);
+    const nome=u?.nome||"este colaborador";
+    if(isActive) {
+      showModal(
+        "Desativar colaborador",
+        `"${nome}" perderá o acesso ao sistema. Você pode reativar a qualquer momento.`,
+        async()=>{
+          await updateDoc(doc(db,"usuarios",id),{ativo:false});
+          toast("Colaborador desativado.");
+          await loadUsers();
+        },
+        "Desativar", true
+      );
+    } else {
+      await updateDoc(doc(db,"usuarios",id),{ativo:true});
+      toast("Colaborador reativado! ✅");
+      await loadUsers();
+    }
+    const snap2=await getDocs(collection(db,"usuarios"));
+    $("statUsers").textContent=snap2.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+  }
+
+  // ── AUTH STATE ──
+  // Timeout de segurança — esconde loading após 8s mesmo se Firebase travar
+  setTimeout(() => {
+    const ls = $("loadingScreen");
+    if(ls && ls.style.display !== "none") {
+      ls.style.display = "none";
+      $("loginPage").classList.remove("hidden");
+      $("topbar").classList.remove("hidden");
+    }
+  }, 8000);
+
+  onAuthStateChanged(auth, async (user) => {
+    $("loadingScreen").style.display="none";
+    $("topbar").classList.remove("hidden");
+    if(user) {
+      await initApp(user);
+    } else {
+      $("sideNav").classList.add("hidden");
+      $("pillUser").classList.add("hidden");
+      $("btnLogout").classList.add("hidden");
+      showPage("loginPage");
+    }
+  });
+
+  initOffline();
+
+  // ══════════════════════════════
+  // LANÇAMENTOS
+  // ══════════════════════════════
+  const CATEGORIAS = [
+    "Hospedagem","Combustível","Locação de automóvel","Alimentação",
+    "Passagem de avião","Ferramentas","Materiais de construção","Outros gastos"
+  ];
+  const CLOUDINARY_CLOUD  = "dibvvm6ix";
+  const CLOUDINARY_PRESET = "cfo_uploads";
+
+  let editingLancId = null;
+  let selectedFile  = null;
+
+  // Preenche select de obras no formulário de lançamento
+  async function fillLancObras() {
+    const sel  = $("lancObra");
+    const filt = $("filterLancObra");
+    if(!sel) return;
+    try {
+      const snap = await getDocs(collection(db,"obras"));
+      sel.innerHTML  = `<option value="">— Selecione a obra —</option>`;
+      if(filt) filt.innerHTML = `<option value="">Todas as obras</option>`;
+      const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
+      const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+      snap.forEach(d => {
+        const o = d.data();
+        if(o.ativa === false) return;
+        // colaborador só vê suas obras
+        if(currentRole !== "ADMIN" && !obrasDoColab.includes(d.id)) return;
+        const opt1 = document.createElement("option");
+        opt1.value = d.id; opt1.textContent = o.nome;
+        sel.appendChild(opt1);
+        if(filt) {
+          const opt2 = document.createElement("option");
+          opt2.value = d.id; opt2.textContent = o.nome;
+          filt.appendChild(opt2);
+        }
+      });
+      // pré-seleciona obra do colaborador
+      if(currentRole !== "ADMIN" && prof?.obra_id) {
+        sel.value = prof.obra_id;
+        if(filt) filt.value = prof.obra_id;
+      }
+    } catch(_){}
+  }
+
+  function toggleReemb() {
+    const val  = $("lancReemb").value;
+    const novo = val === "nao" ? "sim" : "nao";
+    $("lancReemb").value = novo;
+    $("reembNao").classList.toggle("active-opt", novo === "nao");
+    $("reembSim").classList.toggle("active-opt", novo === "sim");
+  }
+
+  function onFileSelect() {
+    const file = $("lancFile").files[0];
+    if(!file) return;
+    if(file.size > 10 * 1024 * 1024) { toast("Arquivo muito grande (máx. 10MB)", false); return; }
+    if(!file.type.startsWith("image/")) { toast("Apenas imagens são aceitas (JPG, PNG)", false); return; }
+    selectedFile = file;
+    const prev = $("filePreview");
+    prev.className = "file-preview";
+    prev.innerHTML = `
+      <span style="font-size:1.4rem">🖼️</span>
+      <span class="file-name">${file.name}</span>
+      <button class="file-remove" onclick="App.removeFile()" title="Remover">✕</button>`;
+  }
+
+  function removeFile() {
+    selectedFile = null;
+    $("lancFile").value = "";
+    const prev = $("filePreview");
+    prev.className = "hidden";
+    prev.innerHTML = "";
+  }
+
+  async function uploadFile() {
+    if(!selectedFile) return null;
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+    fd.append("upload_preset", CLOUDINARY_PRESET);
+    fd.append("folder", "cfo");
+    try {
+      const r = await fetch(url, {method:"POST", body:fd});
+      const d = await r.json();
+      if(d.error) { console.error("Cloudinary error:", d.error); return null; }
+      return { url: d.secure_url, tipo: "imagem", nome: selectedFile.name };
+    } catch(e) { console.error("Upload error:", e); return null; }
+  }
+
+  // data de hoje como padrão
+  function setTodayDate() {
+    const d = $("lancData");
+    if(d && !d.value) d.value = new Date().toISOString().split("T")[0];
+  }
+
+  async function saveLanc() {
+    setMsg("lancMsg","");
+    const obra  = $("lancObra").value;
+    const data  = $("lancData").value;
+    const cat   = $("lancCategoria").value;
+    const desc  = $("lancDesc").value.trim();
+    const valor = parseFloat($("lancValor").value);
+    const reemb = $("lancReemb").value;
+    const btn   = $("btnSaveLanc");
+
+    if(!obra)        { setMsg("lancMsg","Selecione a obra.");return; }
+    if(!data)        { setMsg("lancMsg","Informe a data.");return; }
+    if(!cat)         { setMsg("lancMsg","Selecione a categoria.");return; }
+    if(!desc)        { setMsg("lancMsg","Informe a descrição.");return; }
+    if(isNaN(valor)||valor<=0) { setMsg("lancMsg","Informe um valor válido.");return; }
+    if(currentRole !== "ADMIN" && !selectedFile && !editingLancId) {
+      setMsg("lancMsg","⚠️ Anexe o comprovante (foto ou PDF) para continuar.");return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = selectedFile ? "Enviando arquivo..." : "Salvando...";
+
+    try {
+      const prof = await loadProfile(currentUser.uid);
+      const lancData = {
+        obra_id:          obra,
+        obra_nome:        "",
+        data,
+        categoria:        cat,
+        descricao:        desc,
+        valor,
+        reembolsavel:     reemb === "sim",
+        comprovante:      null,
+        colaborador_uid:  currentUser.uid,
+        colaborador_nome: prof?.nome || currentUser.email,
+      };
+
+      // Se offline, salva localmente e sai
+      if(!navigator.onLine) {
+        await saveOffline(lancData);
+        await updatePendingCount();
+        setMsg("lancMsg","📵 Salvo localmente! Será enviado quando a internet voltar.",true);
+        toast("📵 Salvo offline!");
+        // limpa form
+        $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
+        $("lancDesc").value=""; $("lancValor").value="";
+        $("lancReemb").value="nao";
+        $("reembNao").classList.add("active-opt");
+        $("reembSim").classList.remove("active-opt");
+        removeFile();
+        btn.disabled=false; btn.textContent="💾 Salvar Despesa";
+        return;
+      }
+
+      // Online: upload foto se tiver
+      let comprovante = null;
+      if(selectedFile) {
+        comprovante = await uploadFile();
+        if(!comprovante) { setMsg("lancMsg","Erro ao enviar arquivo. Tente novamente."); btn.disabled=false; btn.textContent="💾 Salvar Despesa"; return; }
+      }
+
+      // busca nome da obra
+      const obraDoc = await getDoc(doc(db,"obras",obra));
+      lancData.obra_nome  = obraDoc.exists() ? obraDoc.data().nome : obra;
+      lancData.comprovante = comprovante;
+      lancData.criadoEm   = serverTimestamp();
+
+      if(editingLancId) {
+        await updateDoc(doc(db,"lancamentos",editingLancId), lancData);
+        toast("Despesa atualizada! ✅");
+      } else {
+        await setDoc(doc(db,"lancamentos","LANC_"+Date.now()), lancData);
+        toast("Despesa registrada! 💾");
+      }
+
+      // limpa form
+      $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
+      $("lancDesc").value=""; $("lancValor").value="";
+      $("lancReemb").value="nao";
+      $("reembNao").classList.add("active-opt");
+      $("reembSim").classList.remove("active-opt");
+      removeFile();
+      editingLancId = null;
+      $("formLancTitle").textContent = "Nova Despesa";
+      $("btnCancelLanc").classList.add("hidden");
+      setMsg("lancMsg","✅ Despesa salva com sucesso!",true);
+      await loadLancs();
+      await updateStatTotal();
+    } catch(e) { setMsg("lancMsg","Erro: "+e.message); }
+    finally { btn.disabled=false; btn.textContent="💾 Salvar Despesa"; }
+  }
+
+  function cancelLanc() {
+    editingLancId = null;
+    $("formLancTitle").textContent = "Nova Despesa";
+    $("btnCancelLanc").classList.add("hidden");
+    $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
+    $("lancDesc").value=""; $("lancValor").value="";
+    $("lancReemb").value="nao";
+    $("reembNao").classList.add("active-opt");
+    $("reembSim").classList.remove("active-opt");
+    removeFile(); setMsg("lancMsg","");
+  }
+
+  function editLanc(id) {
+    const l = allLancs.find(x=>x.id===id);
+    if(!l) return;
+    editingLancId = id;
+    $("formLancTitle").textContent = "Editar Despesa";
+    $("btnCancelLanc").classList.remove("hidden");
+    $("lancObra").value      = l.obra_id   || "";
+    $("lancData").value      = l.data      || "";
+    $("lancCategoria").value = l.categoria || "";
+    $("lancDesc").value      = l.descricao || "";
+    $("lancValor").value     = l.valor     || "";
+    const reemb = l.reembolsavel ? "sim" : "nao";
+    $("lancReemb").value = reemb;
+    $("reembNao").classList.toggle("active-opt", reemb==="nao");
+    $("reembSim").classList.toggle("active-opt", reemb==="sim");
+    $("formLancCard").scrollIntoView({behavior:"smooth"});
+  }
+
+  async function deleteLanc(id) {
+    showModal("Excluir despesa","Tem certeza que deseja excluir este lançamento?", async()=>{
+      try {
+        await deleteDoc(doc(db,"lancamentos",id));
+        toast("Despesa excluída.");
+        await loadLancs();
+        await updateStatTotal();
+      } catch(e){ toast("Erro: "+e.message,false); }
+    });
+  }
+
+  let allLancs = [];
+
+  async function loadLancs() {
+    const el=$("lancList"); if(!el) return;
+    el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
+    try {
+      let q = query(collection(db,"lancamentos"), orderBy("criadoEm","desc"));
+      const snap = await getDocs(q);
+      allLancs = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+      // filtra por obra se selecionado
+      const filtObra = $("filterLancObra")?.value || "";
+      // colaborador vê apenas sua obra
+      let list = allLancs;
+      if(currentRole !== "ADMIN") {
+        const prof = await loadProfile(currentUser.uid);
+        if(prof?.obra_id) list = list.filter(l=>l.obra_id===prof.obra_id);
+      } else if(filtObra) {
+        list = list.filter(l=>l.obra_id===filtObra);
+      }
+
+      if(!list.length){
+        el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div>`;
+        return;
+      }
+
+      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      el.innerHTML="";
+      list.forEach(l=>{
+        const div=document.createElement("div");
+        div.className="lanc-item";
+        const dataFmt = l.data ? new Date(l.data+"T12:00:00").toLocaleDateString("pt-BR") : "—";
+        const compLink = l.comprovante?.url
+          ? `<a href="${l.comprovante.url}" target="_blank" style="font-size:.78rem;color:var(--brand);text-decoration:none">📎 Ver comprovante</a>`
+          : "";
+        div.innerHTML=`
+          <div class="lanc-item-top">
+            <div class="lanc-item-info">
+              <div class="lanc-item-cat">${l.categoria||"—"}</div>
+              <div class="lanc-item-desc">${l.descricao||"—"}</div>
+              <div class="lanc-item-sub">📅 ${dataFmt} · 🏗️ ${l.obra_nome||"—"} · 👤 ${l.colaborador_nome||"—"}</div>
+              <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <span class="badge-reemb ${l.reembolsavel?"sim":"nao"}">${l.reembolsavel?"🔄 Reembolsável":"✅ Empresa"}</span>
+                ${compLink}
+              </div>
+            </div>
+            <div class="lanc-item-valor">${brl(l.valor)}</div>
+          </div>
+          <div class="lanc-item-actions">
+            <button class="btn btn-outline sm" onclick="App.editLanc('${l.id}')">✏️ Editar</button>
+            <button class="btn btn-danger sm" onclick="App.deleteLanc('${l.id}')">🗑️ Excluir</button>
+          </div>`;
+        el.appendChild(div);
+      });
+    } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar lançamentos.</p>`; }
+  }
+
+  async function updateStatTotal() {
+    try {
+      const snap = await getDocs(collection(db,"lancamentos"));
+      const hoje = new Date();
+      const mes = hoje.getMonth(), ano = hoje.getFullYear();
+      let total = 0, count = 0;
+      snap.forEach(d=>{
+        const l = d.data();
+        if(!l.data) return;
+        const [y,m] = l.data.split("-").map(Number);
+        if(y===ano && m-1===mes) { total+=Number(l.valor||0); count++; }
+      });
+      $("statTotal").textContent = total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      $("statCount").textContent = count;
+    } catch(_){}
+  }
+
+  // ══════════════════════════════
+  // OFFLINE / SYNC
+  // ══════════════════════════════
+  const OFFLINE_DB_NAME    = "cfo_offline";
+  const OFFLINE_DB_VERSION = 1;
+  const OFFLINE_STORE      = "lancamentos_pendentes";
+
+  function openOfflineDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(OFFLINE_STORE)){
+          db.createObjectStore(OFFLINE_STORE, {keyPath:"localId"});
+        }
+      };
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function saveOffline(lancData) {
+    const db    = await openOfflineDB();
+    const localId = "OFFLINE_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const record  = { ...lancData, localId, syncStatus: "pending", savedAt: new Date().toISOString() };
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_STORE, "readwrite");
+      const store = tx.objectStore(OFFLINE_STORE);
+      store.add(record);
+      tx.oncomplete = () => resolve(localId);
+      tx.onerror    = e => reject(e.target.error);
+    });
+  }
+
+  async function getPendingOffline() {
+    const db = await openOfflineDB();
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_STORE, "readonly");
+      const store = tx.objectStore(OFFLINE_STORE);
+      const req   = store.getAll();
+      req.onsuccess = e => resolve(e.target.result||[]);
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function deleteOfflineRecord(localId) {
+    const db = await openOfflineDB();
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_STORE, "readwrite");
+      const store = tx.objectStore(OFFLINE_STORE);
+      store.delete(localId);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = e => reject(e.target.error);
+    });
+  }
+
+  async function updatePendingCount() {
+    try {
+      const pending = await getPendingOffline();
+      const el = $("statPending");
+      if(el) el.textContent = pending.length || "0";
+      // Mostra badge no nav se tiver pendentes
+      if(pending.length > 0) {
+        toast(`⏳ ${pending.length} lançamento(s) pendente(s) para sincronizar`, true);
+      }
+    } catch(_){}
+  }
+
+  async function syncPendingLancs() {
+    if(!navigator.onLine) return;
+    try {
+      const pending = await getPendingOffline();
+      if(!pending.length) return;
+      $("syncBanner")?.classList.remove("hidden");
+      let synced = 0;
+      for(const record of pending) {
+        try {
+          const { localId, syncStatus, savedAt, ...lancData } = record;
+          // Busca nome da obra
+          const obraDoc = await getDoc(doc(db,"obras", lancData.obra_id));
+          lancData.obra_nome = obraDoc.exists() ? obraDoc.data().nome : lancData.obra_id;
+          lancData.criadoEm  = serverTimestamp();
+          await setDoc(doc(db,"lancamentos","LANC_"+Date.now()+"_"+synced), lancData);
+          await deleteOfflineRecord(localId);
+          synced++;
+        } catch(e){ console.error("Erro ao sincronizar lançamento:", e); }
+      }
+      if(synced > 0) {
+        toast(`✅ ${synced} lançamento(s) sincronizado(s)!`);
+        await loadLancs();
+        await updateStatTotal();
+      }
+      await updatePendingCount();
+      $("syncBanner")?.classList.add("hidden");
+    } catch(e){ 
+      console.error("Erro na sincronização:", e);
+      $("syncBanner")?.classList.add("hidden");
+    }
+  }
+
+  // Ouve reconexão para sincronizar automaticamente
+  window.addEventListener("online", () => {
+    setTimeout(syncPendingLancs, 1500);
+  });
+
+  // ══════════════════════════════
+  // DASHBOARD
+  // ══════════════════════════════
+  const CATEGORIAS_CORES = {
+    "Hospedagem":              "#6366f1",
+    "Combustível":             "#f59e0b",
+    "Locação de automóvel":    "#10b981",
+    "Alimentação":             "#ef4444",
+    "Passagem de avião":       "#3b82f6",
+    "Ferramentas":             "#8b5cf6",
+    "Materiais de construção": "#f97316",
+    "Outros gastos":           "#6b7280"
+  };
+
+  async function fillDashFilters() {
+    const selObra  = $("dashObra");
+    const selColab = $("dashColab");
+    if(!selObra) return;
+    try {
+      const obrasSnap = await getDocs(collection(db,"obras"));
+      const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
+
+      if(currentRole !== "ADMIN") {
+        // Colaborador: vê só sua(s) obra(s)
+        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        selObra.innerHTML = `<option value="">Todas as minhas obras</option>`;
+        obrasSnap.forEach(d => {
+          if(d.data().ativa === false) return;
+          if(!obrasDoColab.includes(d.id)) return;
+          const o = document.createElement("option");
+          o.value = d.id; o.textContent = d.data().nome;
+          selObra.appendChild(o);
+        });
+        selObra.disabled = false;
+        // Filtro de colaborador — pré-seleciona ele mesmo
+        $("dashColabWrap").style.display = "";
+        if(selColab) {
+          selColab.innerHTML = `
+            <option value="">Todos da obra</option>
+            <option value="${currentUser.uid}" selected>${prof?.nome || currentUser.email}</option>`;
+        }
+      } else {
+        // Admin: vê todas as obras
+        selObra.innerHTML = `<option value="">Todas as obras</option>`;
+        obrasSnap.forEach(d => {
+          if(d.data().ativa === false) return;
+          const o = document.createElement("option");
+          o.value = d.id; o.textContent = d.data().nome;
+          selObra.appendChild(o);
+        });
+        selObra.disabled = false;
+        $("dashColabWrap").style.display = "";
+        // Preenche colaboradores
+        const usersSnap = await getDocs(collection(db,"usuarios"));
+        if(selColab) {
+          selColab.innerHTML = `<option value="">Todos</option>`;
+          usersSnap.forEach(d => {
+            if(d.data().ativo === false) return;
+            const o = document.createElement("option");
+            o.value = d.data().uid; o.textContent = d.data().nome || d.data().email;
+            selColab.appendChild(o);
+          });
+        }
+      }
+    } catch(_){}
+  }
+
+  // Quando troca obra, filtra colaboradores daquela obra
+  async function onDashObraChange() {
+    const obraId   = $("dashObra").value;
+    const selColab = $("dashColab");
+    if(!selColab || currentRole !== "ADMIN") { loadDashboard(); return; }
+    try {
+      const usersSnap = await getDocs(collection(db,"usuarios"));
+      selColab.innerHTML = `<option value="">Todos</option>`;
+      usersSnap.forEach(d => {
+        const u = d.data();
+        if(u.ativo === false) return;
+        if(obraId && u.obra_id !== obraId) return; // filtra por obra
+        const o = document.createElement("option");
+        o.value = u.uid; o.textContent = u.nome || u.email;
+        selColab.appendChild(o);
+      });
+    } catch(_){}
+    loadDashboard();
+  }
+
+  async function loadDashboard() {
+    const el = $("dashTable");
+    if(!el) return;
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
+
+    const obraFilt  = $("dashObra")?.value  || "";
+    const colabFilt = $("dashColab")?.value || "";
+    const deFilt    = $("dashDe")?.value    || "";
+    const ateFilt   = $("dashAte")?.value   || "";
+
+    try {
+      let snap = await getDocs(query(collection(db,"lancamentos"), orderBy("criadoEm","desc")));
+      let lancs = snap.docs.map(d => d.data());
+
+      if(currentRole !== "ADMIN") {
+        const prof = await loadProfile(currentUser.uid);
+        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        if(obraFilt) {
+          lancs = lancs.filter(l => l.obra_id === obraFilt);
+        } else {
+          lancs = lancs.filter(l => obrasDoColab.includes(l.obra_id));
+        }
+        if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
+      } else {
+        if(obraFilt)  lancs = lancs.filter(l => l.obra_id === obraFilt);
+        if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
+      }
+      if(deFilt)  lancs = lancs.filter(l => l.data >= deFilt);
+      if(ateFilt) lancs = lancs.filter(l => l.data <= ateFilt);
+
+      // Agrupa por categoria
+      const totais = {};
+      const cats   = Object.keys(CATEGORIAS_CORES);
+      cats.forEach(c => totais[c] = 0);
+      let totalGeral = 0;
+      lancs.forEach(l => {
+        const cat = l.categoria || "Outros gastos";
+        if(totais[cat] !== undefined) totais[cat] += Number(l.valor||0);
+        else totais["Outros gastos"] += Number(l.valor||0);
+        totalGeral += Number(l.valor||0);
+      });
+
+      // Atualiza stats
+      $("statTotal").textContent = totalGeral.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      $("statCount").textContent = lancs.length;
+
+      // Monta tabela
+      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      let rows = "";
+      cats.forEach(cat => {
+        const cor = CATEGORIAS_CORES[cat];
+        rows += `<tr>
+          <td><span class="cat-dot" style="background:${cor}"></span>${cat}</td>
+          <td>${brl(totais[cat])}</td>
+        </tr>`;
+      });
+
+      el.innerHTML = `
+        <table class="dash-table">
+          <thead><tr><th>Categoria</th><th>Total Acumulado</th></tr></thead>
+          <tbody>
+            ${rows}
+            <tr class="total-row">
+              <td>TOTAL GERAL</td>
+              <td>${brl(totalGeral)}</td>
+            </tr>
+          </tbody>
+        </table>`;
+
+    } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar.</p>`; }
+  }
+
+  function clearDashFilters() {
+    const selObra  = $("dashObra");
+    const selColab = $("dashColab");
+    if(selObra && currentRole === "ADMIN")  selObra.value  = "";
+    if(selColab) selColab.value = "";
+    if($("dashDe"))  $("dashDe").value  = "";
+    if($("dashAte")) $("dashAte").value = "";
+    loadDashboard();
+  }
+
+  // ══════════════════════════════
+  // ALOCAÇÃO EM OBRAS
+  // ══════════════════════════════
+  let alocUserId = null;
+
+  async function openAlocModal(userId, userName) {
+    alocUserId = userId;
+    $("alocTitle").textContent = "Alocar em Obras";
+    $("alocSubtitle").textContent = `Selecione as obras de ${userName}:`;
+    const lista = $("alocObrasList");
+    lista.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted)">Carregando...</div>`;
+    $("modalAlocacao").classList.remove("hidden");
+    try {
+      // Busca obras ativas
+      const obrasSnap = await getDocs(collection(db,"obras"));
+      // Busca obras atuais do colaborador
+      const userDoc = await getDoc(doc(db,"usuarios",userId));
+      const obrasAtuais = userDoc.exists() ? (userDoc.data().obras || []) : [];
+      lista.innerHTML = "";
+      obrasSnap.forEach(d => {
+        if(d.data().ativa === false) return;
+        const checked = obrasAtuais.includes(d.id);
+        const item = document.createElement("div");
+        item.className = "obra-check-item" + (checked ? " checked" : "");
+        item.innerHTML = `
+          <input type="checkbox" id="chk_${d.id}" value="${d.id}" ${checked?"checked":""}>
+          <label for="chk_${d.id}">${d.data().nome}</label>`;
+        item.querySelector("input").addEventListener("change", e => {
+          item.classList.toggle("checked", e.target.checked);
+        });
+        lista.appendChild(item);
+      });
+      if(!lista.children.length) {
+        lista.innerHTML = `<p style="color:var(--muted);font-size:.88rem;text-align:center">Nenhuma obra ativa cadastrada.</p>`;
+      }
+    } catch(e){ lista.innerHTML = `<p style="color:var(--danger)">Erro ao carregar obras.</p>`; }
+  }
+
+  async function saveAlocacao() {
+    if(!alocUserId) return;
+    const checkboxes = $("alocObrasList").querySelectorAll("input[type=checkbox]");
+    const obrasSel = Array.from(checkboxes).filter(c=>c.checked).map(c=>c.value);
+    const obraId   = obrasSel.length > 0 ? obrasSel[0] : ""; // compatibilidade legada
+    try {
+      await updateDoc(doc(db,"usuarios",alocUserId),{
+        obras:   obrasSel,
+        obra_id: obraId
+      });
+      toast("Alocação atualizada! 🏗️");
+      closeAlocModal();
+      await loadUsers();
+      // Atualiza selects de obras nos formulários
+      await fillObraSelect();
+      await fillLancObras();
+    } catch(e){ toast("Erro: "+e.message, false); }
+  }
+
+  function closeAlocModal() {
+    $("modalAlocacao").classList.add("hidden");
+    alocUserId = null;
+  }
+
+  // ══════════════════════════════
+  // RELATÓRIOS — PARTE 6
+  // ══════════════════════════════
+  const EMAILJS_SERVICE  = "service_3termna";
+  const EMAILJS_TEMPLATE = "template_4f1db2i";
+  const EMAILJS_KEY      = "ja6wdJjmvOxLKziFp";
+
+  if(typeof emailjs !== "undefined") emailjs.init(EMAILJS_KEY);
+
+  const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  async function fillRelatorioFiltros() {
+    const selObra  = $("relObra");
+    const selColab = $("relColab");
+    if(!selObra) return;
+    try {
+      const obrasSnap = await getDocs(collection(db,"obras"));
+      selObra.innerHTML = "";
+      if(currentRole === "ADMIN") {
+        selObra.innerHTML = '<option value="">Todas as obras</option>';
+        obrasSnap.forEach(d => {
+          if(d.data().ativa === false) return;
+          const o = document.createElement("option");
+          o.value = d.id; o.textContent = d.data().nome;
+          selObra.appendChild(o);
+        });
+        const usersSnap = await getDocs(collection(db,"usuarios"));
+        if(selColab) {
+          selColab.innerHTML = '<option value="">Todos</option>';
+          usersSnap.forEach(d => {
+            if(d.data().ativo === false) return;
+            const o = document.createElement("option");
+            o.value = d.data().uid; o.textContent = d.data().nome || d.data().email;
+            selColab.appendChild(o);
+          });
+        }
+        $("relColabWrap").style.display = "";
+        $("relEmailConfig")?.classList.remove("hidden");
+        $("btnEnviarEmail").style.display = "";
+        loadEmailConfig();
+      } else {
+        const prof = await loadProfile(currentUser.uid);
+        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        selObra.innerHTML = '<option value="">Todas as minhas obras</option>';
+        obrasSnap.forEach(d => {
+          if(d.data().ativa === false) return;
+          if(!obrasDoColab.includes(d.id)) return;
+          const o = document.createElement("option");
+          o.value = d.id; o.textContent = d.data().nome;
+          selObra.appendChild(o);
+        });
+        const profColab = await loadProfile(currentUser.uid);
+        if(selColab) selColab.innerHTML = '<option value="">Todos</option><option value="' + currentUser.uid + '" selected>' + (profColab?.nome || currentUser.email) + '</option>';
+        $("relColabWrap").style.display = "";
+        $("relEmailConfig")?.classList.add("hidden");
+        $("btnEnviarEmail").style.display = "none";
+      }
+      const hoje = new Date();
+      const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,"0");
+      $("relDe").value  = y+"-"+m+"-01";
+      $("relAte").value = y+"-"+m+"-"+new Date(y,hoje.getMonth()+1,0).getDate().toString().padStart(2,"0");
+    } catch(e){ console.error(e); }
+  }
+
+  async function getLancsFiltrados() {
+    const obraFilt  = $("relObra")?.value  || "";
+    const colabFilt = $("relColab")?.value || "";
+    const deFilt    = $("relDe")?.value    || "";
+    const ateFilt   = $("relAte")?.value   || "";
+    let snap = await getDocs(query(collection(db,"lancamentos"), orderBy("data","asc")));
+    let lancs = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    if(currentRole !== "ADMIN") {
+      const prof = await loadProfile(currentUser.uid);
+      const obras = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+      lancs = lancs.filter(l => obras.includes(l.obra_id));
+    }
+    if(obraFilt)  lancs = lancs.filter(l => l.obra_id === obraFilt);
+    if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
+    if(deFilt)    lancs = lancs.filter(l => l.data >= deFilt);
+    if(ateFilt)   lancs = lancs.filter(l => l.data <= ateFilt);
+    return lancs;
+  }
+
+  function formatDate(d) {
+    if(!d) return "—";
+    const parts = d.split("-");
+    return parts[2]+"/"+parts[1]+"/"+parts[0];
+  }
+
+  async function previewRelatorio() {
+    const prev = $("relPreview");
+    const cont = $("relPreviewContent");
+    if(!prev||!cont) return;
+    setMsg("relMsg","");
+    cont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>';
+    prev.classList.remove("hidden");
+    try {
+      const lancs = await getLancsFiltrados();
+      if(!lancs.length) {
+        cont.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>Nenhum lançamento no período.</p></div>';
+        return;
+      }
+      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
+      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
+      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      const cats = Object.keys(CATEGORIAS_CORES);
+      const totCat = {}; cats.forEach(c=>totCat[c]=0);
+      let totalGeral=0, totalReemb=0, totalEmp=0;
+      lancs.forEach(l => {
+        const v = Number(l.valor||0);
+        const cat = cats.includes(l.categoria)?l.categoria:"Outros gastos";
+        totCat[cat]+=v; totalGeral+=v;
+        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+      });
+      const rows = lancs.map(l =>
+        "<tr><td>"+formatDate(l.data)+"</td><td>"+( l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(l.reembolsavel?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
+      ).join("");
+      const catRows = cats.map(c =>
+        "<tr><td><span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:"+CATEGORIAS_CORES[c]+";margin-right:6px'></span>"+c+"</td><td style='text-align:right;font-weight:600'>"+brl(totCat[c])+"</td></tr>"
+      ).join("");
+      cont.innerHTML =
+        '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px"><div><h2 style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand)">🏗️ '+obraNome+'</h2><p style="font-size:.85rem;color:var(--muted)">Período: '+deFmt+' a '+ateFmt+'</p></div><div style="text-align:right"><div style="font-size:.78rem;color:var(--muted)">Total Geral</div><div style="font-family:Syne,sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)">'+brl(totalGeral)+'</div><div style="font-size:.75rem;color:var(--muted);margin-top:2px">Empresa: '+brl(totalEmp)+' · Reembolsável: '+brl(totalReemb)+'</div></div></div></div>' +
+        '<div style="overflow-x:auto;margin-bottom:24px"><table class="dash-table" style="font-size:.82rem"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Colaborador</th><th style="text-align:right">Valor</th><th style="text-align:center">Tipo</th><th style="text-align:center">Nota</th></tr></thead><tbody>'+rows+'</tbody><tr class="total-row"><td colspan="4">TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td><td colspan="2"></td></tr></table></div>' +
+        '<div style="max-width:360px"><table class="dash-table"><thead><tr><th>Monitoramento por Categoria</th><th style="text-align:right">Total Acumulado</th></tr></thead><tbody>'+catRows+'<tr class="total-row"><td>TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td></tr></tbody></table></div>';
+    } catch(e){ cont.innerHTML='<p style="color:var(--danger)">Erro ao gerar preview.</p>'; }
+  }
+
+  async function gerarPDF() {
+    setMsg("relMsg","⏳ Gerando PDF...");
+    try {
+      const lancs = await getLancsFiltrados();
+      if(!lancs.length) { setMsg("relMsg","⚠️ Nenhum lançamento no período."); return null; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
+      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
+      // Cabeçalho
+      doc.setFillColor(15,52,96); doc.rect(0,0,210,28,"F");
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(16); doc.setFont("helvetica","bold");
+      doc.text("CFO — Controle Financeiro de Obras", 14, 12);
+      doc.setFontSize(10); doc.setFont("helvetica","normal");
+      doc.text("Obra: "+obraNome, 14, 20);
+      doc.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
+      // Tabela lançamentos
+      doc.setTextColor(0,0,0);
+      doc.setFontSize(11); doc.setFont("helvetica","bold");
+      doc.text("Lançamentos", 14, 38);
+      // Agrupar lançamentos por colaborador
+      const porColab = {};
+      lancs.forEach(l => {
+        const nome = l.colaborador_nome || "Sem nome";
+        if(!porColab[nome]) porColab[nome] = [];
+        porColab[nome].push(l);
+      });
+
+      let startY = 42;
+      for(const [colaborador, lancColab] of Object.entries(porColab)) {
+        // Título do colaborador
+        doc.setFontSize(10); doc.setFont("helvetica","bold");
+        doc.setTextColor(15,52,96);
+        doc.text("Colaborador: " + colaborador, 14, startY);
+        startY += 5;
+
+        const rows = lancColab.map(l => [
+          formatDate(l.data),
+          l.categoria||"—",
+          (l.descricao||"—").substring(0,35),
+          brl(l.valor),
+          l.reembolsavel ? "✓ REIMB." : "EMPRESA"
+        ]);
+
+        // Total do colaborador
+        const totalColab = lancColab.reduce((s,l)=>s+Number(l.valor||0),0);
+        const reembColab = lancColab.filter(l=>l.reembolsavel).reduce((s,l)=>s+Number(l.valor||0),0);
+        rows.push(["","TOTAL","", brl(totalColab), ""]);
+
+        doc.autoTable({
+          startY,
+          head:[["Data","Categoria","Descrição","Valor","Tipo"]],
+          body: rows,
+          styles:{fontSize:8,cellPadding:2.5},
+          headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
+          alternateRowStyles:{fillColor:[245,247,250]},
+          columnStyles:{
+            3:{halign:"right",fontStyle:"bold"},
+            4:{halign:"center",fontStyle:"bold"}
+          },
+          didParseCell: (data) => {
+            // Destacar reembolsável em amarelo
+            if(data.column.index===4 && data.cell.raw==="✓ REIMB.") {
+              data.cell.styles.textColor = [180,120,0];
+              data.cell.styles.fillColor = [255,251,230];
+            }
+            // Destacar linha de total
+            if(data.row.index===rows.length-1) {
+              data.cell.styles.fontStyle="bold";
+              data.cell.styles.fillColor=[230,240,255];
+            }
+          },
+          margin:{left:14,right:14}
+        });
+
+        // Resumo do colaborador
+        const fy = doc.lastAutoTable.finalY + 3;
+        doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(80,80,80);
+        doc.text(`  Total: ${brl(totalColab)}  |  Empresa: ${brl(totalColab-reembColab)}  |  Reembolsável: ${brl(reembColab)}`, 14, fy);
+        startY = fy + 8;
+
+        // Nova página se necessário
+        if(startY > 250) { doc.addPage(); startY = 20; }
+      }
+      // Resumo por categoria
+      const cats = Object.keys(CATEGORIAS_CORES);
+      const totCat = {}; cats.forEach(c=>totCat[c]=0);
+      let totalGeral=0,totalReemb=0,totalEmp=0;
+      lancs.forEach(l=>{
+        const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
+        totCat[cat]+=v; totalGeral+=v;
+        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+      });
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11); doc.setFont("helvetica","bold");
+      doc.text("Monitoramento por Categoria", 14, finalY);
+      const catRows = cats.map(c => [c, brl(totCat[c])]);
+      catRows.push(["TOTAL GERAL", brl(totalGeral)]);
+      doc.autoTable({startY:finalY+4, head:[["Categoria","Total Acumulado"]], body:catRows, styles:{fontSize:9,cellPadding:2}, headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"}, columnStyles:{1:{halign:"right"}}, didParseCell:(d)=>{ if(d.row.index===catRows.length-1){d.cell.styles.fontStyle="bold";d.cell.styles.textColor=[233,69,96];}}, margin:{left:14,right:14}});
+      // Rodapé
+      const pg = doc.internal.getNumberOfPages();
+      for(let i=1;i<=pg;i++){
+        doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150,150,150);
+        doc.text("CFO — Relatório gerado em "+new Date().toLocaleDateString("pt-BR")+" · Pág. "+i+"/"+pg, 14, 292);
+        doc.text("Empresa: "+brl(totalEmp)+" · Reembolsável: "+brl(totalReemb), 196, 292, {align:"right"});
+      }
+      const fileName = "CFO_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
+      doc.save(fileName);
+      setMsg("relMsg","✅ PDF gerado com sucesso!",true);
+      return doc.output("datauristring");
+    } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao gerar PDF: "+e.message); return null; }
+  }
+
+  async function loadEmailConfig() {
+    try {
+      const snap = await getDoc(doc(db,"configuracoes","email"));
+      if(!snap.exists()){ renderEmailList([]); return; }
+      const cfg = snap.data();
+      renderEmailList(cfg.destinatarios||[]);
+      envioAutomatico = cfg.envioAutomatico !== false;
+      $("envAutoSim")?.classList.toggle("active-opt", envioAutomatico);
+      $("envAutoNao")?.classList.toggle("active-opt", !envioAutomatico);
+    } catch(e){}
+  }
+
+  function renderEmailList(emails) {
+    const el = $("emailList"); if(!el) return;
+    el.innerHTML = "";
+    const lista = emails.length ? emails : [""];
+    lista.forEach((email, i) => {
+      const div = document.createElement("div");
+      div.style.cssText = "display:flex;gap:8px;align-items:center;background:#f8f9fc;border:1.5px solid var(--border);border-radius:10px;padding:8px 12px";
+      div.innerHTML = `
+        <span style="font-size:.82rem;color:var(--muted);min-width:16px;font-weight:600">${i+1}.</span>
+        <input type="email" value="${email}" placeholder="email@exemplo.com"
+          style="flex:1;border:none;background:transparent;padding:0;font-size:.9rem"
+          onfocus="this.parentElement.style.borderColor='var(--brand)'"
+          onblur="this.parentElement.style.borderColor='var(--border)'">
+        <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:2px 6px;border-radius:6px"
+          title="Remover este e-mail"
+          onclick="if(confirm('Remover este e-mail?'))this.parentElement.remove()">🗑️</button>`;
+      el.appendChild(div);
+    });
+  }
+
+  function addEmailDest() {
+    const el = $("emailList"); if(!el) return;
+    if(el.children.length >= 5){ toast("Máximo 5 e-mails!",false); return; }
+    const i = el.children.length + 1;
+    const div = document.createElement("div");
+    div.style.cssText = "display:flex;gap:8px;align-items:center;background:#f8f9fc;border:1.5px solid var(--border);border-radius:10px;padding:8px 12px";
+    div.innerHTML = `
+      <span style="font-size:.82rem;color:var(--muted);min-width:16px;font-weight:600">${i}.</span>
+      <input type="email" placeholder="email@exemplo.com" autofocus
+        style="flex:1;border:none;background:transparent;padding:0;font-size:.9rem"
+        onfocus="this.parentElement.style.borderColor='var(--brand)'"
+        onblur="this.parentElement.style.borderColor='var(--border)'">
+      <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:2px 6px;border-radius:6px"
+        title="Remover este e-mail"
+        onclick="if(confirm('Remover este e-mail?'))this.parentElement.remove()">🗑️</button>`;
+    el.appendChild(div);
+  }
+
+  let envioAutomatico = true;
+  function setEnvioAuto(val) {
+    envioAutomatico = val;
+    $("envAutoSim")?.classList.toggle("active-opt", val);
+    $("envAutoNao")?.classList.toggle("active-opt", !val);
+  }
+
+  async function saveEmailConfig() {
+    const inputs = $("emailList")?.querySelectorAll("input[type=email]")||[];
+    const emails = Array.from(inputs).map(i=>i.value.trim()).filter(Boolean);
+    if(!emails.length){ setMsg("emailConfigMsg","Adicione ao menos um e-mail."); return; }
+    try {
+      await setDoc(doc(db,"configuracoes","email"),{destinatarios:emails, envioAutomatico, atualizadoEm:serverTimestamp(), atualizadoPor:currentUser.uid});
+      toast("Configurações salvas! ✅");
+      setMsg("emailConfigMsg","✅ Salvo com sucesso!",true);
+    } catch(e){ setMsg("emailConfigMsg","Erro: "+e.message); }
+  }
+
+  async function enviarRelatorioEmail() {
+    setMsg("relMsg","⏳ Preparando e-mail...");
+    try {
+      const lancs = await getLancsFiltrados();
+      if(!lancs.length){ setMsg("relMsg","⚠️ Nenhum lançamento no período."); return; }
+      const cfgSnap = await getDoc(doc(db,"configuracoes","email"));
+      const emails  = cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
+      if(!emails.length){ setMsg("relMsg","⚠️ Configure os e-mails primeiro."); return; }
+      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
+      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
+      const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+      const cats = Object.keys(CATEGORIAS_CORES);
+      const totCat={}; cats.forEach(c=>totCat[c]=0);
+      let totalGeral=0,totalReemb=0,totalEmp=0;
+      lancs.forEach(l=>{ const v=Number(l.valor||0),cat=cats.includes(l.categoria)?l.categoria:"Outros gastos"; totCat[cat]+=v;totalGeral+=v; if(l.reembolsavel)totalReemb+=v;else totalEmp+=v; });
+      // Montar mensagem de texto simples e limpa
+      const dataEnvio = new Date().toLocaleDateString("pt-BR");
+      const separador = "─".repeat(45);
+
+      // Resumo por colaborador
+      const porColab = {};
+      lancs.forEach(l => {
+        const nome = l.colaborador_nome || "Sem nome";
+        if(!porColab[nome]) porColab[nome] = {empresa:0, reemb:0, itens:[]};
+        const v = Number(l.valor||0);
+        if(l.reembolsavel) porColab[nome].reemb += v;
+        else porColab[nome].empresa += v;
+        porColab[nome].itens.push(l);
+      });
+
+      let resumoColab = "";
+      for(const [nome, dados] of Object.entries(porColab)) {
+        resumoColab += `  ${nome}\n`;
+        resumoColab += `    Empresa:      ${brl(dados.empresa)}\n`;
+        resumoColab += `    Reembolsável: ${brl(dados.reemb)}\n`;
+        resumoColab += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
+      }
+
+      // Resumo por colaborador - só reembolsável
+      let resumoColabTxt = "";
+      for(const [nome, dados] of Object.entries(porColab)) {
+        if(dados.reemb > 0) {
+          resumoColabTxt += `  ${nome}\n`;
+          resumoColabTxt += `    Reembolsável: ${brl(dados.reemb)}\n`;
+          resumoColabTxt += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
+        } else {
+          resumoColabTxt += `  ${nome}\n`;
+          resumoColabTxt += `    Total:        ${brl(dados.empresa + dados.reemb)}\n\n`;
+        }
+      }
+
+      // Links dos comprovantes — só URLs
+      const comprovantes = lancs.filter(l=>l.comprovante?.url);
+      const linksComp = comprovantes.length > 0
+        ? comprovantes.map(l => `  ${l.comprovante.url}`).join("\n")
+        : "  Nenhum comprovante anexado.";
+
+      const message =
+`RELATÓRIO DE GASTOS — ${obraNome.toUpperCase()}
+${separador}
+Período:    ${deFmt} a ${ateFmt}
+Emitido em: ${dataEnvio}
+${separador}
+
+RESUMO FINANCEIRO
+  Empresa:        ${brl(totalEmp)}
+  Reembolsável:   ${brl(totalReemb)}
+${separador}
+  TOTAL GERAL:    ${brl(totalGeral)}
+${separador}
+  Lançamentos:    ${lancs.length}
+
+${separador}
+COMPROVANTES (notas fiscais)
+${linksComp}
+
+${separador}
+CFO — Controle Financeiro de Obras`;
+
+            if(typeof emailjs==="undefined"){ setMsg("relMsg","❌ EmailJS não carregado."); return; }
+      emailjs.init(EMAILJS_KEY);
+      let enviados=0;
+      for(const email of emails){
+        // Período no formato Mês/Ano para o subject
+        const deDate  = $("relDe")?.value  ? new Date($("relDe").value+"T12:00:00")  : new Date();
+        const ateDate = $("relAte")?.value ? new Date($("relAte").value+"T12:00:00") : new Date();
+        const meses   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        const periodoSubject = meses[deDate.getMonth()]+"-"+deDate.getFullYear()
+          + (deDate.getMonth()!==ateDate.getMonth() ? " a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear() : "");
+        await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+          to_email: email,
+          obra_nome: obraNome,
+          periodo: periodoSubject,
+          message
+        });
+        enviados++;
+      }
+      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome, periodo_de:$("relDe")?.value, periodo_ate:$("relAte")?.value, total:totalGeral, enviado_por:currentUser.uid, enviado_em:serverTimestamp(), destinatarios:emails});
+      toast("✅ Relatório enviado para "+enviados+" e-mail(s)!");
+      setMsg("relMsg","✅ Enviado para "+enviados+" destinatário(s)!",true);
+    } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao enviar: "+e.message); }
+  }
+
+  async function verificarFechamentoMensal() {
+    if(currentRole !== "ADMIN") return;
+    try {
+      const hoje = new Date();
+      if(hoje.getDate() !== 1) return;
+      const cfgSnap = await getDoc(doc(db,"configuracoes","email"));
+      if(!cfgSnap.exists()||!cfgSnap.data().envioAutomatico) return;
+      const chave = "fechamento_"+hoje.getFullYear()+"_"+hoje.getMonth();
+      if(localStorage.getItem(chave)) return;
+      const mesAnt = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
+      const ultimo = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+      $("relDe").value  = mesAnt.toISOString().split("T")[0];
+      $("relAte").value = ultimo.toISOString().split("T")[0];
+      await enviarRelatorioEmail();
+      localStorage.setItem(chave,"1");
+    } catch(e){ console.error("Erro no fechamento mensal:",e); }
+  }
+
+  window.App = {
+    login, logout, togglePass, goTab, adminTab,
+    changePassword,
+    saveObra, loadObras, toggleObra, deleteObra,
+    saveUser, loadUsers, filterUsers, toggleUser,
+    openAlocModal, saveAlocacao, closeAlocModal,
+    toggleReemb, onFileSelect, removeFile,
+    saveLanc, cancelLanc, editLanc, deleteLanc, loadLancs,
+    syncPendingLancs,
+    loadDashboard, onDashObraChange, clearDashFilters,
+    previewRelatorio, gerarPDF, enviarRelatorioEmail,
+    addEmailDest, saveEmailConfig, setEnvioAuto,
+    closeModal
+  };
+</script>
+
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
