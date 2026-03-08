@@ -675,6 +675,44 @@
   </div>
 </div>
 
+<!-- Modal: atualizar foto do colaborador -->
+<div class="modal-overlay hidden" id="modalFotoColab">
+  <div class="modal" style="max-width:380px">
+    <h3>📷 Foto de Reconhecimento</h3>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:16px">
+      Esta foto será usada para verificar a identidade ao bater ponto.
+      Use uma foto clara do rosto, com boa iluminação e sem óculos escuros.
+    </p>
+    <input type="hidden" id="fotoColabUid">
+
+    <!-- Preview foto atual -->
+    <div id="fotoColabAtualWrap" style="display:none;margin-bottom:14px;text-align:center">
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px">Foto atual:</div>
+      <img id="fotoColabAtual" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--brand)" alt="">
+    </div>
+
+    <!-- Upload nova foto -->
+    <div id="fotoColabUploadArea"
+      style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;transition:all .18s"
+      onclick="document.getElementById('fotoColabInput').click()">
+      <div id="fotoColabUploadWrap">
+        <div style="font-size:2rem;margin-bottom:4px">📷</div>
+        <div style="font-size:.88rem;font-weight:500">Clique para selecionar foto</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:2px">JPG ou PNG · Rosto centralizado e bem iluminado</div>
+      </div>
+      <img id="fotoColabPreview" style="display:none;width:90px;height:90px;object-fit:cover;border-radius:50%;border:3px solid var(--brand);margin:0 auto" alt="">
+    </div>
+    <input type="file" id="fotoColabInput" accept="image/*" style="display:none" onchange="App.onFotoColabSelect()">
+    <div id="fotoColabNome" style="font-size:.76rem;color:var(--brand);margin-top:4px;display:none"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="App.closeModal('modalFotoColab')">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarFotoColab" onclick="App.salvarFotoColab()" disabled>💾 Salvar Foto</button>
+    </div>
+    <div class="msg" id="fotoColabMsg" style="margin-top:6px"></div>
+  </div>
+</div>
+
 <!-- Modal: editar geofencing da obra -->
 <div class="modal-overlay hidden" id="modalGeofencing">
   <div class="modal" style="max-width:440px">
@@ -1340,6 +1378,10 @@
     list.forEach(u=>{
       const div=document.createElement("div");
       div.className="list-item"+(u.ativo===false?" inactive-item":"");
+      const temFoto = !!u.fotoUrl;
+      const fotoBadge = temFoto
+        ? `<span style="font-size:.7rem;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;border-radius:12px;padding:1px 7px">📷 Foto ok</span>`
+        : `<span style="font-size:.7rem;background:#fef9ec;color:#92400e;border:1px solid #fcd34d;border-radius:12px;padding:1px 7px">⚠️ Sem foto</span>`;
       const badges=`
         <div class="badges">
           <span class="badge-status ${u.role==="ADMIN"?"admin":"user"}">${u.role==="ADMIN"?"👑 Admin":"👤 Colab."}</span>
@@ -1350,15 +1392,30 @@
         ? `<button class="btn btn-success sm" onclick="App.toggleUser('${u.id}',false)">✅ Reativar</button>`
         : `<button class="btn btn-danger sm" onclick="App.toggleUser('${u.id}',true)">⛔ Desativar</button>`;
       div.innerHTML=`
-        <div class="list-item-info">
-          <div class="list-item-name">${u.nome||"—"}</div>
-          <div class="list-item-sub">${u.email}</div>
+        <div class="list-item-info" style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            ${temFoto
+              ? `<img src="${u.fotoUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #6ee7b7;flex-shrink:0" alt="">`
+              : `<div style="width:36px;height:36px;border-radius:50%;background:#f3f4f6;border:2px dashed #fcd34d;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">👤</div>`
+            }
+            <div style="min-width:0">
+              <div class="list-item-name">${u.nome||"—"}</div>
+              <div class="list-item-sub">${u.email}</div>
+            </div>
+          </div>
           <div class="list-item-sub" style="margin-top:3px">${(u.obras&&u.obras.length?u.obras.map(id=>obrasMapRender[id]||id).filter(Boolean).map(n=>"🏗️ "+n).join(" · "):"Sem alocação")}</div>
+          <div style="margin-top:4px">${fotoBadge}</div>
         </div>
         ${badges}
-        <div class="list-item-actions">
-          <button class="btn btn-outline sm" data-uid="${u.id}" data-nome="${u.nome||u.email}" onclick="App.openAlocModal(this.dataset.uid, this.dataset.nome)">🏗️ Alocar</button>
-          ${acaoBtn}
+        <div class="list-item-actions" style="flex-direction:column;align-items:flex-end;gap:5px">
+          <button class="btn btn-outline sm" title="Atualizar foto do rosto"
+            data-uid="${u.id}" data-nome="${u.nome||u.email}" data-foto="${u.fotoUrl||''}"
+            onclick="App.abrirModalFoto(this.dataset.uid, this.dataset.nome, this.dataset.foto)"
+            style="gap:4px">📷 ${temFoto?"Trocar foto":"Adicionar foto"}</button>
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-outline sm" data-uid="${u.id}" data-nome="${u.nome||u.email}" onclick="App.openAlocModal(this.dataset.uid, this.dataset.nome)">🏗️ Alocar</button>
+            ${acaoBtn}
+          </div>
         </div>`;
       el.appendChild(div);
     });
@@ -1386,6 +1443,94 @@
     const snap2=await getDocs(collection(db,"usuarios"));
     const stEl=$("statUsers");
     if(stEl) stEl.textContent=snap2.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+  }
+
+  // ── Atualizar foto de colaborador existente ──
+  let fotoColabFile = null;
+
+  function abrirModalFoto(uid, nome, fotoAtual) {
+    fotoColabFile = null;
+    $("fotoColabUid").value = uid;
+    setMsg("fotoColabMsg","");
+
+    // Mostra foto atual se existir
+    const atualWrap = $("fotoColabAtualWrap");
+    const atualImg  = $("fotoColabAtual");
+    if(fotoAtual) {
+      atualImg.src = fotoAtual;
+      atualWrap.style.display = "block";
+    } else {
+      atualWrap.style.display = "none";
+    }
+
+    // Reset upload area
+    $("fotoColabPreview").style.display = "none";
+    $("fotoColabUploadWrap").style.display = "";
+    $("fotoColabUploadArea").style.borderColor = "";
+    $("fotoColabUploadArea").style.background  = "";
+    $("fotoColabNome").style.display = "none";
+    $("fotoColabInput").value = "";
+    $("btnSalvarFotoColab").disabled = true;
+
+    $("modalFotoColab").classList.remove("hidden");
+  }
+
+  function onFotoColabSelect() {
+    const file = $("fotoColabInput").files[0];
+    if(!file) return;
+    if(!file.type.startsWith("image/")) { toast("Apenas imagens JPG ou PNG.", false); return; }
+    if(file.size > 5*1024*1024) { toast("Foto muito grande (máx 5MB).", false); return; }
+    fotoColabFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = $("fotoColabPreview");
+      prev.src = e.target.result;
+      prev.style.display = "block";
+      $("fotoColabUploadWrap").style.display = "none";
+      $("fotoColabUploadArea").style.borderColor = "var(--brand)";
+      $("fotoColabUploadArea").style.background  = "#f0f7ff";
+      const nomeEl = $("fotoColabNome");
+      nomeEl.textContent = "📷 " + file.name;
+      nomeEl.style.display = "block";
+      $("btnSalvarFotoColab").disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function salvarFotoColab() {
+    if(!fotoColabFile) { setMsg("fotoColabMsg","⚠️ Selecione uma foto primeiro."); return; }
+    const uid = $("fotoColabUid").value;
+    if(!uid) return;
+    const btn = $("btnSalvarFotoColab");
+    btn.disabled = true; btn.textContent = "⏳ Enviando...";
+    setMsg("fotoColabMsg","⏳ Fazendo upload da foto...");
+    try {
+      // Upload para Cloudinary
+      const fd = new FormData();
+      fd.append("file", fotoColabFile);
+      fd.append("upload_preset", CLOUDINARY_PRESET);
+      fd.append("folder", "colaboradores");
+      const cr  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,{method:"POST",body:fd});
+      const cj  = await cr.json();
+      const url = cj.secure_url || "";
+      if(!url) throw new Error("Upload falhou — tente novamente.");
+
+      // Salva no Firestore
+      await updateDoc(doc(db,"usuarios",uid),{ fotoUrl: url });
+
+      // Atualiza localmente para o badge refletir imediatamente
+      const idx = allUsers.findIndex(u=>u.id===uid);
+      if(idx>=0) allUsers[idx].fotoUrl = url;
+
+      setMsg("fotoColabMsg","✅ Foto atualizada com sucesso!","ok");
+      toast("Foto de reconhecimento salva! 📷");
+      renderUsers(); // atualiza a lista sem recarregar tudo
+      setTimeout(()=> closeModal("modalFotoColab"), 1200);
+    } catch(e) {
+      setMsg("fotoColabMsg","❌ Erro: "+e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "💾 Salvar Foto";
+    }
   }
 
   // ─────────────────────────────────────────
@@ -3323,6 +3468,7 @@
     // Colaboradores
     saveUser, loadUsers, filterUsers, toggleUser,
     onUserFotoSelect,
+    abrirModalFoto, onFotoColabSelect, salvarFotoColab,
     // Alocação
     openAlocModal, saveAlocacao, closeAlocModal,
     // Lançamentos
