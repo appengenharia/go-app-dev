@@ -496,6 +496,34 @@
           </div>
         </div>
       </div>
+
+      <!-- ── Configurações de Envio Mensal de Ponto ── -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <div>
+            <h3>⚙️ Envio Mensal do Cartão de Ponto</h3>
+            <p>Relatório de ponto enviado automaticamente todo dia 1º para os destinatários abaixo.</p>
+          </div>
+        </div>
+
+        <label style="margin-top:0">Envio automático</label>
+        <div class="reemb-toggle" style="max-width:260px;margin-bottom:16px">
+          <div id="pontoEnvAutoSim" class="reemb-opt active-opt" onclick="App.setPontoEnvioAuto(true)">🤖 Automático</div>
+          <div id="pontoEnvAutoNao" class="reemb-opt" onclick="App.setPontoEnvioAuto(false)">✋ Manual</div>
+        </div>
+
+        <label>Destinatários (até 5 e-mails)</label>
+        <div id="pontoEmailList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <button class="btn btn-outline sm" onclick="App.addPontoEmailDest()" style="margin-bottom:4px">+ Adicionar e-mail</button>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:4px">⚠️ Clique em Salvar após adicionar ou remover e-mails.</p>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="App.savePontoEmailConfig()">💾 Salvar Configurações</button>
+          <button class="btn btn-outline" onclick="App.enviarPontoMensalManual()">📧 Enviar Relatório de Ponto Agora</button>
+        </div>
+        <div class="msg" id="pontoEmailMsg" style="margin-top:8px"></div>
+      </div>
+
     </div>
 
     <!-- ── ADMINISTRAÇÃO ── -->
@@ -1016,6 +1044,8 @@
     updatePendingCount();
     setTimeout(syncPendingLancs, 2000);
     setTimeout(verificarFechamentoMensal, 3000);
+    setTimeout(verificarFechamentoPonto, 5000);  // Fechamento mensal de ponto
+    loadPontoEmailConfig();
   }
 
   async function fillObraSelect() {
@@ -3466,18 +3496,22 @@
     const [ano, mesNum] = mes.split("-").map(Number);
     const inicio = `${ano}-${String(mesNum).padStart(2,"0")}-01`;
     const fim    = new Date(ano, mesNum, 0).toISOString().split("T")[0];
+    $("pontoTabelaBody").innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">⏳ Carregando...</td></tr>';
     try {
-      const q = query(collection(db,"pontos"),
-        where("uid","==",colabId),
-        where("data",">=",inicio),
-        where("data","<=",fim)
-      );
+      // Query só por uid — evita necessidade de índice composto
+      const q = query(collection(db,"pontos"), where("uid","==",colabId));
       const snap = await getDocs(q);
       const pontosMes = {};
-      snap.forEach(d => { pontosMes[d.data().data] = {...d.data(), id: d.id}; });
+      snap.forEach(d => {
+        const data = d.data().data;
+        if(data >= inicio && data <= fim) {
+          pontosMes[data] = {...d.data(), id: d.id};
+        }
+      });
       renderCartaoPonto(ano, mesNum, pontosMes);
     } catch(e){
-      $("pontoTabelaBody").innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--danger)">Erro ao carregar pontos.</td></tr>`;
+      console.error("Erro loadCartaoPonto:", e);
+      $("pontoTabelaBody").innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--danger)">❌ Erro: ${e.message}</td></tr>`;
     }
   }
 
@@ -3724,13 +3758,179 @@
   }
 
   async function enviarCartaoEmail() {
-    toast("⚙️ Função de envio de e-mail em breve...", true);
-    // TODO: Implementar envio via Apps Script
+    goTab("ponto");
+    setTimeout(()=> enviarPontoMensalManual(), 300);
   }
 
   // ═══════════════════════════════════════════════════════════
   // EXPOSIÇÃO GLOBAL DAS FUNÇÕES (window.App)
   // ═══════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════
+  // ENVIO MENSAL DE PONTO
+  // ═══════════════════════════════════════════════════════════
+  let pontoEnvioAutomatico = true;
+
+  async function loadPontoEmailConfig() {
+    try {
+      const snap = await getDoc(doc(db,"configuracoes","emailPonto"));
+      if(!snap.exists()) return;
+      const cfg = snap.data();
+      pontoEnvioAutomatico = cfg.envioAutomatico !== false;
+      $("pontoEnvAutoSim")?.classList.toggle("active-opt",  pontoEnvioAutomatico);
+      $("pontoEnvAutoNao")?.classList.toggle("active-opt", !pontoEnvioAutomatico);
+      const lista = $("pontoEmailList"); if(!lista) return;
+      lista.innerHTML = "";
+      (cfg.destinatarios||[]).forEach(em => _addPontoEmailRow(em));
+    } catch(_){}
+  }
+
+  function setPontoEnvioAuto(val) {
+    pontoEnvioAutomatico = val;
+    $("pontoEnvAutoSim")?.classList.toggle("active-opt",  val);
+    $("pontoEnvAutoNao")?.classList.toggle("active-opt", !val);
+  }
+
+  function _addPontoEmailRow(val="") {
+    const lista = $("pontoEmailList"); if(!lista) return;
+    if(lista.children.length >= 5) { toast("Máximo 5 e-mails."); return; }
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:6px;align-items:center";
+    row.innerHTML = `<input type="email" placeholder="email@empresa.com" value="${val}" style="flex:1;margin:0">
+      <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1.1rem;padding:4px">✕</button>`;
+    lista.appendChild(row);
+  }
+
+  function addPontoEmailDest() { _addPontoEmailRow(); }
+
+  async function savePontoEmailConfig() {
+    const inputs = $("pontoEmailList")?.querySelectorAll("input") || [];
+    const emails = [...inputs].map(i=>i.value.trim()).filter(e=>e && e.includes("@"));
+    if(!emails.length) { setMsg("pontoEmailMsg","⚠️ Informe pelo menos um e-mail válido."); return; }
+    try {
+      await setDoc(doc(db,"configuracoes","emailPonto"),{
+        destinatarios: emails,
+        envioAutomatico: pontoEnvioAutomatico,
+        atualizadoEm: serverTimestamp(),
+        atualizadoPor: currentUser.uid
+      });
+      setMsg("pontoEmailMsg","✅ Configurações salvas!","ok");
+      toast("Configurações de e-mail de ponto salvas!");
+    } catch(e){ setMsg("pontoEmailMsg","❌ Erro: "+e.message); }
+  }
+
+  async function _gerarCartaoPDF(colabId, colabNome, ano, mes) {
+    const inicio = `${ano}-${String(mes).padStart(2,"0")}-01`;
+    const fim    = new Date(ano, mes, 0).toISOString().split("T")[0];
+    const q = query(collection(db,"pontos"), where("uid","==",colabId));
+    const snap = await getDocs(q);
+    const pontos = {};
+    snap.forEach(d => { const dt=d.data().data; if(dt>=inicio&&dt<=fim) pontos[dt]={...d.data(),id:d.id}; });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const mesesNomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const mesTxt=mesesNomes[mes-1]+" "+ano;
+    const dataGer=new Date().toLocaleDateString("pt-BR");
+    pdf.setFillColor(15,52,96); pdf.rect(0,0,210,26,"F");
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(13); pdf.setFont("helvetica","bold"); pdf.text("GO — Gestão de Obras",14,10);
+    pdf.setFontSize(9); pdf.setFont("helvetica","normal");
+    pdf.text("Cartão de Ponto — "+colabNome,14,17);
+    pdf.text("Período: "+mesTxt+" | Gerado em: "+dataGer,14,23);
+    pdf.setTextColor(0,0,0);
+    const semanas=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    const diasMes=new Date(ano,mes,0).getDate();
+    let diasTrab=0,faltas=0,atrasos=0;
+    const rows=[];
+    for(let d=1;d<=diasMes;d++){
+      const dataStr=`${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const dt=new Date(dataStr+"T12:00:00"); const diaSem=dt.getDay(); const p=pontos[dataStr]; const isFds=diaSem===0||diaSem===6;
+      let status="—";
+      if(isFds&&!p) status="FOLGA";
+      else if(!p){const hoje=new Date();hoje.setHours(0,0,0,0);if(dt<hoje){status="FALTA";faltas++;}}
+      else{diasTrab++;if(isAtrasoEntrada(p.anomalias)){status="ATRASO";atrasos++;}else if(p.status==="anomalia"){status="ANOMALIA";atrasos++;}else if(p.status==="corrigido") status="CORRIG.";else status="OK";}
+      rows.push([String(d).padStart(2,"0")+" "+semanas[diaSem],p?.entrada||"—",p?.almoco||"—",p?.retorno||"—",p?.saida||"—",p?.horaExtra&&p.horaExtra!=="0h00"?p.horaExtra:"—",status]);
+    }
+    pdf.autoTable({startY:30,head:[["Dia","Entrada","Almoço","Retorno","Saída","H.Extra","Status"]],body:rows,
+      styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
+      alternateRowStyles:{fillColor:[245,247,250]},columnStyles:{6:{halign:"center"}},
+      didParseCell:(data)=>{if(data.column.index===6&&data.cell.raw==="ATRASO"){data.cell.styles.textColor=[180,0,0];data.cell.styles.fontStyle="bold";}if(data.column.index===6&&data.cell.raw==="FALTA"){data.cell.styles.textColor=[180,0,0];}},
+      margin:{left:14,right:14}});
+    let y=pdf.lastAutoTable.finalY+8;
+    pdf.setFontSize(9);pdf.setFont("helvetica","bold");pdf.setTextColor(15,52,96);
+    pdf.text(`Resumo: Dias trabalhados: ${diasTrab}  |  Faltas: ${faltas}  |  Atrasos/Anomalias: ${atrasos}`,14,y);
+    const pc=pdf.internal.getNumberOfPages();
+    for(let i=1;i<=pc;i++){pdf.setPage(i);pdf.setFillColor(15,52,96);pdf.rect(0,285,210,12,"F");pdf.setTextColor(255,255,255);pdf.setFontSize(7);pdf.setFont("helvetica","normal");pdf.text("GO — Gestão de Obras | "+colabNome+" — "+mesTxt,14,291);pdf.text("Pág. "+i+"/"+pc,196,291,{align:"right"});}
+    return pdf.output("datauristring").split(",")[1];
+  }
+
+  async function enviarPontoMensalManual() {
+    setMsg("pontoEmailMsg","⏳ Gerando relatório de ponto...");
+    const hoje=new Date();
+    await _enviarPontoMensal(hoje.getFullYear(), hoje.getMonth()+1, "pontoEmailMsg");
+  }
+
+  async function verificarFechamentoPonto() {
+    if(currentRole!=="ADMIN") return;
+    try {
+      const hoje=new Date();
+      if(hoje.getDate()!==1) return;
+      const cfgSnap=await getDoc(doc(db,"configuracoes","emailPonto"));
+      if(!cfgSnap.exists()||cfgSnap.data().envioAutomatico===false) return;
+      const chave="ponto_fechamento_"+hoje.getFullYear()+"_"+hoje.getMonth();
+      if(localStorage.getItem(chave)) return;
+      const mesAnt=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+      await _enviarPontoMensal(mesAnt.getFullYear(),mesAnt.getMonth()+1,null);
+      localStorage.setItem(chave,"1");
+    } catch(e){ console.error("Erro fechamento ponto:",e); }
+  }
+
+  async function _enviarPontoMensal(ano, mes, msgElId) {
+    const setM=msgElId?(t,ok)=>setMsg(msgElId,t,ok):()=>{};
+    try {
+      const cfgSnap=await getDoc(doc(db,"configuracoes","emailPonto"));
+      const emails=cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
+      if(!emails.length){setM("⚠️ Configure os e-mails de destino primeiro.");return;}
+      const usersSnap=await getDocs(collection(db,"usuarios"));
+      const colaboradores=[];
+      usersSnap.forEach(d=>{if(d.data().ativo!==false&&d.data().role!=="ADMIN") colaboradores.push({id:d.id,nome:d.data().nome||d.data().email});});
+      if(!colaboradores.length){setM("⚠️ Nenhum colaborador ativo.");return;}
+      const mesesNomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      const mesTxt=mesesNomes[mes-1]+" "+ano;
+      setM("⏳ Gerando PDFs ("+colaboradores.length+" colaboradores)...");
+      const dataEnvio=new Date().toLocaleDateString("pt-BR");
+      for(const colab of colaboradores){
+        const pdfB64=await _gerarCartaoPDF(colab.id,colab.nome,ano,mes);
+        const inicio=`${ano}-${String(mes).padStart(2,"0")}-01`;
+        const fim=new Date(ano,mes,0).toISOString().split("T")[0];
+        const q=query(collection(db,"pontos"),where("uid","==",colab.id));
+        const snap=await getDocs(q);
+        let dt=0,at=0;
+        snap.forEach(d=>{const p=d.data();if(p.data>=inicio&&p.data<=fim){dt++;if(isAtrasoEntrada(p.anomalias)||p.status==="anomalia")at++;}});
+        const diasMes=new Date(ano,mes,0).getDate();let uteis=0;
+        for(let d=1;d<=diasMes;d++){const dw=new Date(`${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}T12:00:00`).getDay();if(dw!==0&&dw!==6)uteis++;}
+        const fa=Math.max(0,uteis-dt);
+        const payload={
+          emails,
+          assunto:"Cartão de Ponto — "+colab.nome+" — "+mesTxt,
+          corpo:`<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0">GO — Gestão de Obras</h2><p style="margin:6px 0 0;opacity:.85">Cartão de Ponto — ${colab.nome} — ${mesTxt}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p><strong>Colaborador:</strong> ${colab.nome}</p><p><strong>Período:</strong> ${mesTxt}</p><p><strong>Dias trabalhados:</strong> ${dt} &nbsp;|&nbsp; <strong>Faltas:</strong> ${fa} &nbsp;|&nbsp; <strong>Atrasos:</strong> ${at}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">Cartão completo em PDF em anexo.<br>GO — Gestão de Obras · Gerado em ${dataEnvio}</p></div></div>`,
+          pdf:pdfB64,
+          nomeArquivo:"Ponto_"+colab.nome.replace(/\s+/g,"_")+"_"+mesTxt.replace(/\s/g,"_")+".pdf"
+        };
+        const iframeName="pontoFrame_"+Date.now();
+        const iframe=document.createElement("iframe");iframe.name=iframeName;iframe.style.display="none";document.body.appendChild(iframe);
+        const form=document.createElement("form");form.method="POST";form.action=APPS_SCRIPT_URL;form.target=iframeName;form.style.display="none";
+        const input=document.createElement("input");input.type="hidden";input.name="payload";input.value=JSON.stringify(payload);
+        form.appendChild(input);document.body.appendChild(form);form.submit();document.body.removeChild(form);
+        await new Promise(r=>setTimeout(r,1500));
+        document.body.removeChild(iframe);
+      }
+      await setDoc(doc(db,"pontos_enviados","PONTO_"+Date.now()),{periodo:mesTxt,ano,mes,colaboradores:colaboradores.map(c=>c.nome),enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
+      toast("✅ Cartões de ponto enviados para "+emails.length+" e-mail(s)!");
+      setM("✅ Enviado para "+emails.length+" destinatário(s) — "+colaboradores.length+" cartão(s) em PDF!","ok");
+    } catch(e){console.error(e);setM("❌ Erro: "+e.message);}
+  }
+
   window.App = {
     // Auth
     login, logout, togglePass, changePassword,
@@ -3763,6 +3963,9 @@
     // Ponto — cartão admin
     fillPontoFiltros, loadCartaoPonto,
     exportarCartaoPDF, enviarCartaoEmail,
+    // Configuração e envio mensal de ponto
+    setPontoEnvioAuto, addPontoEmailDest, savePontoEmailConfig,
+    enviarPontoMensalManual,
     abrirCorrecao, salvarCorrecaoPonto,
   };
 </script>
