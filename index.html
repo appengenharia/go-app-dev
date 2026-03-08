@@ -21,113 +21,66 @@
   .rh-screen { display:none }
   .rh-screen.active { display:block }
 
-  /* Quando o fluxo RH está aberto — overlay full screen abaixo da topbar */
-  .rh-fluxo-ativo .app-content { padding:0 !important; overflow:hidden; position:static; }
+  /* Fluxo RH — tela cheia abaixo da topbar (sem coluna de preview) */
+  .rh-fluxo-ativo .app-content { padding:0 !important; overflow:hidden; }
 
-  /* Layout ocupa toda a tela abaixo da topbar */
   .rh-fluxo-layout {
     display: none;
     position: fixed;
-    top: 58px;
-    left: 0; right: 0; bottom: 0;
+    top: 58px; left: 0; right: 0; bottom: 0;
     z-index: 90;
-    flex-direction: row;
-    overflow: hidden;
-  }
-  .rh-fluxo-layout.ativo { display: flex; }
-
-  /* COLUNA ESQUERDA — Formulário: largura fixa, tamanho original */
-  .rh-fluxo-form {
-    width: 520px;
-    flex-shrink: 0;
     overflow-y: auto;
-    padding: 24px 28px 40px;
     background: var(--bg);
-    border-right: 1px solid var(--border);
-    height: 100%;
+  }
+  .rh-fluxo-layout.ativo { display: block; }
+
+  /* Formulário ocupa largura máxima */
+  .rh-fluxo-form {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 40px 60px;
   }
   .rh-fluxo-form::-webkit-scrollbar { width: 5px; }
-  .rh-fluxo-form::-webkit-scrollbar-track { background: transparent; }
-  .rh-fluxo-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 
-  /* COLUNA DIREITA — Preview: ocupa todo o espaço restante */
-  .rh-fluxo-preview {
-    flex: 1;
-    min-width: 0;
+  /* Grid de 3 colunas nos campos */
+  .rh-field-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .rh-field-grid .full { grid-column: 1 / -1; }
+  .rh-field-grid .half { grid-column: span 2; }
+  @media(max-width:900px)  { .rh-field-grid { grid-template-columns: 1fr 1fr; } }
+  @media(max-width:560px)  { .rh-field-grid { grid-template-columns: 1fr; } .rh-fluxo-form { padding: 16px; } }
+
+  /* Modal de pré-visualização */
+  .rh-prev-modal-overlay {
+    position: fixed; inset: 0; z-index: 250;
+    background: rgba(0,0,0,.65);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 24px 16px; overflow-y: auto;
+  }
+  .rh-prev-modal {
     background: #1a2332;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    border-radius: 16px;
+    width: 100%; max-width: 860px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
     overflow: hidden;
+    animation: slideUp .2s ease;
   }
-
-  @media(max-width:1100px) { .rh-fluxo-form { width: 460px; } }
-  @media(max-width:900px)  { .rh-fluxo-form { width: 400px; padding: 16px 20px 40px; } }
-  @media(max-width:768px) {
-    .rh-fluxo-layout.ativo { flex-direction: column; }
-    .rh-fluxo-form    { width: 100%; height: 55%; border-right: none; border-bottom: 1px solid var(--border); }
-    .rh-fluxo-preview { height: 45%; }
-  }
-
-  /* Cabeçalho da coluna preview */
-  .rh-preview-header {
+  .rh-prev-modal-header {
     background: #0f1c2e;
-    color: rgba(255,255,255,.9);
-    padding: 12px 14px;
-    font-size: .72rem;
-    font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    border-bottom: 1px solid #334155;
+    color: #fff;
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #2d3f55;
   }
-  .rh-preview-header .prev-badge {
-    margin-left: auto;
-    background: rgba(255,255,255,.12);
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: .65rem;
-    font-weight: 600;
-    color: rgba(255,255,255,.6);
-    letter-spacing: .04em;
+  .rh-prev-modal-header h3 { margin:0; font-size:.95rem; font-weight:700; flex:1; }
+  .rh-prev-modal-tabs { display:flex; background:#162032; border-bottom:1px solid #2d3f55; }
+  .rh-prev-modal-tab {
+    flex:1; padding:10px 6px; font-size:.78rem; font-weight:600;
+    border:none; background:none; cursor:pointer;
+    color:rgba(255,255,255,.45); border-bottom:2px solid transparent; transition:.15s;
   }
-
-  /* Tabs do documento */
-  .rh-preview-tab {
-    display: flex;
-    background: #162032;
-    border-bottom: 1px solid #334155;
-    flex-shrink: 0;
-  }
-  .rh-preview-tab-btn {
-    flex: 1;
-    padding: 9px 4px;
-    font-size: .68rem;
-    font-weight: 600;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: rgba(255,255,255,.45);
-    border-bottom: 2px solid transparent;
-    transition: .15s;
-    letter-spacing: .02em;
-  }
-  .rh-preview-tab-btn:hover { color: rgba(255,255,255,.75); }
-  .rh-preview-tab-btn.active { color: #60a5fa; border-bottom-color: #3b82f6; }
-
-  /* Área de conteúdo do preview — com scroll */
-  .rh-preview-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    background: #1e2a3a;
-  }
-  .rh-preview-body::-webkit-scrollbar { width: 4px; }
-  .rh-preview-body::-webkit-scrollbar-track { background: transparent; }
-  .rh-preview-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  .rh-prev-modal-tab:hover { color:rgba(255,255,255,.75); }
+  .rh-prev-modal-tab.active { color:#60a5fa; border-bottom-color:#3b82f6; }
+  .rh-prev-modal-body { padding:20px; background:#1e2a3a; min-height:200px; }
 
   /* Simulação do documento em papel */
   .doc-paper {
@@ -967,10 +920,10 @@
           <!-- Modo edição (oculto inicialmente) -->
           <div id="empEditMode" class="hidden">
             <div class="rh-field-grid">
-              <div style="grid-column:1/-1"><label>Razão Social / Nome da Empresa *</label><input id="empNome" placeholder="Ex: JCS Construções e Serviços Ltda"></div>
+              <div class="full"><label>Razão Social / Nome da Empresa *</label><input id="empNome" placeholder="Ex: JCS Construções e Serviços Ltda"></div>
               <div><label>CNPJ / CEI *</label><input id="empCnpj" placeholder="00.000.000/0000-00" oninput="App.rhMaskCNPJ(this)"></div>
               <div><label>Telefone da Empresa</label><input id="empTel" placeholder="(00) 00000-0000"></div>
-              <div style="grid-column:1/-1"><label>Endereço (Logradouro)</label><input id="empRua" placeholder="Rua, Avenida..."></div>
+              <div class="full"><label>Endereço (Logradouro)</label><input id="empRua" placeholder="Rua, Avenida..."></div>
               <div><label>Número</label><input id="empNum" placeholder="Nº"></div>
               <div><label>Bairro</label><input id="empBairro" placeholder="Bairro"></div>
               <div><label>Cidade</label><input id="empCidade" placeholder="Cidade"></div>
@@ -981,7 +934,7 @@
                 <span id="empCep_status" style="font-size:.75rem;display:block;min-height:16px;margin-top:2px"></span>
               </div>
               <div><label>E-mail da Empresa</label><input id="empEmail" type="email" placeholder="contato@empresa.com"></div>
-              <div style="grid-column:1/-1"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
+              <div class="full"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
               <div><label>CPF do Responsável</label><input id="empCpfResp" placeholder="000.000.000-00"></div>
               <div><label>Cargo do Responsável</label><input id="empCargoResp" placeholder="Ex: Diretor, Sócio-Administrador"></div>
             </div>
@@ -1002,10 +955,10 @@
 
     <!-- ── Tela inicial: escolher colaborador ou criar novo ── -->
     <div id="rh-home" class="rh-screen active">
-      <div class="page-header"><h1>👔 Recursos Humanos</h1><p>Gerencie processos de contratação e demissão de colaboradores.</p></div>
+      <div class="page-header" style="text-align:center;max-width:700px;margin:0 auto 24px"><h1>👔 Recursos Humanos</h1><p>Gerencie processos de contratação e demissão de colaboradores.</p></div>
 
       <!-- Ações rápidas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;max-width:600px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto">
         <div class="card rh-action-card" onclick="App.rhIniciarFluxo('contratacao')" style="cursor:pointer;text-align:center;padding:28px 16px;transition:.2s">
           <div style="font-size:2.5rem;margin-bottom:8px">📋</div>
           <div style="font-weight:700;font-size:1rem;color:var(--primary)">Nova Contratação</div>
@@ -1019,7 +972,7 @@
       </div>
 
       <!-- Lista de processos em andamento -->
-      <div class="card">
+      <div class="card" style="max-width:700px;margin:0 auto">
         <div class="card-header" style="margin-bottom:12px">
           <h3>📂 Processos em Andamento</h3>
           <input id="rhBusca" type="text" placeholder="Buscar colaborador..." oninput="App.rhFiltrarLista()" style="max-width:240px;margin:0">
@@ -1033,80 +986,87 @@
     <!-- ── Tela de fluxo: layout duas colunas ── -->
     <div id="rh-fluxo" class="rh-screen">
       <div class="rh-fluxo-layout" id="rhFluxoLayout">
-
-        <!-- ── COLUNA ESQUERDA: Formulário ── -->
         <div class="rh-fluxo-form">
-          <!-- Header do fluxo -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <button onclick="App.rhVoltarHome()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;padding:4px" title="Voltar">←</button>
+
+          <!-- Header -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+            <button onclick="App.rhVoltarHome()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;padding:4px;color:var(--muted)" title="Voltar">←</button>
             <div>
-              <h2 id="rhFluxoTitulo" style="margin:0;font-size:1.1rem"></h2>
+              <h2 id="rhFluxoTitulo" style="margin:0;font-size:1.1rem;font-family:'Syne',sans-serif;font-weight:700"></h2>
               <div id="rhFluxoSubtitulo" style="font-size:.8rem;color:var(--muted)"></div>
             </div>
-            <div style="margin-left:auto"><span id="rhFluxoBadge" class="badge"></span></div>
+            <span id="rhFluxoBadge" class="badge" style="margin-left:auto"></span>
+            <button onclick="App.rhAbrirPreview()" class="btn btn-outline sm" style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+              👁️ Pré-visualizar
+            </button>
           </div>
 
-          <!-- Stepper visual -->
-          <div id="rhStepper" style="display:flex;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:4px"></div>
+          <!-- Stepper -->
+          <div id="rhStepper" style="display:flex;gap:0;margin-bottom:28px;overflow-x:auto;padding-bottom:4px"></div>
 
-          <!-- Conteúdo da etapa atual -->
+          <!-- Conteúdo da etapa -->
           <div id="rhEtapaConteudo"></div>
 
-          <!-- Botões de navegação -->
-          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;align-items:center" id="rhNavBtns">
+          <!-- Navegação -->
+          <div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;align-items:center;padding-top:16px;border-top:1px solid var(--border)" id="rhNavBtns">
             <button class="btn btn-outline" id="rhBtnAnterior" onclick="App.rhEtapaAnterior()">← Anterior</button>
             <button class="btn btn-primary" id="rhBtnProximo" onclick="App.rhEtapaProxima()">Próximo →</button>
             <button class="btn btn-primary hidden" id="rhBtnFinalizar" onclick="App.rhFinalizar()" style="background:var(--success,#10b981)">✅ Finalizar e Gerar Documentos</button>
+            <button onclick="App.rhAbrirPreview()" class="btn btn-outline sm" style="margin-left:auto">👁️ Pré-visualizar</button>
             <span id="rhEtapaMsg" style="font-size:.82rem;color:var(--danger)"></span>
           </div>
         </div>
+      </div>
 
-        <!-- ── COLUNA DIREITA: Preview ao vivo ── -->
-        <div class="rh-fluxo-preview">
-          <div class="rh-preview-header">
-            👁️ Pré-visualização
-            <span class="prev-badge" id="prevEtapaLabel">Ficha de Registro</span>
+      <!-- Modal Pré-visualização -->
+      <div class="rh-prev-modal-overlay hidden" id="modalRhPreview" onclick="if(event.target===this)App.rhFecharPreview()">
+        <div class="rh-prev-modal">
+          <div class="rh-prev-modal-header">
+            <h3>👁️ Pré-visualização do Preenchimento</h3>
+            <div class="rh-prev-modal-tabs" style="flex:1;margin-left:16px">
+              <button class="rh-prev-modal-tab active" onclick="App.rhPreviewTab('ficha')" id="prevTab_ficha">📋 Ficha</button>
+              <button class="rh-prev-modal-tab" onclick="App.rhPreviewTab('docs')" id="prevTab_docs">📄 Docs</button>
+              <button class="rh-prev-modal-tab" onclick="App.rhPreviewTab('nrs')" id="prevTab_nrs">🦺 NRs</button>
+            </div>
+            <button onclick="App.rhFecharPreview()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.3rem;cursor:pointer;padding:0 4px;margin-left:8px">✕</button>
           </div>
-          <div class="rh-preview-tab">
-            <button class="rh-preview-tab-btn active" onclick="App.rhPreviewTab('ficha')" id="prevTab_ficha">📋 Ficha</button>
-            <button class="rh-preview-tab-btn" onclick="App.rhPreviewTab('docs')" id="prevTab_docs">📄 Docs</button>
-            <button class="rh-preview-tab-btn" onclick="App.rhPreviewTab('nrs')" id="prevTab_nrs">🦺 NRs</button>
-          </div>
-          <div class="rh-preview-body" id="rhPreviewBody">
-            <div id="prevPane_ficha" style="padding:12px">
+          <div class="rh-prev-modal-body" id="rhPreviewBody">
+            <!-- Aba Ficha -->
+            <div id="prevPane_ficha" style="padding:4px">
               <div class="doc-paper">
                 <div class="doc-paper-header">FICHA DE REGISTRO DOS EMPREGADOS</div>
-                <div id="prevFichaEmpresa" style="border-bottom:1px solid #d1d5db;padding:6px 10px;font-size:8px;font-family:'Courier New',monospace;background:#f8fafc">
+                <div id="prevFichaEmpresa" style="border-bottom:1px solid #d1d5db;padding:8px 14px;font-size:9px;font-family:'Courier New',monospace;background:#f8fafc">
                   <div style="text-align:center;color:#94a3b8;padding:4px">Carregando dados da empresa...</div>
                 </div>
-                <div id="prevFichaFoto" style="display:flex;align-items:stretch;border-bottom:1px solid #d1d5db;min-height:68px">
-                  <div style="flex:1;padding:6px 10px"></div>
-                  <div style="display:flex;align-items:center;justify-content:center;padding:8px 16px;border-left:1px solid #d1d5db;border-right:1px solid #d1d5db">
+                <div style="display:flex;align-items:stretch;border-bottom:1px solid #d1d5db;min-height:80px">
+                  <div style="flex:1;padding:8px 14px"></div>
+                  <div style="display:flex;align-items:center;justify-content:center;padding:10px 20px;border-left:1px solid #d1d5db;border-right:1px solid #d1d5db">
                     <div id="prevFotoBox" class="doc-foto-box"><span>FOTO<br>3x4</span></div>
                   </div>
-                  <div style="flex:1;padding:6px 10px;font-size:7.5px;font-weight:700;color:#111;text-align:center;letter-spacing:.05em;display:flex;align-items:center;justify-content:center">
+                  <div style="flex:1;padding:8px 14px;font-size:9px;font-weight:700;color:#111;text-align:center;letter-spacing:.05em;display:flex;align-items:center;justify-content:center">
                     VISTO DA<br>FISCALIZAÇÃO
                   </div>
                 </div>
                 <div class="doc-paper-body" id="prevFichaBody">
-                  <div style="text-align:center;padding:32px 12px;color:#94a3b8;font-size:9px;line-height:1.8">
-                    <div style="font-size:22px;margin-bottom:8px">📋</div>
-                    Preencha os dados ao lado<br>para ver a ficha em tempo real
+                  <div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:11px;line-height:1.8">
+                    <div style="font-size:26px;margin-bottom:10px">📋</div>
+                    Clique em "Pré-visualizar" após preencher os dados
                   </div>
                 </div>
               </div>
             </div>
-            <div id="prevPane_docs" style="display:none;padding:12px">
-              <div style="font-size:.7rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Status dos documentos</div>
+            <!-- Aba Docs -->
+            <div id="prevPane_docs" style="display:none;padding:8px">
+              <div style="font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Status dos documentos</div>
               <div id="prevDocsBody"></div>
             </div>
-            <div id="prevPane_nrs" style="display:none;padding:12px">
-              <div style="font-size:.7rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Treinamentos / NRs</div>
+            <!-- Aba NRs -->
+            <div id="prevPane_nrs" style="display:none;padding:8px">
+              <div style="font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Treinamentos / NRs</div>
               <div id="prevNrsBody"></div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -4660,7 +4620,7 @@
     <div class="card">
       <div class="rh-section-title">📋 Identificação Pessoal</div>
       <div class="rh-field-grid">
-        <div style="grid-column:1/-1;position:relative">
+        <div class="full" style="position:relative">
           <label>Nome Completo *</label>
           <input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Digite o nome ou busque um colaborador existente" oninput="App.rhBuscarColabPorNome(this.value)" autocomplete="off">
           <div id="rh_nome_sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--primary);border-top:none;border-radius:0 0 10px 10px;z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
@@ -4792,7 +4752,7 @@
 
       <!-- Seção PIX -->
       <div id="rhSecaoPix" class="rh-field-grid" style="display:${(d.tipoPagamento||'pix')==='pix'?'grid':'none'}">
-        <div style="grid-column:1/-1">
+        <div class="full">
           <label>Tipo de Chave PIX</label>
           <select id="rh_pix_tipo" onchange="App.rhTogglePixTipo(this.value)">
             <option value="cpf"    ${(d.pixTipo||'cpf')==='cpf'   ?'selected':''}>CPF</option>
@@ -4802,7 +4762,7 @@
             <option value="aleat"  ${d.pixTipo==='aleat'          ?'selected':''}>Chave Aleatória</option>
           </select>
         </div>
-        <div style="grid-column:1/-1">
+        <div class="full">
           <label>Chave PIX</label>
           <input id="rh_pix_chave" value="${d.pixChave||''}" placeholder="Informe a chave PIX">
         </div>
@@ -6152,25 +6112,23 @@
 
   // Inicializa preview quando a etapa é carregada + registra listeners
   function rhPreviewIniciar() {
-    // Renderizar cabeçalho da empresa imediatamente (independente dos campos)
-    const d0 = _rhPreviewLerDados();
-    _prevRenderFichaEmpresa(d0);
+    // Só renderiza o cabeçalho da empresa ao abrir a etapa (sem listeners automáticos)
+    _prevRenderFichaEmpresa(_rhPreviewLerDados());
+  }
 
-    // Label da tab ativa
-    const labels = { ficha:"Ficha de Registro", docs:"Documentos Pessoais", nrs:"Treinamentos / NRs" };
-    const lb = $("prevEtapaLabel");
-    if(lb) lb.textContent = labels[_prevTabAtual] || "";
-
-    // Render imediato com dados já salvos
+  // Abrir modal de preview — salva dados atuais e renderiza
+  function rhAbrirPreview() {
+    _rhSalvarEtapaAtual();
+    const d = _rhPreviewLerDados();
+    _prevRenderFichaEmpresa(d);
     _rhPreviewAtualizar();
+    $("modalRhPreview").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
 
-    // Observar todos os inputs/selects para atualizar ao digitar
-    setTimeout(() => {
-      $("rhEtapaConteudo")?.querySelectorAll("input,select,textarea").forEach(el => {
-        el.addEventListener("input",  rhPreviewTrigger);
-        el.addEventListener("change", rhPreviewTrigger);
-      });
-    }, 150);
+  function rhFecharPreview() {
+    $("modalRhPreview").classList.add("hidden");
+    document.body.style.overflow = "";
   }
 
   // Renderiza só o cabeçalho da empresa (chamado na init e pelo trigger)
@@ -6285,6 +6243,7 @@
     rhIrParaEtapa,
     // Preview ao vivo
     rhPreviewTab, rhPreviewTrigger,
+    rhAbrirPreview, rhFecharPreview,
     // Pagamento
     rhTogglePagamento, rhTogglePixTipo,
     // Empresa
