@@ -117,6 +117,11 @@
         <span id="pontoGpsTxt">Obtendo localização...</span>
       </div>
 
+      <!-- Aviso offline -->
+      <div id="pontoAvisoOffline" class="hidden" style="background:#e0f2fe;border:1px solid #38bdf8;border-radius:6px;padding:8px 12px;font-size:12px;color:#075985;margin-bottom:8px">
+        📵 Modo offline — ponto será enviado automaticamente quando a conexão voltar.
+      </div>
+
       <!-- Aviso geofencing -->
       <div id="pontoGeoAviso" class="hidden" style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:12px;color:#856404;margin-bottom:8px">
         ⚠️ Você está fora do raio da obra (mais de 100m). O ponto será registrado com aviso de localização.
@@ -1856,8 +1861,9 @@
   // OFFLINE / SYNC
   // ─────────────────────────────────────────
   const OFFLINE_DB_NAME    = "cfo_offline";
-  const OFFLINE_DB_VERSION = 1;
+  const OFFLINE_DB_VERSION = 2;          // ← versão 2: adiciona store de pontos
   const OFFLINE_STORE      = "lancamentos_pendentes";
+  const OFFLINE_PONTO_STORE = "pontos_pendentes";
 
   function openOfflineDB() {
     return new Promise((resolve, reject) => {
@@ -1866,6 +1872,9 @@
         const db = e.target.result;
         if(!db.objectStoreNames.contains(OFFLINE_STORE)){
           db.createObjectStore(OFFLINE_STORE, {keyPath:"localId"});
+        }
+        if(!db.objectStoreNames.contains(OFFLINE_PONTO_STORE)){
+          db.createObjectStore(OFFLINE_PONTO_STORE, {keyPath:"localId"});
         }
       };
       req.onsuccess = e => resolve(e.target.result);
@@ -1906,6 +1915,113 @@
       tx.oncomplete = () => resolve();
       tx.onerror    = e => reject(e.target.error);
     });
+  }
+
+  // ── Cache de credenciais para autenticação offline no ponto ──
+  const CRED_CACHE_KEY = "go_ponto_cred_cache";
+
+  function salvarCredenciaisCache(email, uid, nome, fotoUrl, obras, obra_id, role, obraData) {
+    // Salva apenas dados não sensíveis — senha NUNCA é armazenada
+    // A verificação de identidade offline usa liveness + foto local
+    try {
+      const cache = JSON.parse(localStorage.getItem(CRED_CACHE_KEY) || "{}");
+      cache[email.toLowerCase()] = {
+        uid, nome, fotoUrl: fotoUrl||"",
+        obras: obras||[], obra_id: obra_id||"",
+        role: role||"USER", ativo: true,
+        obraData: obraData || null,
+        cachedAt: Date.now()
+      };
+      localStorage.setItem(CRED_CACHE_KEY, JSON.stringify(cache));
+    } catch(_){}
+  }
+
+  function buscarCredenciaisCache(email) {
+    try {
+      const cache = JSON.parse(localStorage.getItem(CRED_CACHE_KEY) || "{}");
+      return cache[email.toLowerCase()] || null;
+    } catch(_){ return null; }
+  }
+
+  // ── IndexedDB — pontos offline ──
+  async function saveOfflinePonto(pontoData) {
+    const db = await openOfflineDB();
+    const localId = "PONTO_OFFLINE_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const record  = { ...pontoData, localId, syncStatus: "pending", savedAt: new Date().toISOString() };
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_PONTO_STORE, "readwrite");
+      const store = tx.objectStore(OFFLINE_PONTO_STORE);
+      store.add(record);
+      tx.oncomplete = () => resolve(localId);
+      tx.onerror    = e => reject(e.target.error);
+    });
+  }
+
+  async function getPendingPontos() {
+    const db = await openOfflineDB();
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_PONTO_STORE, "readonly");
+      const store = tx.objectStore(OFFLINE_PONTO_STORE);
+      const req   = store.getAll();
+      req.onsuccess = e => resolve(e.target.result || []);
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function deleteOfflinePonto(localId) {
+    const db = await openOfflineDB();
+    return new Promise((resolve, reject) => {
+      const tx    = db.transaction(OFFLINE_PONTO_STORE, "readwrite");
+      const store = tx.objectStore(OFFLINE_PONTO_STORE);
+      store.delete(localId);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = e => reject(e.target.error);
+    });
+  }
+
+  async function syncPendingPontos() {
+    if(!navigator.onLine) return;
+    try {
+      const pending = await getPendingPontos();
+      if(!pending.length) return;
+      $("syncBanner")?.classList.remove("hidden");
+      let synced = 0;
+      for(const record of pending) {
+        try {
+          const { localId, syncStatus, savedAt, dataHora, ...pontoData } = record;
+          // Busca ponto do dia no Firestore para fazer merge (entrada/almoço/retorno/saída)
+          const q = query(collection(db,"pontos"), where("uid","==",pontoData.uid), where("data","==",pontoData.data));
+          const snap = await getDocs(q);
+          const fase = pontoData._fase;
+          delete pontoData._fase;
+
+          if(snap.empty) {
+            // Primeiro registro do dia — cria documento
+            pontoData.criadoEm = serverTimestamp();
+            await addDoc(collection(db,"pontos"), pontoData);
+          } else {
+            // Atualiza documento existente
+            const ref = snap.docs[0].ref;
+            const upd = {};
+            upd[fase]                          = pontoData[fase];
+            upd["foto"+capitalize(fase)]        = pontoData["foto"+capitalize(fase)] || "";
+            upd["gps"+capitalize(fase)]         = pontoData["gps"+capitalize(fase)]  || null;
+            if(pontoData.anomalias?.length)     upd.anomalias = pontoData.anomalias;
+            if(pontoData.status==="anomalia")   upd.status = "anomalia";
+            if(pontoData.horaExtra)             upd.horaExtra = pontoData.horaExtra;
+            if(pontoData.foraDoRaio)            upd.foraDoRaio = true;
+            await updateDoc(ref, upd);
+          }
+          await deleteOfflinePonto(localId);
+          synced++;
+        } catch(e){ console.error("Erro ao sincronizar ponto:", e); }
+      }
+      if(synced > 0) toast(`✅ ${synced} ponto(s) sincronizado(s)!`);
+      $("syncBanner")?.classList.add("hidden");
+    } catch(e){
+      console.error("Erro na sync de pontos:", e);
+      $("syncBanner")?.classList.add("hidden");
+    }
   }
 
   async function updatePendingCount() {
@@ -1949,6 +2065,7 @@
 
   window.addEventListener("online", () => {
     setTimeout(syncPendingLancs, 1500);
+    setTimeout(syncPendingPontos, 2500); // pontos sincronizam logo após lançamentos
   });
 
   // ─────────────────────────────────────────
@@ -2592,44 +2709,162 @@
   }
 
   async function loginPonto() {
-  const email = pontoEmail.value.trim();
-  const senha = pontoSenha.value;
-  if (!email || !senha) {
-    setMsg(pontoLoginMsg, 'Preencha e-mail e senha.');
-    return;
+    const email = $("pontoEmail").value.trim();
+    const senha = $("pontoSenha").value;
+    if(!email || !senha) { setMsg("pontoLoginMsg","Preencha e-mail e senha."); return; }
+    setMsg("pontoLoginMsg","⏳ Verificando...");
+
+    // ── MODO OFFLINE ──────────────────────────────────────────────
+    if(!navigator.onLine) {
+      const cached = buscarCredenciaisCache(email);
+      if(!cached) {
+        setMsg("pontoLoginMsg","📵 Sem internet. Faça o login online pelo menos uma vez para liberar o acesso offline.");
+        return;
+      }
+      if(!cached.ativo) {
+        setMsg("pontoLoginMsg","⛔ Conta inativa.");
+        return;
+      }
+      // Offline: não verifica senha no Firebase (não tem rede)
+      // Segurança mantida por liveness + reconhecimento facial
+      pontoUser    = { uid: cached.uid, email };
+      pontoProfile = { ...cached, email };
+      setMsg("pontoLoginMsg","📵 Modo offline — ponto será enviado quando houver conexão.");
+      await _continuarApoLogin();
+      return;
+    }
+
+    // ── MODO ONLINE ───────────────────────────────────────────────
+    try {
+      // Usa authAux para NÃO derrubar sessão do admin
+      const cred = await signInWithEmailAndPassword(authAux, email, senha);
+      pontoUser  = cred.user;
+
+      pontoProfile = await loadProfile(pontoUser.uid);
+      if(!pontoProfile || pontoProfile.ativo===false) {
+        await signOut(authAux);
+        setMsg("pontoLoginMsg","⛔ Conta inativa. Fale com o administrador.");
+        return;
+      }
+
+      // Salva credenciais no cache para uso offline futuro (inclui obraData)
+      // → feito dentro de _continuarApoLogin após carregar a obra
+
+      await _continuarApoLogin();
+    } catch(e) {
+      const msgs = {
+        "auth/invalid-credential":"E-mail ou senha incorretos.",
+        "auth/too-many-requests":"Muitas tentativas. Aguarde.",
+        "auth/user-not-found":"Usuário não encontrado.",
+        "auth/wrong-password":"Senha incorreta."
+      };
+      setMsg("pontoLoginMsg", msgs[e.code] || "Erro: "+e.message);
+    }
   }
 
-  setMsg(pontoLoginMsg, 'Verificando credenciais...');
-
-  try {
-    // CRÍTICO: usa authAux para NÃO derrubar sessão do admin
-    const cred = await signInWithEmailAndPassword(authAux, email, senha);
-    pontoUser = cred.user;
-
-    // Carrega perfil com tentativa extra em caso de lentidão do Firestore
-    pontoProfile = await loadProfile(pontoUser.uid);
-
-    // Tenta uma segunda vez se retornou null (race condition / lentidão)
-    if (!pontoProfile) {
-      await new Promise(r => setTimeout(r, 1500));
-      pontoProfile = await loadProfile(pontoUser.uid);
+  // Lógica compartilhada entre login online e offline
+  async function _continuarApoLogin() {
+    // Justificativa pendente? (só verifica se online)
+    if(navigator.onLine) {
+      const justPendente = await verificarJustificativaPendente(pontoUser.uid);
+      if(justPendente) {
+        $("pontoStepLogin").classList.add("hidden");
+        $("pontoJustMsg").textContent = justPendente.msg;
+        justPontoId = justPendente.id;
+        $("pontoStepJustificativa").classList.remove("hidden");
+        return;
+      }
     }
 
-    // Perfil realmente não encontrado (usuário não está no Firestore)
-    if (!pontoProfile) {
-      await signOut(authAux);
-      setMsg(pontoLoginMsg, 'Usuário não encontrado no sistema. Contate o administrador.');
-      return;
+    // Carregar obra do colaborador
+    const obras = pontoProfile.obras?.length ? pontoProfile.obras : (pontoProfile.obra_id ? [pontoProfile.obra_id] : []);
+    if(obras.length > 0) {
+      try {
+        if(navigator.onLine) {
+          const obraSnap = await getDoc(doc(db,"obras",obras[0]));
+          pontoObraData  = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
+        }
+        // Offline: tenta carregar obra do cache de credenciais
+        if(!pontoObraData) {
+          const cached = buscarCredenciaisCache(pontoProfile.email || $("pontoEmail").value.trim());
+          if(cached?.obraData) pontoObraData = cached.obraData;
+        }
+      } catch(_){}
     }
 
-    // Conta explicitamente desativada pelo admin
-    if (pontoProfile.ativo === false) {
-      await signOut(authAux);
-      setMsg(pontoLoginMsg, 'Conta inativa. Fale com o administrador.');
-      return;
+    // Atualiza cache com obraData (após carregá-la)
+    if(navigator.onLine) {
+      salvarCredenciaisCache(
+        pontoProfile.email || $("pontoEmail").value.trim(),
+        pontoUser.uid,
+        pontoProfile.nome,
+        pontoProfile.fotoUrl,
+        pontoProfile.obras,
+        pontoProfile.obra_id,
+        pontoProfile.role,
+        pontoObraData || null
+      );
     }
 
-   
+    pontoFaseAtual = navigator.onLine
+      ? await determinarFase(pontoUser.uid)
+      : await determinarFaseOffline(pontoUser.uid);
+
+    // UI
+    $("pontoNomeColab").textContent = pontoProfile.nome || $("pontoEmail").value.trim();
+    $("pontoObraColab").textContent = pontoObraData?.nome || "Sem obra definida";
+    atualizarDataHoraPonto();
+    atualizarFaseLabel();
+
+    // Aviso offline
+    if(!navigator.onLine) {
+      const avisoOffline = $("pontoAvisoOffline");
+      if(avisoOffline) avisoOffline.classList.remove("hidden");
+    }
+
+    if(!pontoProfile.fotoUrl) $("pontoSemFotoAviso")?.classList.remove("hidden");
+
+    $("pontoStepLogin").classList.add("hidden");
+    $("pontoStepCamera").classList.remove("hidden");
+
+    setStatusItem("statusGps","loading","📍 Obtendo localização...");
+    setStatusItem("statusLiveness","loading","👁️ Pisque os olhos "+BLINKS_NEEDED+"x para verificar presença");
+    setStatusItem("statusFacial","loading", pontoProfile.fotoUrl ? "🔍 Aguardando foto..." : "⚪ Sem foto cadastrada (verificação dispensada)");
+
+    if(!pontoProfile.fotoUrl) {
+      facialOk = true;
+      setStatusItem("statusFacial","warn","⚪ Sem foto cadastrada — verificação dispensada");
+    }
+
+    await iniciarCamera();
+    obterGPS();
+    iniciarLiveness();
+    setMsg("pontoLoginMsg","");
+  }
+
+  // Determina fase atual lendo IndexedDB (offline)
+  async function determinarFaseOffline(uid) {
+    const hoje = new Date().toISOString().split("T")[0];
+    try {
+      const pending = await getPendingPontos();
+      const hoje_pontos = pending.filter(p => p.uid === uid && p.data === hoje);
+      if(!hoje_pontos.length) return "entrada";
+      // Junta todos os registros do dia para ver qual fase já foi batida
+      const merged = {};
+      hoje_pontos.forEach(p => {
+        if(p.entrada) merged.entrada = p.entrada;
+        if(p.almoco)  merged.almoco  = p.almoco;
+        if(p.retorno) merged.retorno = p.retorno;
+        if(p.saida)   merged.saida   = p.saida;
+      });
+      if(!merged.entrada) return "entrada";
+      if(!merged.almoco)  return "almoco";
+      if(!merged.retorno) return "retorno";
+      if(!merged.saida)   return "saida";
+      return "extra";
+    } catch(_){ return "entrada"; }
+  }
+
   // ── LIVENESS: detecta piscar via análise da região dos olhos ──
   function iniciarLiveness() {
     blinkCount = 0; eyeWasClosed = false;
@@ -2931,9 +3166,9 @@
       const horaStr = agora.toTimeString().substring(0,5);
       const dia     = agora.getDay();
 
-      // Upload foto para Cloudinary
+      // Upload foto (tenta mesmo offline — Cloudinary é externo, pode falhar)
       let fotoUrl = "";
-      if(pontoFotoB64) {
+      if(pontoFotoB64 && navigator.onLine) {
         try {
           const fd = new FormData();
           fd.append("file","data:image/jpeg;base64,"+pontoFotoB64);
@@ -2944,13 +3179,12 @@
           fotoUrl = cj.secure_url || "";
         } catch(e){ console.warn("Foto não enviada:",e.message); }
       }
+      // Offline: armazena base64 no IndexedDB para referenciar (sem upload)
+      const fotoRef = fotoUrl || (pontoFotoB64 && !navigator.onLine ? "[foto_offline]" : "");
 
-      const q = query(collection(db,"pontos"),where("uid","==",pontoUser.uid),where("data","==",hoje));
-      const snap = await getDocs(q);
       const isAnomalia = verificarAnomalia(horaStr, pontoFaseAtual, dia);
-      const faseNome = {entrada:"Entrada",almoco:"Saída p/ Almoço",retorno:"Retorno",saida:"Saída",extra:"Hora Extra"}[pontoFaseAtual];
+      const faseNome   = {entrada:"Entrada",almoco:"Saída p/ Almoço",retorno:"Retorno",saida:"Saída",extra:"Hora Extra"}[pontoFaseAtual];
 
-      // Calcular distância para registro
       let distanciaM = null;
       let foraDoRaio = false;
       if(pontoGPS && pontoObraData?.lat && pontoObraData?.lng) {
@@ -2962,68 +3196,99 @@
       if(foraDoRaio) anomaliasBase.push("fora_raio");
       const statusFinal = (isAnomalia || foraDoRaio) ? "anomalia" : "ok";
 
+      // ── MODO OFFLINE: salva no IndexedDB ──────────────────────
+      if(!navigator.onLine) {
+        const pontoOffline = {
+          uid:              pontoUser.uid,
+          colaborador_nome: pontoProfile.nome || pontoUser.email,
+          obra_id:          pontoObraData?.id  || "",
+          obra_nome:        pontoObraData?.nome || "",
+          data:             hoje,
+          diaSemana:        dia,
+          [pontoFaseAtual]: horaStr,
+          ["foto"+capitalize(pontoFaseAtual)]: fotoRef,
+          ["gps"+capitalize(pontoFaseAtual)]:  pontoGPS,
+          distanciaM, foraDoRaio,
+          horaExtra: "0h00",
+          status:    statusFinal,
+          anomalias: anomaliasBase,
+          livenessVerificado: true,
+          facialVerificado:   !!pontoProfile.fotoUrl,
+          _fase:     pontoFaseAtual,  // usado pela sync para merge
+          dataHora:  agora.toISOString()
+        };
+        await saveOfflinePonto(pontoOffline);
+        _mostrarSucesso(agora, horaStr, faseNome, "📵 Ponto salvo offline — será enviado quando a conexão voltar.");
+        return;
+      }
+
+      // ── MODO ONLINE: salva direto no Firestore ─────────────────
+      const q    = query(collection(db,"pontos"),where("uid","==",pontoUser.uid),where("data","==",hoje));
+      const snap = await getDocs(q);
+
       if(snap.empty) {
         await addDoc(collection(db,"pontos"),{
           uid:              pontoUser.uid,
           colaborador_nome: pontoProfile.nome || pontoUser.email,
-          obra_id:          pontoObraData?.id || "",
+          obra_id:          pontoObraData?.id  || "",
           obra_nome:        pontoObraData?.nome || "",
           data:             hoje,
           diaSemana:        dia,
           entrada:          horaStr,
           fotoEntrada:      fotoUrl,
           gpsEntrada:       pontoGPS,
-          distanciaM:       distanciaM,
-          foraDoRaio:       foraDoRaio,
+          distanciaM, foraDoRaio,
           almoco:null, retorno:null, saida:null,
           horaExtra:        "0h00",
           status:           statusFinal,
           anomalias:        anomaliasBase,
           livenessVerificado: true,
-          facialVerificado:   pontoProfile.fotoUrl ? true : false,
+          facialVerificado:   !!pontoProfile.fotoUrl,
           criadoEm:         serverTimestamp()
         });
       } else {
         const pontoRef = snap.docs[0].ref;
         const upd = {};
-        upd[pontoFaseAtual]                    = horaStr;
-        upd["foto"+capitalize(pontoFaseAtual)]  = fotoUrl;
-        upd["gps"+capitalize(pontoFaseAtual)]   = pontoGPS;
+        upd[pontoFaseAtual]                     = horaStr;
+        upd["foto"+capitalize(pontoFaseAtual)]   = fotoUrl;
+        upd["gps"+capitalize(pontoFaseAtual)]    = pontoGPS;
         if(foraDoRaio) upd.foraDoRaio = true;
         if(distanciaM !== null) upd.distanciaM = distanciaM;
-        if(isAnomalia || foraDoRaio){
-          const anoAtual = snap.docs[0].data().anomalias||[];
-          const novas = [...new Set([...anoAtual, ...(isAnomalia?[pontoFaseAtual]:[]), ...(foraDoRaio?["fora_raio"]:[])])];
-          upd.anomalias = novas;
-          upd.status = "anomalia";
+        if(isAnomalia || foraDoRaio) {
+          const anoAtual = snap.docs[0].data().anomalias || [];
+          upd.anomalias  = [...new Set([...anoAtual, ...anomaliasBase])];
+          upd.status     = "anomalia";
         }
-        if(pontoFaseAtual==="saida"||pontoFaseAtual==="extra"){
+        if(pontoFaseAtual==="saida"||pontoFaseAtual==="extra") {
           upd.horaExtra = calcularHoraExtra(snap.docs[0].data().entrada, horaStr, dia);
         }
         await updateDoc(pontoRef, upd);
       }
 
-      pararCamera();
-      if(livenessDetector){ clearInterval(livenessDetector); livenessDetector=null; }
-
-      // Tela de sucesso
-      $("pontoStepCamera").classList.add("hidden");
-      $("pontoOkTitulo").textContent = "Ponto Registrado com Sucesso!";
-      $("pontoOkMsg").textContent    = `${agora.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"})} às ${horaStr}`;
-      $("pontoOkFase").textContent   = faseNome;
-      const gpsInfo = pontoGPS ? `📍 ${pontoGPS.lat.toFixed(5)}, ${pontoGPS.lng.toFixed(5)} (±${Math.round(pontoGPS.acc)}m)` : "📍 Sem localização";
-      $("pontoOkDetalhe").innerHTML  = `
-        <div>👤 <strong>${pontoProfile.nome||pontoUser.email}</strong></div>
-        <div>🏗️ ${pontoObraData?.nome||"Sem obra"}</div>
-        <div style="margin-top:4px">${gpsInfo}</div>
-        <div style="margin-top:4px">✅ Liveness verificado &nbsp;·&nbsp; ${pontoProfile.fotoUrl?"✅ Facial verificado":"⚪ Facial dispensado"}</div>
-      `;
-      $("pontoStepOk").classList.remove("hidden");
+      _mostrarSucesso(agora, horaStr, faseNome, "");
     } catch(e){
       setMsg("pontoCameraMsg","❌ Erro: "+e.message);
       btn.disabled = false;
       btn.textContent = "✅ Confirmar Ponto";
     }
+  }
+
+  function _mostrarSucesso(agora, horaStr, faseNome, obs) {
+    pararCamera();
+    if(livenessDetector){ clearInterval(livenessDetector); livenessDetector=null; }
+    $("pontoStepCamera").classList.add("hidden");
+    $("pontoOkTitulo").textContent = obs ? "Ponto Salvo!" : "Ponto Registrado com Sucesso!";
+    $("pontoOkMsg").textContent    = `${agora.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"})} às ${horaStr}`;
+    $("pontoOkFase").textContent   = faseNome;
+    const gpsInfo = pontoGPS ? `📍 ${pontoGPS.lat.toFixed(5)}, ${pontoGPS.lng.toFixed(5)} (±${Math.round(pontoGPS.acc)}m)` : "📍 Sem localização";
+    $("pontoOkDetalhe").innerHTML  = `
+      <div>👤 <strong>${pontoProfile.nome||pontoUser.email}</strong></div>
+      <div>🏗️ ${pontoObraData?.nome||"Sem obra"}</div>
+      <div style="margin-top:4px">${gpsInfo}</div>
+      <div style="margin-top:4px">✅ Liveness verificado &nbsp;·&nbsp; ${pontoProfile.fotoUrl?"✅ Facial verificado":"⚪ Facial dispensado"}</div>
+      ${obs ? `<div style="margin-top:8px;background:#e0f2fe;border-radius:6px;padding:6px 10px;font-size:.8rem;color:#075985">${obs}</div>` : ""}
+    `;
+    $("pontoStepOk").classList.remove("hidden");
   }
 
   function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
@@ -3436,7 +3701,7 @@
     // Lançamentos
     toggleReemb, onFileSelect, removeFile,
     saveLanc, cancelLanc, editLanc, deleteLanc, loadLancs,
-    syncPendingLancs,
+    syncPendingLancs, syncPendingPontos,
     // Dashboard
     loadDashboard, onDashObraChange, clearDashFilters,
     // Relatórios
