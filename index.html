@@ -1028,7 +1028,12 @@
               <button class="rh-prev-modal-tab" onclick="App.rhPreviewTab('docs')" id="prevTab_docs">📄 Docs</button>
               <button class="rh-prev-modal-tab" onclick="App.rhPreviewTab('nrs')" id="prevTab_nrs">🦺 NRs</button>
             </div>
-            <button onclick="App.rhFecharPreview()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.3rem;cursor:pointer;padding:0 4px;margin-left:8px">✕</button>
+            <button onclick="App.rhImprimirFicha()" title="Imprimir ficha de cadastro"
+              style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 14px;font-size:.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px;transition:.2s"
+              onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+              🖨️ Imprimir
+            </button>
+            <button onclick="App.rhFecharPreview()" title="Fechar" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.3rem;cursor:pointer;padding:0 4px;margin-left:8px">✕</button>
           </div>
           <div class="rh-prev-modal-body" id="rhPreviewBody">
             <!-- Aba Ficha -->
@@ -4562,13 +4567,12 @@
   async function rhIniciarFluxo(tipo) {
     rhFluxo = { tipo, processoId: null, etapaAtual: 0, dados: { tipo }, arquivos: {} };
 
-    // Se demissão, precisamos selecionar colaborador existente
     if(tipo === "demissao") {
       await rhSelecionarColaborador();
       return;
     }
 
-    // Contratação: pergunta se cria novo ou seleciona existente
+    // Contratação: abre novo processo e vai direto para etapa 1
     rhMostrarFluxo();
   }
 
@@ -4882,14 +4886,14 @@
     { id:"rh_nome",      label:"Nome Completo" },
     { id:"rh_cpf",       label:"CPF" },
     { id:"rh_rg",        label:"RG / Identidade" },
-    { id:"rh_ctps",      label:"Nº CTPS" },
-    { id:"rh_pis",       label:"PIS/PASEP" },
     { id:"rh_esocial",   label:"Matrícula eSocial" },
     { id:"rh_admissao",  label:"Data de Admissão" },
     { id:"rh_funcao",    label:"Função / Cargo" },
   ];
   // Campos RECOMENDADOS (avisa mas não bloqueia)
   const RH_CAMPOS_RECOMENDADOS = [
+    { id:"rh_ctps",       label:"Nº CTPS" },
+    { id:"rh_pis",        label:"PIS/PASEP" },
     { id:"rh_nascimento", label:"Data de Nascimento" },
     { id:"rh_cep",        label:"CEP" },
     { id:"rh_rua",        label:"Logradouro" },
@@ -5346,18 +5350,24 @@
         return;
       }
       if(resultado?.msg) {
-        // Aviso, mas não bloqueia — mostra e aguarda confirmação
         $("rhEtapaMsg").textContent = resultado.msg;
         $("rhEtapaMsg").style.color = "#d97706";
-        // Avança mesmo assim após mostrar o aviso
       }
+      // Auto-salvar etapa de dados imediatamente no Firestore
+      try {
+        const btnProx = $("rhBtnProximo");
+        if(btnProx) { btnProx.textContent = "⏳ Salvando..."; btnProx.disabled = true; }
+        await rhSalvarRascunho();
+        if(btnProx) { btnProx.textContent = "Próximo →"; btnProx.disabled = false; }
+        toast("💾 Dados salvos automaticamente!");
+      } catch(e) { console.warn("auto-save:", e); }
     }
 
     if(rhFluxo.etapaAtual < etapas.length - 1) {
       rhFluxo.etapaAtual++;
       rhRenderStepper();
       rhRenderEtapa();
-      await rhSalvarRascunho();
+      if(etapa.id !== "dados") await rhSalvarRascunho(); // já salvou acima para "dados"
     }
   }
 
@@ -5704,23 +5714,98 @@
     const c = colabs.find(x => x.id === uid);
     if(!c) return;
 
-    // Preencher dados disponíveis no cadastro de usuários
-    const d = rhFluxo.dados;
-    d.colaboradorId  = uid;
-    d.nomeCompleto   = c.nome || d.nomeCompleto;
-    d.email          = c.email || d.email;
-    d.fotoUrl        = c.fotoUrl || d.fotoUrl;   // usada na ficha
-    d.obraId         = c.obra_id || d.obraId;
+    // Verificar se já existe processo de contratação para este colaborador
+    const snap = await getDocs(collection(db,"rh_processos"));
+    let processoExistente = null;
+    snap.forEach(s => {
+      const p = s.data();
+      if(p.tipo === "contratacao" && p.dados?.colaboradorId === uid) {
+        if(!processoExistente || (p.atualizadoEm?.seconds||0) > (processoExistente.atualizadoEm?.seconds||0)) {
+          processoExistente = { id: s.id, ...p };
+        }
+      }
+    });
 
-    // Preencher campos visíveis no formulário
-    const set = (id, val) => { const el=$(id); if(el && val) el.value = val; };
+    // Preencher dados base do colaborador no fluxo
+    const d = rhFluxo.dados;
+    d.colaboradorId = uid;
+    d.nomeCompleto  = c.nome || d.nomeCompleto;
+    d.email         = c.email || d.email;
+    d.fotoUrl       = c.fotoUrl || d.fotoUrl;
+    d.obraId        = c.obra_id || d.obraId;
+
+    if(processoExistente) {
+      // Colaborador tem processo — mostrar aviso e opções: continuar ou novo
+      const etapas   = rhGetEtapas(processoExistente.tipo);
+      const etapaIdx = processoExistente.etapaAtual || 0;
+      const etapaNome = etapas[etapaIdx]?.label || "Dados";
+      const statusTxt = processoExistente.status === "concluido" ? "✅ Concluído" : `🔄 Em andamento — Etapa ${etapaIdx+1}: ${etapaNome}`;
+      const admissao  = processoExistente.dados?.admissao
+        ? new Date(processoExistente.dados.admissao+"T12:00:00").toLocaleDateString("pt-BR")
+        : "—";
+
+      // Mostrar modal de escolha
+      const overlay = document.createElement("div");
+      overlay.id = "rhProcessoExistenteOverlay";
+      overlay.style.cssText = "position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px";
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:slideUp .2s ease">
+          <div style="font-size:1.5rem;margin-bottom:6px">📂</div>
+          <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;margin:0 0 6px">Processo já existe</h3>
+          <p style="font-size:.88rem;color:var(--muted);margin:0 0 16px">
+            <strong>${c.nome}</strong> já possui um processo de contratação:
+          </p>
+          <div style="background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:.85rem;margin-bottom:20px;line-height:1.8">
+            <strong>Status:</strong> ${statusTxt}<br>
+            <strong>Admissão:</strong> ${admissao}<br>
+            <strong>Função:</strong> ${processoExistente.dados?.funcaoOutro||processoExistente.dados?.funcao||"—"}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary" style="justify-content:flex-start;gap:10px" onclick="window._rhAbrirExistente('${processoExistente.id}')">
+              ✏️ Continuar de onde parou <span style="font-size:.78rem;opacity:.75">(Etapa ${etapaIdx+1}: ${etapaNome})</span>
+            </button>
+            <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="window._rhNovoSobreExistente('${uid}')">
+              🔄 Atualizar / Sobrescrever dados existentes
+            </button>
+            <button class="btn btn-ghost" style="color:var(--muted);justify-content:center" onclick="document.getElementById('rhProcessoExistenteOverlay').remove()">
+              Cancelar
+            </button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      // Handlers globais temporários
+      window._rhAbrirExistente = async (id) => {
+        overlay.remove();
+        delete window._rhAbrirExistente;
+        delete window._rhNovoSobreExistente;
+        await rhAbrirProcessoParaEdicao(id);
+      };
+      window._rhNovoSobreExistente = (uid2) => {
+        overlay.remove();
+        delete window._rhAbrirExistente;
+        delete window._rhNovoSobreExistente;
+        // Usa o processo existente mas reseta para etapa 0
+        rhFluxo.processoId = processoExistente.id;
+        rhFluxo.dados      = { ...processoExistente.dados, ...d }; // mescla priorizando dados atuais
+        _rhPreencherFormularioDados();
+        toast(`🔄 Atualizando dados de ${d.nomeCompleto}. Confira e salve.`);
+      };
+    } else {
+      // Sem processo existente — apenas preenche o formulário
+      _rhPreencherFormularioDados();
+      toast(`✅ Dados de ${d.nomeCompleto} carregados! Complete os campos trabalhistas.`);
+    }
+  }
+
+  // Preenche campos visíveis do formulário com dados do rhFluxo.dados
+  function _rhPreencherFormularioDados() {
+    const d = rhFluxo.dados;
+    const set = (id, v) => { const el=$(id); if(el && v) el.value = v; };
     set("rh_nome",  d.nomeCompleto);
     set("rh_email", d.email);
-
-    // Preencher obra no select (depois do carregamento)
     const selObra = $("rh_obra");
     if(selObra && d.obraId) {
-      // Tenta selecionar; se ainda não carregou, aguarda
       const tentarSelecionar = () => {
         const opt = selObra.querySelector(`option[value="${d.obraId}"]`);
         if(opt) opt.selected = true;
@@ -5728,8 +5813,19 @@
       tentarSelecionar();
       setTimeout(tentarSelecionar, 600);
     }
+    // Atualiza subtítulo
+    const sub = $("rhFluxoSubtitulo");
+    if(sub) sub.textContent = d.nomeCompleto || "Preencha os dados do colaborador";
+  }
 
-    toast(`✅ Dados de ${d.nomeCompleto} carregados! Complete os campos trabalhistas.`);
+  // Abre processo existente direto para edição (sem modal intermediário)
+  async function rhAbrirProcessoParaEdicao(id) {
+    const snap = await getDoc(doc(db,"rh_processos",id));
+    if(!snap.exists()) { toast("Processo não encontrado."); return; }
+    const p = { id:snap.id, ...snap.data() };
+    rhFluxo = { tipo:p.tipo, processoId:id, etapaAtual:p.etapaAtual||0, dados:p.dados||{}, arquivos:p.arquivos||{} };
+    rhMostrarFluxo();
+    toast(`📂 Processo de ${p.dados?.nomeCompleto||"colaborador"} aberto na etapa ${(p.etapaAtual||0)+1}.`);
   }
 
   function rhMaskCNPJ(el) {
@@ -6246,6 +6342,33 @@
     document.body.style.overflow = "hidden";
   }
 
+  async function rhImprimirFicha() {
+    const btn = document.querySelector("button[onclick='App.rhImprimirFicha()']");
+    const txtOrig = btn?.innerHTML;
+    try {
+      if(btn) { btn.innerHTML = "⏳ Gerando..."; btn.disabled = true; }
+      const pdf = await rhGerarFichaRegistroPDF(rhFluxo.processoId);
+      if(!pdf) return;
+      // Abre o PDF em nova aba e dispara impressão automaticamente
+      const blob = pdf.output("blob");
+      const url  = URL.createObjectURL(blob);
+      const win  = window.open(url, "_blank");
+      if(win) {
+        win.onload = () => { win.focus(); win.print(); };
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } else {
+        // Fallback: download direto se popup bloqueado
+        const nome = `FichaRegistro_${(rhFluxo.dados.nomeCompleto||"colaborador").replace(/\s+/g,"_")}.pdf`;
+        pdf.save(nome);
+        toast("💡 Popup bloqueado — arquivo baixado. Abra-o para imprimir.");
+      }
+    } catch(e) {
+      toast("❌ Erro ao gerar PDF: " + e.message);
+    } finally {
+      if(btn) { btn.innerHTML = txtOrig; btn.disabled = false; }
+    }
+  }
+
   function rhFecharPreview() {
     $("modalRhPreview").classList.add("hidden");
     document.body.style.overflow = "";
@@ -6366,7 +6489,7 @@
     rhIrParaEtapa,
     // Preview ao vivo
     rhPreviewTab, rhPreviewTrigger,
-    rhAbrirPreview, rhFecharPreview,
+    rhAbrirPreview, rhFecharPreview, rhImprimirFicha,
     // Pagamento
     rhTogglePagamento, rhTogglePixTipo,
     // Empresa
