@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -573,10 +572,11 @@
 
     <!-- ── ADMINISTRAÇÃO ── -->
     <div class="tab-panel" id="tab-admin">
-      <div class="page-header"><h1>Administração</h1><p>Gerencie obras e colaboradores do sistema.</p></div>
+      <div class="page-header"><h1>Administração</h1><p>Gerencie obras, colaboradores e dados da empresa.</p></div>
       <div class="admin-tabs">
         <button class="admin-tab-btn active" onclick="App.adminTab('obras')">🏗️ Obras</button>
         <button class="admin-tab-btn" onclick="App.adminTab('usuarios')">👥 Colaboradores</button>
+        <button class="admin-tab-btn" onclick="App.adminTab('empresa')">🏢 Empresa</button>
       </div>
 
       <div class="admin-panel active" id="adm-obras">
@@ -716,6 +716,33 @@
           <div id="userList"><div class="empty"><div class="empty-icon">👥</div><p>Nenhum colaborador cadastrado ainda.</p></div></div>
         </div>
       </div>
+
+      <!-- ── Painel Empresa ── -->
+      <div class="admin-panel" id="adm-empresa">
+        <div class="card">
+          <div class="card-header"><div><h3>🏢 Dados da Empresa</h3><p>Utilizados no preenchimento automático de documentos e fichas.</p></div></div>
+          <div class="rh-field-grid">
+            <div style="grid-column:1/-1"><label>Razão Social / Nome da Empresa *</label><input id="empNome" placeholder="Ex: JCS Construções e Serviços Ltda"></div>
+            <div><label>CNPJ / CEI *</label><input id="empCnpj" placeholder="00.000.000/0000-00" oninput="App.rhMaskCNPJ(this)"></div>
+            <div><label>Telefone da Empresa</label><input id="empTel" placeholder="(00) 00000-0000"></div>
+            <div style="grid-column:1/-1"><label>Endereço (Logradouro)</label><input id="empRua" placeholder="Rua, Avenida..."></div>
+            <div><label>Número</label><input id="empNum" placeholder="Nº"></div>
+            <div><label>Bairro</label><input id="empBairro" placeholder="Bairro"></div>
+            <div><label>Cidade</label><input id="empCidade" placeholder="Cidade"></div>
+            <div><label>UF</label><input id="empUf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+            <div><label>CEP</label><input id="empCep" placeholder="00000-000"></div>
+            <div><label>E-mail da Empresa</label><input id="empEmail" type="email" placeholder="contato@empresa.com"></div>
+            <div style="grid-column:1/-1"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
+            <div><label>CPF do Responsável</label><input id="empCpfResp" placeholder="000.000.000-00"></div>
+            <div><label>Cargo do Responsável</label><input id="empCargoResp" placeholder="Ex: Diretor, Sócio-Administrador"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
+            <button class="btn btn-primary" onclick="App.salvarEmpresa()">💾 Salvar Dados da Empresa</button>
+          </div>
+          <div class="msg" id="empMsg" style="margin-top:8px"></div>
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -1030,6 +1057,7 @@
     $(`adm-${tab}`)?.classList.add("active");
     if(tab==="obras")   { btns[0].classList.add("active"); loadObras(); }
     if(tab==="usuarios"){ btns[1].classList.add("active"); loadUsers(); fillObraSelect(); }
+    if(tab==="empresa") { btns[2].classList.add("active"); carregarEmpresa(); }
   }
 
   function togglePass(id) {
@@ -4321,15 +4349,19 @@
 
   // ── ETAPA 1: DADOS PESSOAIS ──
   function rhHtmlDados() {
-    const tipo = rhFluxo.tipo;
     const d = rhFluxo.dados;
+    const funcaoVal = d.funcao || "";
     return `
     <div class="card">
-      <div class="rh-section-title">Identificação</div>
+      <div class="rh-section-title">📋 Identificação Pessoal</div>
       <div class="rh-field-grid">
-        <div><label>Nome Completo *</label><input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Nome completo"></div>
-        <div><label>CPF *</label><input id="rh_cpf" value="${d.cpf||""}" placeholder="000.000.000-00" oninput="App.rhMaskCPF(this)"></div>
+        <div style="grid-column:1/-1"><label>Nome Completo *</label><input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Nome completo conforme documentos"></div>
+        <div><label>CPF * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_cpf" value="${d.cpf||""}" placeholder="000.000.000-00" oninput="App.rhMaskCPF(this)"></div>
+        <div><label>RG / Identidade * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_rg" value="${d.rg||""}" placeholder="Número do RG"></div>
+        <div><label>Órgão Emissor / UF</label><input id="rh_rg_orgao" value="${d.rgOrgao||""}" placeholder="Ex: SSP/MG"></div>
+        <div><label>Data de Emissão RG</label><input id="rh_rg_data" type="date" value="${d.rgData||""}"></div>
         <div><label>Data de Nascimento *</label><input id="rh_nascimento" type="date" value="${d.nascimento||""}"></div>
+        <div><label>Naturalidade (Cidade/UF)</label><input id="rh_natural" value="${d.naturalidade||""}" placeholder="Ex: Governador Valadares/MG"></div>
         <div><label>Sexo</label>
           <select id="rh_sexo">
             <option value="">Selecione</option>
@@ -4337,8 +4369,7 @@
             <option value="F" ${d.sexo==="F"?"selected":""}>Feminino</option>
           </select>
         </div>
-        <div><label>Telefone</label><input id="rh_tel" value="${d.telefone||""}" placeholder="(00) 00000-0000" oninput="App.rhMaskTel(this)"></div>
-        <div><label>E-mail</label><input id="rh_email" type="email" value="${d.email||""}" placeholder="email@..."></div>
+        <div><label>Nacionalidade</label><input id="rh_nacionalidade" value="${d.nacionalidade||"Brasil"}" placeholder="Ex: Brasileiro(a)"></div>
         <div><label>Estado Civil</label>
           <select id="rh_estcivil" onchange="App.rhToggleEstCivil(this.value)">
             <option value="">Selecione</option>
@@ -4349,23 +4380,38 @@
             <option value="viuvo" ${d.estCivil==="viuvo"?"selected":""}>Viúvo(a)</option>
           </select>
         </div>
-        <div><label>Naturalidade</label><input id="rh_natural" value="${d.naturalidade||""}" placeholder="Cidade/UF"></div>
+        <div id="rh_conjuge_wrap" style="${["casado","uniao"].includes(d.estCivil)?"":"display:none"}">
+          <label>Nome do Cônjuge</label><input id="rh_conjuge" value="${d.conjuge||""}" placeholder="Nome completo do cônjuge">
+        </div>
+        <div><label>Nome do Pai</label><input id="rh_pai" value="${d.pai||""}" placeholder="Nome do pai"></div>
+        <div><label>Nome da Mãe</label><input id="rh_mae" value="${d.mae||""}" placeholder="Nome da mãe"></div>
+        <div><label>Grau de Instrução</label>
+          <select id="rh_instrucao">
+            <option value="">Selecione</option>
+            ${["Analfabeto","Ens. Fund. Incompleto","Ens. Fund. Completo","Ens. Médio Incompleto","Ens. Médio Completo","Ens. Superior Incompleto","Ens. Superior Completo","Pós-Graduação"].map(g=>`<option value="${g}" ${d.instrucao===g?"selected":""}>${g}</option>`).join("")}
+          </select>
+        </div>
+        <div><label>CNH nº</label><input id="rh_cnh" value="${d.cnh||""}" placeholder="Número da CNH (se possuir)"></div>
+        <div><label>Certidão Militar nº</label><input id="rh_cert_militar" value="${d.certMilitar||""}" placeholder="Nº certificado militar"></div>
+        <div><label>Telefone</label><input id="rh_tel" value="${d.telefone||""}" placeholder="(00) 00000-0000" oninput="App.rhMaskTel(this)"></div>
+        <div><label>E-mail</label><input id="rh_email" type="email" value="${d.email||""}" placeholder="email@..."></div>
       </div>
 
-      <div class="rh-section-title">Endereço</div>
+      <div class="rh-section-title">🏠 Endereço Residencial</div>
       <div class="rh-field-grid">
-        <div><label>CEP</label><input id="rh_cep" value="${d.cep||""}" placeholder="00000-000" oninput="App.rhBuscarCEP(this)"></div>
-        <div><label>Logradouro</label><input id="rh_rua" value="${d.rua||""}" placeholder="Rua / Av."></div>
-        <div><label>Número</label><input id="rh_endnum" value="${d.endNum||""}" placeholder="Nº"></div>
-        <div><label>Bairro</label><input id="rh_bairro" value="${d.bairro||""}" placeholder="Bairro"></div>
-        <div><label>Cidade</label><input id="rh_cidade" value="${d.cidade||""}" placeholder="Cidade"></div>
-        <div><label>UF</label><input id="rh_uf" value="${d.uf||""}" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+        <div><label>CEP *</label><input id="rh_cep" value="${d.cep||""}" placeholder="00000-000" oninput="App.rhBuscarCEP(this)"></div>
+        <div><label>Logradouro *</label><input id="rh_rua" value="${d.rua||""}" placeholder="Rua / Av."></div>
+        <div><label>Número *</label><input id="rh_endnum" value="${d.endNum||""}" placeholder="Nº"></div>
+        <div><label>Complemento</label><input id="rh_complemento" value="${d.complemento||""}" placeholder="Apto, bloco..."></div>
+        <div><label>Bairro *</label><input id="rh_bairro" value="${d.bairro||""}" placeholder="Bairro"></div>
+        <div><label>Cidade *</label><input id="rh_cidade" value="${d.cidade||""}" placeholder="Cidade"></div>
+        <div><label>UF *</label><input id="rh_uf" value="${d.uf||""}" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
       </div>
 
-      <div class="rh-section-title">Dados Profissionais</div>
+      <div class="rh-section-title">💼 Dados Profissionais</div>
       <div class="rh-field-grid">
         <div>
-          <label>Função / Cargo *</label>
+          <label>Função / Cargo * <span style="color:var(--danger)" title="Obrigatório">●</span></label>
           <select id="rh_funcao" onchange="App.rhFuncaoChange(this.value)">
             <option value="">Selecione</option>
             ${Object.keys(RH_MATRIZ_NR).map(f=>`<option value="${f}" ${d.funcao===f?"selected":""}>${f}</option>`).join("")}
@@ -4376,30 +4422,62 @@
           <label>Especifique a função</label>
           <input id="rh_funcao_outro" value="${d.funcaoOutro||""}" placeholder="Ex: Gesseiro">
         </div>
-        <div><label>Data de Admissão *</label><input id="rh_admissao" type="date" value="${d.admissao||""}"></div>
+        <div><label>CBO (Código Brasileiro de Ocupações)</label><input id="rh_cbo" value="${d.cbo||""}" placeholder="Ex: 214205"></div>
+        <div><label>Data de Admissão * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_admissao" type="date" value="${d.admissao||""}"></div>
         <div><label>Salário (R$)</label><input id="rh_salario" type="number" value="${d.salario||""}" placeholder="0,00" step="0.01"></div>
-        <div><label>Obra / Local de Trabalho</label>
-          <select id="rh_obra">
-            <option value="">Selecione a obra</option>
+        <div><label>Forma de Pagamento</label>
+          <select id="rh_formapgto">
+            <option value="Mensal" ${d.formaPgto==="Mensal"?"selected":""}>Mensal</option>
+            <option value="Quinzenal" ${d.formaPgto==="Quinzenal"?"selected":""}>Quinzenal</option>
+            <option value="Semanal" ${d.formaPgto==="Semanal"?"selected":""}>Semanal</option>
           </select>
         </div>
-        <div><label>PIS/PASEP</label><input id="rh_pis" value="${d.pis||""}" placeholder="000.00000.00-0"></div>
-        <div><label>Nº CTPS</label><input id="rh_ctps" value="${d.ctps||""}" placeholder="Número CTPS"></div>
-        <div><label>Série CTPS</label><input id="rh_ctps_serie" value="${d.ctpsSerie||""}" placeholder="Série"></div>
-        <div><label>Nº Registro</label><input id="rh_registro" value="${d.numRegistro||""}" placeholder="Gerado automaticamente" readonly style="background:#f3f4f6"></div>
+        <div><label>Folga Semanal</label>
+          <select id="rh_folga">
+            <option value="Domingo" ${d.folgaSemanal==="Domingo"?"selected":""}>Domingo</option>
+            <option value="Sábado e Domingo" ${d.folgaSemanal==="Sábado e Domingo"?"selected":""}>Sábado e Domingo</option>
+            <option value="Domingo e feriados" ${d.folgaSemanal==="Domingo e feriados"?"selected":""}>Domingo e feriados</option>
+          </select>
+        </div>
+        <div><label>Horário de Trabalho — Entrada</label><input id="rh_hr_entrada" type="time" value="${d.hrEntrada||"07:00"}"></div>
+        <div><label>Intervalo — Saída</label><input id="rh_hr_almoco_s" type="time" value="${d.hrAlmocoS||"12:00"}"></div>
+        <div><label>Intervalo — Retorno</label><input id="rh_hr_almoco_r" type="time" value="${d.hrAlmocoR||"13:00"}"></div>
+        <div><label>Horário de Trabalho — Saída</label><input id="rh_hr_saida" type="time" value="${d.hrSaida||"17:00"}"></div>
+        <div><label>Obra / Local de Trabalho</label>
+          <select id="rh_obra"><option value="">Selecione a obra</option></select>
+        </div>
+        <div><label>Setor</label><input id="rh_setor" value="${d.setor||""}" placeholder="Ex: Produção, Administrativo"></div>
       </div>
 
-      <div class="rh-section-title" id="rhFilhosSection">Filhos Menores de 18 anos</div>
+      <div class="rh-section-title">📄 Documentos Trabalhistas</div>
+      <div class="rh-field-grid">
+        <div><label>Nº CTPS * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_ctps" value="${d.ctps||""}" placeholder="Número CTPS"></div>
+        <div><label>Série CTPS</label><input id="rh_ctps_serie" value="${d.ctpsSerie||""}" placeholder="Série (ex: 0001)"></div>
+        <div><label>CTPS Rural nº</label><input id="rh_ctps_rural" value="${d.ctpsRural||""}" placeholder="Se houver CTPS rural"></div>
+        <div><label>PIS/PASEP * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_pis" value="${d.pis||""}" placeholder="000.00000.00-0"></div>
+        <div><label>Matrícula eSocial * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_esocial" value="${d.esocial||""}" placeholder="Número eSocial"></div>
+        <div><label>Nº Registro (Ficha) *</label><input id="rh_registro" value="${d.numRegistro||""}" placeholder="Gerado automaticamente" readonly style="background:#f3f4f6"></div>
+        <div><label>Título de Eleitor</label><input id="rh_titulo" value="${d.titulo||""}" placeholder="Número do título de eleitor"></div>
+        <div><label>Zona</label><input id="rh_zona" value="${d.zona||""}" placeholder="Zona eleitoral"></div>
+      </div>
+
+      <div class="rh-section-title">🏦 Dados Bancários (para depósito)</div>
+      <div class="rh-field-grid">
+        <div><label>Banco</label><input id="rh_banco_nome" value="${d.bancoNome||""}" placeholder="Nome do banco"></div>
+        <div><label>Código do Banco</label><input id="rh_banco_cod" value="${d.bancoCod||""}" placeholder="Ex: 001, 033, 341"></div>
+        <div><label>Código da Agência</label><input id="rh_banco_ag" value="${d.bancoAg||""}" placeholder="Agência"></div>
+        <div><label>Número da Conta</label><input id="rh_banco_conta" value="${d.bancoConta||""}" placeholder="Conta corrente"></div>
+      </div>
+
+      <div class="rh-section-title" id="rhFilhosSection">👶 Filhos Menores de 18 anos (Beneficiários)</div>
       <div id="rhFilhosList" style="margin-bottom:8px"></div>
       <button class="btn btn-outline sm" onclick="App.rhAddFilho()" style="margin-bottom:4px">+ Adicionar Filho</button>
     </div>`;
   }
 
   function rhPreencherDados() {
-    // Preencher select de obras
     getDocs(collection(db,"obras")).then(snap => {
-      const sel = $("rh_obra");
-      if(!sel) return;
+      const sel = $("rh_obra"); if(!sel) return;
       snap.forEach(d => {
         if(d.data().ativa !== false) {
           const opt = document.createElement("option");
@@ -4409,47 +4487,115 @@
         }
       });
     });
-    // Gerar número de registro se novo
     if(!rhFluxo.dados.numRegistro) {
       const nr = "REG-" + Date.now().toString().slice(-6);
       rhFluxo.dados.numRegistro = nr;
       const el = $("rh_registro"); if(el) el.value = nr;
     }
-    // Filhos
     rhRenderFilhos();
   }
 
+  // Campos BLOQUEANTES (não avança se vazio)
+  const RH_CAMPOS_OBRIGATORIOS = [
+    { id:"rh_nome",      label:"Nome Completo" },
+    { id:"rh_cpf",       label:"CPF" },
+    { id:"rh_rg",        label:"RG / Identidade" },
+    { id:"rh_ctps",      label:"Nº CTPS" },
+    { id:"rh_pis",       label:"PIS/PASEP" },
+    { id:"rh_esocial",   label:"Matrícula eSocial" },
+    { id:"rh_admissao",  label:"Data de Admissão" },
+    { id:"rh_funcao",    label:"Função / Cargo" },
+  ];
+  // Campos RECOMENDADOS (avisa mas não bloqueia)
+  const RH_CAMPOS_RECOMENDADOS = [
+    { id:"rh_nascimento", label:"Data de Nascimento" },
+    { id:"rh_cep",        label:"CEP" },
+    { id:"rh_rua",        label:"Logradouro" },
+    { id:"rh_endnum",     label:"Número do endereço" },
+    { id:"rh_bairro",     label:"Bairro" },
+    { id:"rh_cidade",     label:"Cidade" },
+    { id:"rh_uf",         label:"UF" },
+    { id:"rh_registro",   label:"Nº Registro" },
+  ];
+
   function rhSalvarDados() {
     const d = rhFluxo.dados;
-    d.nomeCompleto = $("rh_nome")?.value.trim();
-    d.cpf          = $("rh_cpf")?.value.trim();
-    d.nascimento   = $("rh_nascimento")?.value;
-    d.sexo         = $("rh_sexo")?.value;
-    d.telefone     = $("rh_tel")?.value.trim();
-    d.email        = $("rh_email")?.value.trim();
-    d.estCivil     = $("rh_estcivil")?.value;
-    d.naturalidade = $("rh_natural")?.value.trim();
-    d.cep          = $("rh_cep")?.value.trim();
-    d.rua          = $("rh_rua")?.value.trim();
-    d.endNum       = $("rh_endnum")?.value.trim();
-    d.bairro       = $("rh_bairro")?.value.trim();
-    d.cidade       = $("rh_cidade")?.value.trim();
-    d.uf           = $("rh_uf")?.value.trim().toUpperCase();
-    d.funcao       = $("rh_funcao")?.value;
-    d.funcaoOutro  = $("rh_funcao_outro")?.value.trim();
-    d.admissao     = $("rh_admissao")?.value;
-    d.salario      = $("rh_salario")?.value;
-    d.obraId       = $("rh_obra")?.value;
-    d.obraNome     = $("rh_obra")?.selectedOptions[0]?.text || "";
-    d.pis          = $("rh_pis")?.value.trim();
-    d.ctps         = $("rh_ctps")?.value.trim();
-    d.ctpsSerie    = $("rh_ctps_serie")?.value.trim();
-    // Validação mínima
-    if(!d.nomeCompleto) return "Informe o nome completo.";
-    if(!d.cpf || d.cpf.length < 11) return "Informe o CPF corretamente.";
-    if(!d.funcao) return "Selecione a função/cargo.";
-    if(!d.admissao) return "Informe a data de admissão.";
-    return null;
+    // Capturar todos os campos
+    d.nomeCompleto  = $("rh_nome")?.value.trim();
+    d.cpf           = $("rh_cpf")?.value.trim();
+    d.rg            = $("rh_rg")?.value.trim();
+    d.rgOrgao       = $("rh_rg_orgao")?.value.trim();
+    d.rgData        = $("rh_rg_data")?.value;
+    d.nascimento    = $("rh_nascimento")?.value;
+    d.naturalidade  = $("rh_natural")?.value.trim();
+    d.sexo          = $("rh_sexo")?.value;
+    d.nacionalidade = $("rh_nacionalidade")?.value.trim();
+    d.estCivil      = $("rh_estcivil")?.value;
+    d.conjuge       = $("rh_conjuge")?.value.trim();
+    d.pai           = $("rh_pai")?.value.trim();
+    d.mae           = $("rh_mae")?.value.trim();
+    d.instrucao     = $("rh_instrucao")?.value;
+    d.cnh           = $("rh_cnh")?.value.trim();
+    d.certMilitar   = $("rh_cert_militar")?.value.trim();
+    d.telefone      = $("rh_tel")?.value.trim();
+    d.email         = $("rh_email")?.value.trim();
+    d.cep           = $("rh_cep")?.value.trim();
+    d.rua           = $("rh_rua")?.value.trim();
+    d.endNum        = $("rh_endnum")?.value.trim();
+    d.complemento   = $("rh_complemento")?.value.trim();
+    d.bairro        = $("rh_bairro")?.value.trim();
+    d.cidade        = $("rh_cidade")?.value.trim();
+    d.uf            = $("rh_uf")?.value.trim().toUpperCase();
+    d.funcao        = $("rh_funcao")?.value;
+    d.funcaoOutro   = $("rh_funcao_outro")?.value.trim();
+    d.cbo           = $("rh_cbo")?.value.trim();
+    d.admissao      = $("rh_admissao")?.value;
+    d.salario       = $("rh_salario")?.value;
+    d.formaPgto     = $("rh_formapgto")?.value;
+    d.folgaSemanal  = $("rh_folga")?.value;
+    d.hrEntrada     = $("rh_hr_entrada")?.value;
+    d.hrAlmocoS     = $("rh_hr_almoco_s")?.value;
+    d.hrAlmocoR     = $("rh_hr_almoco_r")?.value;
+    d.hrSaida       = $("rh_hr_saida")?.value;
+    d.obraId        = $("rh_obra")?.value;
+    d.obraNome      = $("rh_obra")?.selectedOptions[0]?.text || "";
+    d.setor         = $("rh_setor")?.value.trim();
+    d.ctps          = $("rh_ctps")?.value.trim();
+    d.ctpsSerie     = $("rh_ctps_serie")?.value.trim();
+    d.ctpsRural     = $("rh_ctps_rural")?.value.trim();
+    d.pis           = $("rh_pis")?.value.trim();
+    d.esocial       = $("rh_esocial")?.value.trim();
+    d.titulo        = $("rh_titulo")?.value.trim();
+    d.zona          = $("rh_zona")?.value.trim();
+    d.bancoNome     = $("rh_banco_nome")?.value.trim();
+    d.bancoCod      = $("rh_banco_cod")?.value.trim();
+    d.bancoAg       = $("rh_banco_ag")?.value.trim();
+    d.bancoConta    = $("rh_banco_conta")?.value.trim();
+
+    // 1. Verificar campos BLOQUEANTES
+    const faltandoObrig = RH_CAMPOS_OBRIGATORIOS.filter(c => !$(`${c.id}`)?.value?.trim());
+    if(faltandoObrig.length) {
+      // Destacar campos em vermelho
+      RH_CAMPOS_OBRIGATORIOS.forEach(c => {
+        const el = $(c.id); if(!el) return;
+        el.style.borderColor = !el.value?.trim() ? "var(--danger)" : "";
+        el.style.background  = !el.value?.trim() ? "#fef2f2" : "";
+      });
+      return { bloqueio: true, msg: `⛔ Campos obrigatórios não preenchidos: ${faltandoObrig.map(c=>c.label).join(", ")}.` };
+    }
+
+    // 2. Verificar campos RECOMENDADOS
+    const faltandoRec = RH_CAMPOS_RECOMENDADOS.filter(c => !$(`${c.id}`)?.value?.trim());
+    if(faltandoRec.length) {
+      return { bloqueio: false, msg: `⚠️ Campos recomendados em branco: ${faltandoRec.map(c=>c.label).join(", ")}. Você pode prosseguir.` };
+    }
+
+    return null; // tudo ok
+  }
+
+  function rhToggleEstCivil(val) {
+    const wrap = $("rh_conjuge_wrap");
+    if(wrap) wrap.style.display = ["casado","uniao"].includes(val) ? "" : "none";
   }
 
   // Filhos
@@ -4471,7 +4617,6 @@
     const wrap = $("rh_funcao_outro_wrap");
     if(wrap) wrap.style.display = val==="outro" ? "" : "none";
   }
-  function rhToggleEstCivil(val) { /* futuro: mostrar/esconder campos de cônjuge */ }
 
   // Máscaras simples
   function rhMaskCPF(el) {
@@ -4749,12 +4894,22 @@
   // ── NAVEGAÇÃO ENTRE ETAPAS ──
   async function rhEtapaProxima() {
     const etapas = rhGetEtapas(rhFluxo.tipo);
-    const etapa = etapas[rhFluxo.etapaAtual];
+    const etapa  = etapas[rhFluxo.etapaAtual];
+    $("rhEtapaMsg").textContent = "";
 
-    // Salvar dados da etapa atual
     if(etapa.id === "dados") {
-      const erro = rhSalvarDados();
-      if(erro) { $("rhEtapaMsg").textContent = "⚠️ "+erro; return; }
+      const resultado = rhSalvarDados();
+      if(resultado?.bloqueio) {
+        $("rhEtapaMsg").textContent = resultado.msg;
+        $("rhEtapaMsg").style.color = "var(--danger)";
+        return;
+      }
+      if(resultado?.msg) {
+        // Aviso, mas não bloqueia — mostra e aguarda confirmação
+        $("rhEtapaMsg").textContent = resultado.msg;
+        $("rhEtapaMsg").style.color = "#d97706";
+        // Avança mesmo assim após mostrar o aviso
+      }
     }
 
     if(rhFluxo.etapaAtual < etapas.length - 1) {
@@ -4803,8 +4958,8 @@
   }
 
   async function rhFinalizar() {
-    const erro = rhSalvarDados();
-    if(erro) { $("rhEtapaMsg").textContent = "⚠️ "+erro; return; }
+    const resultado = rhSalvarDados();
+    if(resultado?.bloqueio) { $("rhEtapaMsg").textContent = resultado.msg; $("rhEtapaMsg").style.color="var(--danger)"; return; }
     try {
       $("rhBtnFinalizar").textContent = "⏳ Salvando...";
       $("rhBtnFinalizar").disabled = true;
@@ -4911,8 +5066,306 @@
     rhMostrarFluxo();
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // DADOS DA EMPRESA
+  // ═══════════════════════════════════════════════════════════
+  let _empresaCache = null;
+
+  async function carregarEmpresa() {
+    try {
+      const snap = await getDoc(doc(db,"configuracoes","empresa"));
+      const emp  = snap.exists() ? snap.data() : {};
+      _empresaCache = emp;
+      const set = (id, val) => { const el=$(id); if(el) el.value=val||""; };
+      set("empNome",       emp.nome);
+      set("empCnpj",       emp.cnpj);
+      set("empTel",        emp.tel);
+      set("empRua",        emp.rua);
+      set("empNum",        emp.num);
+      set("empBairro",     emp.bairro);
+      set("empCidade",     emp.cidade);
+      set("empUf",         emp.uf);
+      set("empCep",        emp.cep);
+      set("empEmail",      emp.email);
+      set("empResponsavel",emp.responsavel);
+      set("empCpfResp",    emp.cpfResp);
+      set("empCargoResp",  emp.cargoResp);
+    } catch(e){ console.warn("carregarEmpresa:", e); }
+  }
+
+  async function salvarEmpresa() {
+    const get = id => $(id)?.value.trim()||"";
+    const emp = {
+      nome:        get("empNome"),
+      cnpj:        get("empCnpj"),
+      tel:         get("empTel"),
+      rua:         get("empRua"),
+      num:         get("empNum"),
+      bairro:      get("empBairro"),
+      cidade:      get("empCidade"),
+      uf:          get("empUf").toUpperCase(),
+      cep:         get("empCep"),
+      email:       get("empEmail"),
+      responsavel: get("empResponsavel"),
+      cpfResp:     get("empCpfResp"),
+      cargoResp:   get("empCargoResp"),
+      atualizadoEm: serverTimestamp(),
+    };
+    if(!emp.nome || !emp.cnpj) { setMsg("empMsg","⚠️ Informe nome e CNPJ da empresa."); return; }
+    try {
+      await setDoc(doc(db,"configuracoes","empresa"), emp);
+      _empresaCache = emp;
+      setMsg("empMsg","✅ Dados da empresa salvos!","ok");
+      toast("Dados da empresa salvos com sucesso!");
+    } catch(e){ setMsg("empMsg","❌ Erro: "+e.message); }
+  }
+
+  async function getEmpresa() {
+    if(_empresaCache) return _empresaCache;
+    const snap = await getDoc(doc(db,"configuracoes","empresa"));
+    _empresaCache = snap.exists() ? snap.data() : {};
+    return _empresaCache;
+  }
+
+  function rhMaskCNPJ(el) {
+    let v = el.value.replace(/\D/g,"").slice(0,14);
+    v = v.replace(/(\d{2})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2")
+         .replace(/(\d{3})(\d)/,"$1/$2").replace(/(\d{4})(\d{1,2})$/,"$1-$2");
+    el.value = v;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PDF — FICHA DE REGISTRO DO EMPREGADO
+  // ═══════════════════════════════════════════════════════════
+  async function rhGerarFichaRegistroPDF(processoId) {
+    // Carregar dados do processo
+    let d = rhFluxo.dados;
+    let arqs = rhFluxo.arquivos;
+    if(processoId && processoId !== rhFluxo.processoId) {
+      const snap = await getDoc(doc(db,"rh_processos",processoId));
+      if(!snap.exists()) { toast("Processo não encontrado."); return; }
+      d    = snap.data().dados || {};
+      arqs = snap.data().arquivos || {};
+    }
+    const emp = await getEmpresa();
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
+    const L=14, W=182, dataGer = new Date().toLocaleDateString("pt-BR");
+    const fmtData = v => v ? new Date(v+"T12:00:00").toLocaleDateString("pt-BR") : "___/___/______";
+    const brl = v => v ? "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2}) : "R$ ___________";
+    const val = v => v||"";
+
+    // ── Cabeçalho ──
+    pdf.setFillColor(15,52,96); pdf.rect(0,0,210,14,"F");
+    pdf.setTextColor(255,255,255); pdf.setFontSize(11); pdf.setFont("helvetica","bold");
+    pdf.text("FICHA DE REGISTRO DOS EMPREGADOS", 105, 9, {align:"center"});
+    pdf.setTextColor(0,0,0);
+
+    // Nº e eSocial
+    pdf.setFontSize(8); pdf.setFont("helvetica","normal");
+    pdf.text(`Nº ${val(d.numRegistro)||"______"}`, 196, 18, {align:"right"});
+    pdf.text(`Matrícula eSocial: ${val(d.esocial)||"__________________"}`, 196, 22, {align:"right"});
+
+    // Dados da empresa
+    let y = 18;
+    pdf.setFontSize(9); pdf.setFont("helvetica","bold");
+    pdf.text("Da firma:", L, y); y+=5;
+    pdf.setFont("helvetica","normal"); pdf.setFontSize(8);
+    pdf.text(`Nome: ${val(emp.nome)}`, L, y); y+=4;
+    pdf.text(`Endereço: ${val(emp.rua)}${emp.num?", "+emp.num:""} — CNPJ/CEI: ${val(emp.cnpj)}`, L, y); y+=6;
+
+    // Linha divisória
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=5;
+
+    // ── Quadro principal: dados pessoais ──
+    pdf.setFontSize(8); pdf.setFont("helvetica","bold");
+    pdf.text("Nome:", L, y);
+    pdf.setFont("helvetica","normal");
+    pdf.text(val(d.nomeCompleto), L+12, y);
+
+    // Foto (quadrado — usa fotoUrl do colaborador se disponível)
+    const fotoBox = { x:165, y:y-4, w:31, h:38 };
+    pdf.setDrawColor(150,150,150); pdf.rect(fotoBox.x, fotoBox.y, fotoBox.w, fotoBox.h);
+    pdf.setFontSize(6); pdf.setTextColor(150,150,150);
+    pdf.text("FOTO", fotoBox.x + fotoBox.w/2, fotoBox.y + fotoBox.h/2 - 2, {align:"center"});
+    pdf.setTextColor(0,0,0);
+
+    y+=5;
+    pdf.setFont("helvetica","bold"); pdf.text("Filho de:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.pai), L+14, y);
+    y+=4;
+    pdf.setFont("helvetica","bold"); pdf.text("e de:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.mae), L+10, y);
+    y+=4;
+    pdf.setFont("helvetica","bold"); pdf.text("Nascido em:", L, y);
+    pdf.setFont("helvetica","normal");
+    pdf.text(`${val(d.naturalidade)}`, L+22, y);
+    pdf.setFont("helvetica","bold"); pdf.text("a:", 95, y);
+    pdf.setFont("helvetica","normal"); pdf.text(fmtData(d.nascimento), 98, y);
+    y+=4;
+
+    pdf.setFont("helvetica","bold"); pdf.text("Estado civil:", L, y);
+    pdf.setFont("helvetica","normal");
+    const ecMap = {solteiro:"Solteiro(a)",casado:"Casado(a)",uniao:"União Estável",divorciado:"Divorciado(a)",viuvo:"Viúvo(a)"};
+    pdf.text(ecMap[d.estCivil]||"", L+23, y);
+    if(d.conjuge) { pdf.setFont("helvetica","bold"); pdf.text("Nome do cônjuge:", 80, y); pdf.setFont("helvetica","normal"); pdf.text(val(d.conjuge), 112, y); }
+    y+=4;
+
+    pdf.setFont("helvetica","bold"); pdf.text("Grau de instrução:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.instrucao), L+35, y);
+    y+=4;
+
+    pdf.setFont("helvetica","bold"); pdf.text("Nacionalidade:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.nacionalidade)||"Brasil", L+27, y);
+    y+=5;
+
+    // Linha divisória
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+
+    // ── Endereço ──
+    pdf.setFont("helvetica","bold"); pdf.text("Residência:", L, y);
+    pdf.setFont("helvetica","normal");
+    const endCompleto = [d.rua, d.endNum, d.complemento, d.bairro].filter(Boolean).join(", ");
+    pdf.text(endCompleto, L+20, y);
+    y+=4;
+    pdf.setFont("helvetica","bold"); pdf.text("Cidade:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(`${val(d.cidade)} — ${val(d.uf)}`, L+14, y);
+    pdf.setFont("helvetica","bold"); pdf.text("CEP:", 100, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.cep), 110, y);
+    y+=5;
+
+    // Linha divisória
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+
+    // ── Documentos ──
+    pdf.setFontSize(7.5);
+    pdf.setFont("helvetica","bold"); pdf.text(`C.I. nº: ${val(d.rg)}`, L, y);
+    pdf.text(`Órgão: ${val(d.rgOrgao)}`, 60, y);
+    pdf.text(`Data: ${fmtData(d.rgData)}`, 100, y);
+    pdf.text(`CPF: ${val(d.cpf)}`, 140, y);
+    y+=4;
+    pdf.text(`CTPS nº: ${val(d.ctps)}`, L, y);
+    pdf.text(`Série: ${val(d.ctpsSerie)}`, 50, y);
+    pdf.text(`CTPS Rural nº: ${val(d.ctpsRural)||"—"}`, 80, y);
+    pdf.text(`PIS: ${val(d.pis)}`, 140, y);
+    y+=4;
+    pdf.text(`CNH nº: ${val(d.cnh)||"—"}`, L, y);
+    pdf.text(`Cert. Militar nº: ${val(d.certMilitar)||"—"}`, 70, y);
+    pdf.text(`Título de Eleitor: ${val(d.titulo)||"—"}`, 130, y);
+    y+=4;
+    pdf.text(`Zona: ${val(d.zona)||"—"}`, L, y);
+    y+=5;
+
+    // Linha divisória
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+
+    // ── Dados profissionais ──
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica","bold"); pdf.text("portador da C.T.P.S. nº:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.ctps), L+42, y);
+    pdf.setFont("helvetica","bold"); pdf.text("Série:", 90, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.ctpsSerie), 100, y);
+    y+=5;
+
+    pdf.setFont("helvetica","bold"); pdf.text("foi admitido em:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(fmtData(d.admissao), L+30, y);
+    pdf.setFont("helvetica","bold"); pdf.text("para exercer a função de:", 90, y);
+    pdf.setFont("helvetica","normal"); pdf.text(d.funcaoOutro||d.funcao||"", 140, y);
+    y+=5;
+
+    pdf.setFont("helvetica","bold"); pdf.text("CBO:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.cbo), L+10, y);
+    pdf.setFont("helvetica","bold"); pdf.text("com o salário de:", 50, y);
+    pdf.setFont("helvetica","normal"); pdf.text(brl(d.salario), 80, y);
+    pdf.setFont("helvetica","bold"); pdf.text("Por:", 130, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.formaPgto)||"Mensal", 136, y);
+    y+=5;
+
+    pdf.setFont("helvetica","bold"); pdf.text("Folga semanal:", L, y);
+    pdf.setFont("helvetica","normal"); pdf.text(val(d.folgaSemanal)||"Domingo", L+28, y);
+    pdf.setFont("helvetica","bold"); pdf.text("Horário:", 90, y);
+    const hr = `${val(d.hrEntrada)} ${val(d.hrAlmocoS)}/${val(d.hrAlmocoR)} ${val(d.hrSaida)}`;
+    pdf.setFont("helvetica","normal"); pdf.text(hr, 105, y);
+    y+=5;
+
+    if(d.obraNome) {
+      pdf.setFont("helvetica","bold"); pdf.text("Local/Obra:", L, y);
+      pdf.setFont("helvetica","normal"); pdf.text(val(d.obraNome), L+20, y);
+      pdf.setFont("helvetica","bold"); pdf.text("Setor:", 100, y);
+      pdf.setFont("helvetica","normal"); pdf.text(val(d.setor), 112, y);
+      y+=5;
+    }
+
+    // ── FGTS ──
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+    pdf.setFont("helvetica","bold"); pdf.setFontSize(8);
+    pdf.text("SITUAÇÃO PERANTE O FUNDO DE GARANTIA DO TEMPO DE SERVIÇO", L, y); y+=4;
+    pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
+    const fgtsOpt = d.fgtsOptante === false ? "Não" : "Sim";
+    pdf.text(`É optante? ${fgtsOpt}`, L, y);
+    pdf.text(`Data da opção: ${fmtData(d.fgtsDataOpcao)||"___/___/______"}`, 50, y);
+    pdf.text(`Banco depositário: ${val(d.bancoNome)}  Ag: ${val(d.bancoAg)}  Cta: ${val(d.bancoConta)}`, 110, y);
+    y+=5;
+
+    // ── PIS ──
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+    pdf.setFont("helvetica","bold"); pdf.text("PROGRAMA DE INTEGRAÇÃO SOCIAL (PIS)", L, y); y+=4;
+    pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
+    pdf.text(`Cadastrado em: ${val(d.pis)}`, L, y);
+    y+=5;
+
+    // ── Beneficiários (filhos) ──
+    const filhos = d.filhos||[];
+    if(filhos.length) {
+      pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
+      pdf.setFont("helvetica","bold"); pdf.setFontSize(8);
+      pdf.text("Beneficiários:", L, y); y+=4;
+      pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
+      filhos.forEach(f => {
+        pdf.text(`• ${f.nome||""}  —  Nasc.: ${fmtData(f.nasc)}`, L+4, y); y+=4;
+      });
+      y+=2;
+    }
+
+    // ── Rodapé com assinaturas ──
+    y = Math.max(y, 240);
+    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=8;
+    pdf.setFontSize(8); pdf.setFont("helvetica","normal");
+    // Data de registro
+    pdf.text(`Data Registro: ${fmtData(d.admissao)}`, L, y);
+    pdf.text(`Data Rescisão: ___/___/______`, 90, y);
+    y+=10;
+    pdf.line(L, y, L+60, y);
+    pdf.line(120, y, L+W, y);
+    y+=4;
+    pdf.setFontSize(7);
+    pdf.text("Assinatura do Empregado", L, y);
+    pdf.text(`${val(emp.responsavel)||"Responsável da Empresa"}`, 120, y);
+
+    // Rodapé
+    pdf.setFillColor(15,52,96); pdf.rect(0,285,210,12,"F");
+    pdf.setTextColor(255,255,255); pdf.setFontSize(7); pdf.setFont("helvetica","normal");
+    pdf.text("GO — Gestão de Obras | Ficha de Registro do Empregado | Gerado em "+dataGer, 14, 291);
+    pdf.text(val(emp.nome)||"", 196, 291, {align:"right"});
+
+    return pdf;
+  }
+
+  // Botão da tela RH para gerar ficha
   async function rhGerarPDFs() {
-    toast("⚙️ Geração de PDFs completos será implementada nas próximas etapas (fichas, contratos, EPIs).");
+    if(!rhFluxo.processoId && !rhFluxo.dados.nomeCompleto) {
+      toast("⚠️ Finalize o processo antes de gerar documentos.");
+      closeModal("modalRhProcesso");
+      return;
+    }
+    toast("⏳ Gerando ficha de registro...");
+    try {
+      const pdf = await rhGerarFichaRegistroPDF(rhFluxo.processoId);
+      const nome = `FichaRegistro_${(rhFluxo.dados.nomeCompleto||"colaborador").replace(/\s+/g,"_")}.pdf`;
+      pdf.save(nome);
+      toast("✅ Ficha de registro gerada!");
+    } catch(e){ toast("❌ Erro: "+e.message); console.error(e); }
   }
 
   window.App = {
@@ -4957,11 +5410,14 @@
     rhEtapaProxima, rhEtapaAnterior,
     rhAddFilho, rhRemFilho, rhUpdateFilho,
     rhFuncaoChange, rhToggleEstCivil,
-    rhMaskCPF, rhMaskTel, rhBuscarCEP,
+    rhMaskCPF, rhMaskTel, rhBuscarCEP, rhMaskCNPJ,
     rhUploadDoc, rhRemDoc,
     rhToggleExame, rhToggleNR,
     rhFiltrarLista, rhAbrirProcesso,
     rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
+    rhGerarFichaRegistroPDF,
+    // Empresa
+    salvarEmpresa, carregarEmpresa,
   };
 </script>
 
