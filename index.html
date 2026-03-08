@@ -3851,7 +3851,7 @@
         <div style="font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:6px">${f.label}</div>
         ${f.url && f.url !== "[foto_offline]"
           ? `<img src="${f.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:2px solid var(--border)">`
-          : `<div style="width:100%;aspect-ratio:1;background:#f3f4f6;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;color:#aaa;font-size:.8rem">${f.url==="[foto_offline]"]?"📵 offline":"Sem foto"}</div>`
+          : `<div style="width:100%;aspect-ratio:1;background:#f3f4f6;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;color:#aaa;font-size:.8rem">${f.url==="[foto_offline]"?"📵 offline":"Sem foto"}</div>`
         }
       </div>`).join("");
     $("modalFotosPonto").classList.remove("hidden");
