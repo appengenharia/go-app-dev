@@ -3,7 +3,7 @@
   ╔══════════════════════════════════════════════════════════════════════╗
   ║                  GO — GESTÃO DE OBRAS                               ║
   ║                                                                      ║
-  ║  Desenvolvido por: Josimar Rodrigues Da Rocha                        ║
+  ║  Desenvolvido por: Josimar Rodrigues Da Rocha  (31)971441063         ║
   ║  Sistema de gestão de obras, colaboradores, ponto e RH              ║
   ║  Todos os direitos reservados © 2026                                 ║
   ╚══════════════════════════════════════════════════════════════════════╝
@@ -5855,8 +5855,8 @@
     const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
 
     // ── Página A4: 210 × 297 mm ─────────────────────────────────────────
-    // Margens
-    const ml=10, mr=200, pw=190;
+    // Margens mínimas para preencher bem a folha
+    const ml=8, mr=202, pw=194;
     // Fontes
     const fn  = 8.5;   // fonte normal dados
     const fb  = 8.5;   // fonte bold (igual, diferenciado pelo estilo)
@@ -6095,34 +6095,35 @@
     y+=8;
 
     // ════════════════════════════════════════════════════════════════════
-    // BLOCO F — DATAS E ASSINATURAS
-    // Fixo no fim da página, sempre preenche o A4
+    // BLOCO F — DATAS E ASSINATURAS  (fixo no fim da A4)
+    // Datas em y=248, linha assinatura em y=268, nomes em y=273
     // ════════════════════════════════════════════════════════════════════
-    // Posição fixa: datas em y=258, assinaturas em y=276
-    const yDatas=258, yAssLinha=272, yAssLabel=277;
+    const yDatas=248, yAssLinha=268, yAssNome=273;
 
-    DIV(yDatas);
+    // Linha divisória de seção — de ml até mr (ponta a ponta)
+    pdf.setDrawColor(80,80,80); pdf.setLineWidth(0.4);
+    pdf.line(ml, yDatas, mr, yDatas);
 
+    // Datas
     pdf.setFontSize(fn); pdf.setFont("helvetica","bold");
-    pdf.text("Data Registro: ",ml,yDatas+7);
+    pdf.text("Data Registro: ", ml, yDatas+7);
     pdf.setFont("helvetica","normal");
     pdf.text(fmtD(d.admissao)||"___/___/______", ml+pdf.getTextWidth("Data Registro: "), yDatas+7);
 
     pdf.setFont("helvetica","bold");
-    pdf.text("Data Rescisão: ",130,yDatas+7);
+    pdf.text("Data Rescisão: ", 130, yDatas+7);
     pdf.setFont("helvetica","normal");
     pdf.text("___/___/______", 130+pdf.getTextWidth("Data Rescisão: "), yDatas+7);
 
-    // Linhas de assinatura
-    pdf.setDrawColor(50,50,50); pdf.setLineWidth(0.3);
-    pdf.line(ml,         yAssLinha, ml+80,       yAssLinha);  // Empregado
-    pdf.line(mr-80,      yAssLinha, mr,           yAssLinha);  // Responsável
+    // Linhas de assinatura — de ponta a ponta (ml→ml+85 e mr-85→mr)
+    pdf.setDrawColor(50,50,50); pdf.setLineWidth(0.35);
+    pdf.line(ml,    yAssLinha, ml+85, yAssLinha);   // Empregado
+    pdf.line(mr-85, yAssLinha, mr,    yAssLinha);   // Responsável
 
-    // Labels sob as linhas
-    CC("Assinatura do Empregado",       ml+40,  yAssLabel, fn);
-    CC(V(d.nomeCompleto),               ml+40,  yAssLabel+5, fs);
-    CC(V(emp.responsavel)||"Responsável da Empresa", mr-40, yAssLabel, fn);
-    CC(V(emp.cargoResp)||"",            mr-40,  yAssLabel+5, fs);
+    // Nomes diretamente abaixo das linhas (sem label intermediário)
+    pdf.setFont("helvetica","normal"); pdf.setFontSize(fn);
+    pdf.text(V(d.nomeCompleto)||"Empregado", ml+42.5, yAssNome, {align:"center"});
+    pdf.text(V(emp.responsavel)||"Responsável da Empresa", mr-42.5, yAssNome, {align:"center"});
 
     // ════════════════════════════════════════════════════════════════════
     // RODAPÉ AZUL — fixo em 283mm
