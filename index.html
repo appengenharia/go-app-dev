@@ -6112,13 +6112,14 @@
 
   // Inicializa preview quando a etapa é carregada + registra listeners
   function rhPreviewIniciar() {
-    // Só renderiza o cabeçalho da empresa ao abrir a etapa (sem listeners automáticos)
-    _prevRenderFichaEmpresa(_rhPreviewLerDados());
+    // Garante dados da empresa carregados antes de renderizar cabeçalho
+    getEmpresa().then(() => _prevRenderFichaEmpresa(_rhPreviewLerDados()));
   }
 
-  // Abrir modal de preview — salva dados atuais e renderiza
-  function rhAbrirPreview() {
+  // Abrir modal de preview — sempre busca empresa do Firestore se necessário
+  async function rhAbrirPreview() {
     _rhSalvarEtapaAtual();
+    await getEmpresa(); // garante _empresaCache preenchido
     const d = _rhPreviewLerDados();
     _prevRenderFichaEmpresa(d);
     _rhPreviewAtualizar();
@@ -6131,13 +6132,14 @@
     document.body.style.overflow = "";
   }
 
-  // Renderiza só o cabeçalho da empresa (chamado na init e pelo trigger)
+  // Renderiza o cabeçalho da empresa — _empresaCache já garantido pelo caller
   function _prevRenderFichaEmpresa(d) {
     const emp = _empresaCache || {};
     const numFicha = (d?.numRegistro||"00001").toString().replace(/\D/g,"").padStart(5,"0");
     const empHeader = $("prevFichaEmpresa");
     if(!empHeader) return;
     const endEmp = [emp.rua, emp.num, emp.bairro].filter(Boolean).join(", ");
+    const semDados = !emp.nome;
     empHeader.innerHTML = `
       <div style="text-align:center;font-weight:700;font-size:10px;letter-spacing:.04em;margin-bottom:4px">
         FICHA DE REGISTRO DOS EMPREGADOS &nbsp; N° &nbsp; ${numFicha} &nbsp;–&nbsp; Frente
@@ -6145,7 +6147,9 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
           <span style="color:#555;font-size:9px">Da firma:&nbsp;</span>
-          <strong style="font-size:10px">${emp.nome || "<span style='color:#94a3b8;font-size:8.5px'>Cadastre os dados da empresa em Administração</span>"}</strong>
+          <strong style="font-size:10px">${semDados
+            ? "<span style='color:#e87a3b;font-size:8.5px'>⚠️ Cadastre os dados em Administração › Empresa</span>"
+            : emp.nome}</strong>
         </div>
         <div style="text-align:right;white-space:nowrap">
           <span style="color:#555;font-size:9px">CNPJ / CEI:&nbsp;</span>
