@@ -747,7 +747,11 @@
               <div><label>Bairro</label><input id="empBairro" placeholder="Bairro"></div>
               <div><label>Cidade</label><input id="empCidade" placeholder="Cidade"></div>
               <div><label>UF</label><input id="empUf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
-              <div><label>CEP</label><input id="empCep" placeholder="00000-000"></div>
+              <div>
+                <label>CEP</label>
+                <input id="empCep" placeholder="00000-000" maxlength="9" oninput="App.empBuscarCEP(this)">
+                <span id="empCep_status" style="font-size:.75rem;display:block;min-height:16px;margin-top:2px"></span>
+              </div>
               <div><label>E-mail da Empresa</label><input id="empEmail" type="email" placeholder="contato@empresa.com"></div>
               <div style="grid-column:1/-1"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
               <div><label>CPF do Responsável</label><input id="empCpfResp" placeholder="000.000.000-00"></div>
@@ -4335,11 +4339,15 @@
   function rhRenderStepper() {
     const etapas = rhGetEtapas(rhFluxo.tipo);
     const atual  = rhFluxo.etapaAtual;
-    $("rhStepper").innerHTML = etapas.map((e,i) => `
-      <div class="rh-step ${i<atual?"done":i===atual?"active":""}">
-        <div class="rh-step-circle">${i<atual?"✓":(i+1)}</div>
-        <div class="rh-step-label">${e.icon} ${e.label}</div>
-      </div>`).join("");
+    $("rhStepper").innerHTML = etapas.map((e,i) => {
+      const estado = i < atual ? "done" : i === atual ? "active" : "";
+      const clicavel = i < atual; // etapas já concluídas são clicáveis
+      return `
+      <div class="rh-step ${estado}" ${clicavel ? `onclick="App.rhIrParaEtapa(${i})" style="cursor:pointer" title="Editar: ${e.label}"` : ""}>
+        <div class="rh-step-circle">${i < atual ? "✓" : (i+1)}</div>
+        <div class="rh-step-label">${e.icon} ${e.label}${clicavel ? ' <span style="font-size:.6rem;opacity:.7">✎</span>' : ""}</div>
+      </div>`;
+    }).join("");
   }
 
   function rhRenderEtapa() {
@@ -4419,7 +4427,11 @@
 
       <div class="rh-section-title">🏠 Endereço Residencial</div>
       <div class="rh-field-grid">
-        <div><label>CEP *</label><input id="rh_cep" value="${d.cep||""}" placeholder="00000-000" oninput="App.rhBuscarCEP(this)"></div>
+        <div>
+          <label>CEP *</label>
+          <input id="rh_cep" value="${d.cep||""}" placeholder="00000-000" oninput="App.rhBuscarCEP(this)" maxlength="9">
+          <span id="rh_cep_status" style="font-size:.75rem;display:block;min-height:16px;margin-top:2px"></span>
+        </div>
         <div><label>Logradouro *</label><input id="rh_rua" value="${d.rua||""}" placeholder="Rua / Av."></div>
         <div><label>Número *</label><input id="rh_endnum" value="${d.endNum||""}" placeholder="Nº"></div>
         <div><label>Complemento</label><input id="rh_complemento" value="${d.complemento||""}" placeholder="Apto, bloco..."></div>
@@ -4649,18 +4661,54 @@
     v = v.length<=10 ? v.replace(/(\d{2})(\d{4})(\d{0,4})/,"($1) $2-$3") : v.replace(/(\d{2})(\d{5})(\d{0,4})/,"($1) $2-$3");
     el.value = v;
   }
-  async function rhBuscarCEP(el) {
-    const cep = el.value.replace(/\D/g,"");
+  // CEP genérico — prefixo define quais campos preencher: "rh_" ou "emp"
+  function rhMaskCEP(el) {
+    let v = el.value.replace(/\D/g,"").slice(0,8);
+    if(v.length > 5) v = v.slice(0,5)+"-"+v.slice(5);
+    el.value = v;
+  }
+
+  async function buscarCEP(cepRaw, prefixo) {
+    const cep = cepRaw.replace(/\D/g,"");
     if(cep.length !== 8) return;
+
+    // IDs dos campos por prefixo
+    const ids = prefixo === "rh_"
+      ? { rua:"rh_rua", bairro:"rh_bairro", cidade:"rh_cidade", uf:"rh_uf", complemento:"rh_complemento", status:"rh_cep_status" }
+      : { rua:"empRua", bairro:"empBairro", cidade:"empCidade", uf:"empUf", complemento:null, status:"empCep_status" };
+
+    // Feedback de carregamento no campo CEP
+    const statusEl = $(ids.status);
+    if(statusEl) { statusEl.textContent = "⏳ Buscando..."; statusEl.style.color="var(--muted)"; }
+
     try {
       const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       const data = await r.json();
-      if(data.erro) return;
-      if($("rh_rua"))    $("rh_rua").value    = data.logradouro||"";
-      if($("rh_bairro")) $("rh_bairro").value = data.bairro||"";
-      if($("rh_cidade")) $("rh_cidade").value = data.localidade||"";
-      if($("rh_uf"))     $("rh_uf").value     = data.uf||"";
-    } catch(_){}
+      if(data.erro) {
+        if(statusEl) { statusEl.textContent = "⚠️ CEP não encontrado."; statusEl.style.color="var(--danger)"; }
+        return;
+      }
+      const set = (id, val) => { if(id && $(id) && val) $(id).value = val; };
+      set(ids.rua,        data.logradouro);
+      set(ids.bairro,     data.bairro);
+      set(ids.cidade,     data.localidade);
+      set(ids.uf,         data.uf);
+      set(ids.complemento,data.complemento);
+      if(statusEl) { statusEl.textContent = "✅ Endereço preenchido!"; statusEl.style.color="var(--success)"; setTimeout(()=>{ if(statusEl) statusEl.textContent=""; }, 3000); }
+    } catch(_) {
+      if(statusEl) { statusEl.textContent = "❌ Erro ao buscar CEP."; statusEl.style.color="var(--danger)"; }
+    }
+  }
+
+  // Mantido como alias para compatibilidade com oninput existente
+  async function rhBuscarCEP(el) {
+    rhMaskCEP(el);
+    await buscarCEP(el.value, "rh_");
+  }
+
+  async function empBuscarCEP(el) {
+    rhMaskCEP(el);
+    await buscarCEP(el.value, "emp");
   }
 
   // ── ETAPA 2: DOCUMENTOS PESSOAIS ──
@@ -4942,11 +4990,28 @@
 
   function rhEtapaAnterior() {
     if(rhFluxo.etapaAtual > 0) {
-      if(etapas?.[rhFluxo.etapaAtual]?.id === "dados") rhSalvarDados();
+      _rhSalvarEtapaAtual();
       rhFluxo.etapaAtual--;
       rhRenderStepper();
       rhRenderEtapa();
     }
+  }
+
+  // Navegar para qualquer etapa (clique no stepper ou botão anterior)
+  async function rhIrParaEtapa(indice) {
+    // Salvar dados da etapa atual antes de trocar
+    _rhSalvarEtapaAtual();
+    rhFluxo.etapaAtual = indice;
+    rhRenderStepper();
+    rhRenderEtapa();
+    await rhSalvarRascunho();
+  }
+
+  // Salva os dados da etapa corrente sem validação (para navegação livre)
+  function _rhSalvarEtapaAtual() {
+    const etapas = rhGetEtapas(rhFluxo.tipo);
+    const etapa  = etapas[rhFluxo.etapaAtual];
+    if(etapa?.id === "dados") rhSalvarDados(); // ignora retorno
   }
 
   function rhVoltarHome() {
@@ -5575,12 +5640,13 @@
     rhEtapaProxima, rhEtapaAnterior,
     rhAddFilho, rhRemFilho, rhUpdateFilho,
     rhFuncaoChange, rhToggleEstCivil,
-    rhMaskCPF, rhMaskTel, rhBuscarCEP, rhMaskCNPJ,
+    rhMaskCPF, rhMaskTel, rhBuscarCEP, rhMaskCNPJ, empBuscarCEP,
     rhUploadDoc, rhRemDoc,
     rhToggleExame, rhToggleNR,
     rhFiltrarLista, rhAbrirProcesso,
     rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
     rhGerarFichaRegistroPDF,
+    rhIrParaEtapa,
     // Empresa
     salvarEmpresa, carregarEmpresa, empresaEditar, empresaCancelar,
     // RH — autocomplete
