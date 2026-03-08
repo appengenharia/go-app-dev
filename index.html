@@ -6015,7 +6015,17 @@
       R2("Agência: ", V(d.bancoAg));
       R2("Conta: ", V(d.bancoConta));
     }
+
+    // ── Linha divisória entre Recebimento e PIS/eSocial ──────────────
     y2 += 2;
+    pdf.setDrawColor(150,150,150); pdf.setLineWidth(0.25);
+    pdf.line(c2x+2, y2, mr-2, y2);
+    y2 += 4;
+    // Sub-título PIS / PASEP
+    pdf.setFont("helvetica","bold"); pdf.setFontSize(6.5);
+    pdf.text("PIS / PASEP  /  e-SOCIAL", c2x+2+(c2w-4)/2, y2, {align:"center"});
+    y2 += lhs;
+
     R2("PIS / PASEP: ", V(d.pis));
     R2("Cadastrado em:");
     R2("sob nº: ", V(d.pis));
