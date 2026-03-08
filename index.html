@@ -810,6 +810,7 @@
   const auth    = getAuth(firebaseMain);
   const authAux = getAuth(firebaseHelper);
   const db      = getFirestore(firebaseMain);
+  const dbAux   = getFirestore(firebaseHelper); // Firestore autenticado via authAux (módulo de ponto)
 
   // ─────────────────────────────────────────
   // UTILITÁRIOS
@@ -954,6 +955,12 @@
 
   async function loadProfile(uid) {
     try { const s=await getDoc(doc(db,"usuarios",uid)); if(s.exists()) return s.data(); } catch(_){}
+    return null;
+  }
+
+  // Versão do loadProfile autenticada via authAux — usada exclusivamente no módulo de ponto
+  async function loadProfileAux(uid) {
+    try { const s=await getDoc(doc(dbAux,"usuarios",uid)); if(s.exists()) return s.data(); } catch(_){}
     return null;
   }
 
@@ -1990,13 +1997,13 @@
         try {
           const { localId, syncStatus, savedAt, dataHora, ...pontoData } = record;
           // Busca ponto do dia no Firestore para fazer merge (entrada/almoço/retorno/saída)
+          // Sync roda quando admin está online, usa db principal com permissão de escrita total
           const q = query(collection(db,"pontos"), where("uid","==",pontoData.uid), where("data","==",pontoData.data));
           const snap = await getDocs(q);
           const fase = pontoData._fase;
           delete pontoData._fase;
 
           if(snap.empty) {
-            // Primeiro registro do dia — cria documento
             pontoData.criadoEm = serverTimestamp();
             await addDoc(collection(db,"pontos"), pontoData);
           } else {
@@ -2740,7 +2747,7 @@
       const cred = await signInWithEmailAndPassword(authAux, email, senha);
       pontoUser  = cred.user;
 
-      pontoProfile = await loadProfile(pontoUser.uid);
+      pontoProfile = await loadProfileAux(pontoUser.uid);
       if(!pontoProfile || pontoProfile.ativo===false) {
         await signOut(authAux);
         setMsg("pontoLoginMsg","⛔ Conta inativa. Fale com o administrador.");
@@ -2781,7 +2788,7 @@
     if(obras.length > 0) {
       try {
         if(navigator.onLine) {
-          const obraSnap = await getDoc(doc(db,"obras",obras[0]));
+          const obraSnap = await getDoc(doc(dbAux,"obras",obras[0]));
           pontoObraData  = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
         }
         // Offline: tenta carregar obra do cache de credenciais
@@ -3223,11 +3230,11 @@
       }
 
       // ── MODO ONLINE: salva direto no Firestore ─────────────────
-      const q    = query(collection(db,"pontos"),where("uid","==",pontoUser.uid),where("data","==",hoje));
+      const q    = query(collection(dbAux,"pontos"),where("uid","==",pontoUser.uid),where("data","==",hoje));
       const snap = await getDocs(q);
 
       if(snap.empty) {
-        await addDoc(collection(db,"pontos"),{
+        await addDoc(collection(dbAux,"pontos"),{
           uid:              pontoUser.uid,
           colaborador_nome: pontoProfile.nome || pontoUser.email,
           obra_id:          pontoObraData?.id  || "",
@@ -3331,7 +3338,7 @@
   async function determinarFase(uid) {
     const hoje=new Date().toISOString().split("T")[0];
     try {
-      const q=query(collection(db,"pontos"),where("uid","==",uid),where("data","==",hoje));
+      const q=query(collection(dbAux,"pontos"),where("uid","==",uid),where("data","==",hoje));
       const snap=await getDocs(q);
       if(snap.empty)return"entrada";
       const p=snap.docs[0].data();
@@ -3347,7 +3354,7 @@
     const ontem=new Date(); ontem.setDate(ontem.getDate()-1);
     const ontemStr=ontem.toISOString().split("T")[0];
     try {
-      const q=query(collection(db,"pontos"),where("uid","==",uid),where("data","==",ontemStr));
+      const q=query(collection(dbAux,"pontos"),where("uid","==",uid),where("data","==",ontemStr));
       const snap=await getDocs(q);
       if(snap.empty)return null;
       const p=snap.docs[0]; const d=p.data();
