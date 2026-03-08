@@ -738,15 +738,15 @@
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
   import { initializeApp }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
     createUserWithEmailAndPassword, updatePassword
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs,
     updateDoc, deleteDoc, serverTimestamp, query, orderBy, where
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
   // ─────────────────────────────────────────
   // CONFIGURAÇÃO FIREBASE
@@ -1394,16 +1394,19 @@
   // ─────────────────────────────────────────
   // AUTH STATE OBSERVER
   // ─────────────────────────────────────────
-  setTimeout(() => {
+
+  // Fallback: se Firebase não responder em 4s, mostra login
+  const _loadingTimer = setTimeout(() => {
     const ls = $("loadingScreen");
     if(ls && ls.style.display !== "none") {
       ls.style.display = "none";
       $("loginPage").classList.remove("hidden");
       $("topbar").classList.remove("hidden");
     }
-  }, 8000);
+  }, 4000);
 
   onAuthStateChanged(auth, async (user) => {
+    clearTimeout(_loadingTimer);
     $("loadingScreen").style.display="none";
     $("topbar").classList.remove("hidden");
     // Verifica se usuário está na tela de ponto — não interferir
