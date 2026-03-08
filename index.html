@@ -720,25 +720,41 @@
       <!-- ── Painel Empresa ── -->
       <div class="admin-panel" id="adm-empresa">
         <div class="card">
-          <div class="card-header"><div><h3>🏢 Dados da Empresa</h3><p>Utilizados no preenchimento automático de documentos e fichas.</p></div></div>
-          <div class="rh-field-grid">
-            <div style="grid-column:1/-1"><label>Razão Social / Nome da Empresa *</label><input id="empNome" placeholder="Ex: JCS Construções e Serviços Ltda"></div>
-            <div><label>CNPJ / CEI *</label><input id="empCnpj" placeholder="00.000.000/0000-00" oninput="App.rhMaskCNPJ(this)"></div>
-            <div><label>Telefone da Empresa</label><input id="empTel" placeholder="(00) 00000-0000"></div>
-            <div style="grid-column:1/-1"><label>Endereço (Logradouro)</label><input id="empRua" placeholder="Rua, Avenida..."></div>
-            <div><label>Número</label><input id="empNum" placeholder="Nº"></div>
-            <div><label>Bairro</label><input id="empBairro" placeholder="Bairro"></div>
-            <div><label>Cidade</label><input id="empCidade" placeholder="Cidade"></div>
-            <div><label>UF</label><input id="empUf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
-            <div><label>CEP</label><input id="empCep" placeholder="00000-000"></div>
-            <div><label>E-mail da Empresa</label><input id="empEmail" type="email" placeholder="contato@empresa.com"></div>
-            <div style="grid-column:1/-1"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
-            <div><label>CPF do Responsável</label><input id="empCpfResp" placeholder="000.000.000-00"></div>
-            <div><label>Cargo do Responsável</label><input id="empCargoResp" placeholder="Ex: Diretor, Sócio-Administrador"></div>
+          <div class="card-header">
+            <div><h3>🏢 Dados da Empresa</h3><p>Utilizados no preenchimento automático de documentos e fichas.</p></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline sm" id="empBtnEditar" onclick="App.empresaEditar()">✏️ Editar</button>
+              <button class="btn btn-primary sm hidden" id="empBtnSalvar" onclick="App.salvarEmpresa()">💾 Salvar</button>
+              <button class="btn btn-outline sm hidden" id="empBtnCancelar" onclick="App.empresaCancelar()">✕ Cancelar</button>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
-            <button class="btn btn-primary" onclick="App.salvarEmpresa()">💾 Salvar Dados da Empresa</button>
+
+          <!-- Modo leitura -->
+          <div id="empViewMode">
+            <div id="empViewConteudo" style="font-size:.88rem;line-height:2;color:var(--text)">
+              <div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando...</div>
+            </div>
           </div>
+
+          <!-- Modo edição (oculto inicialmente) -->
+          <div id="empEditMode" class="hidden">
+            <div class="rh-field-grid">
+              <div style="grid-column:1/-1"><label>Razão Social / Nome da Empresa *</label><input id="empNome" placeholder="Ex: JCS Construções e Serviços Ltda"></div>
+              <div><label>CNPJ / CEI *</label><input id="empCnpj" placeholder="00.000.000/0000-00" oninput="App.rhMaskCNPJ(this)"></div>
+              <div><label>Telefone da Empresa</label><input id="empTel" placeholder="(00) 00000-0000"></div>
+              <div style="grid-column:1/-1"><label>Endereço (Logradouro)</label><input id="empRua" placeholder="Rua, Avenida..."></div>
+              <div><label>Número</label><input id="empNum" placeholder="Nº"></div>
+              <div><label>Bairro</label><input id="empBairro" placeholder="Bairro"></div>
+              <div><label>Cidade</label><input id="empCidade" placeholder="Cidade"></div>
+              <div><label>UF</label><input id="empUf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+              <div><label>CEP</label><input id="empCep" placeholder="00000-000"></div>
+              <div><label>E-mail da Empresa</label><input id="empEmail" type="email" placeholder="contato@empresa.com"></div>
+              <div style="grid-column:1/-1"><label>Responsável / Representante Legal</label><input id="empResponsavel" placeholder="Nome do responsável pela assinatura"></div>
+              <div><label>CPF do Responsável</label><input id="empCpfResp" placeholder="000.000.000-00"></div>
+              <div><label>Cargo do Responsável</label><input id="empCargoResp" placeholder="Ex: Diretor, Sócio-Administrador"></div>
+            </div>
+          </div>
+
           <div class="msg" id="empMsg" style="margin-top:8px"></div>
         </div>
       </div>
@@ -4355,7 +4371,11 @@
     <div class="card">
       <div class="rh-section-title">📋 Identificação Pessoal</div>
       <div class="rh-field-grid">
-        <div style="grid-column:1/-1"><label>Nome Completo *</label><input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Nome completo conforme documentos"></div>
+        <div style="grid-column:1/-1;position:relative">
+          <label>Nome Completo *</label>
+          <input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Digite o nome ou busque um colaborador existente" oninput="App.rhBuscarColabPorNome(this.value)" autocomplete="off">
+          <div id="rh_nome_sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--primary);border-top:none;border-radius:0 0 10px 10px;z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+        </div>
         <div><label>CPF * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_cpf" value="${d.cpf||""}" placeholder="000.000.000-00" oninput="App.rhMaskCPF(this)"></div>
         <div><label>RG / Identidade * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_rg" value="${d.rg||""}" placeholder="Número do RG"></div>
         <div><label>Órgão Emissor / UF</label><input id="rh_rg_orgao" value="${d.rgOrgao||""}" placeholder="Ex: SSP/MG"></div>
@@ -5071,26 +5091,75 @@
   // ═══════════════════════════════════════════════════════════
   let _empresaCache = null;
 
+  function _empRenderView(emp) {
+    const v = (val, fallback="—") => val || fallback;
+    const enderecoEmp = [emp.rua, emp.num, emp.bairro, emp.cidade ? emp.cidade+(emp.uf?"/"+emp.uf:"") : ""].filter(Boolean).join(", ");
+    const el = $("empViewConteudo"); if(!el) return;
+    if(!emp.nome) {
+      el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:8px">🏢</div>
+        <p>Nenhum dado cadastrado ainda.</p>
+        <p style="font-size:.8rem;margin-top:4px">Clique em <strong>✏️ Editar</strong> para preencher.</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px">
+        <div><span style="color:var(--muted);font-size:.78rem">Razão Social</span><br><strong>${v(emp.nome)}</strong></div>
+        <div><span style="color:var(--muted);font-size:.78rem">CNPJ / CEI</span><br><strong>${v(emp.cnpj)}</strong></div>
+        <div style="margin-top:8px"><span style="color:var(--muted);font-size:.78rem">Telefone</span><br>${v(emp.tel)}</div>
+        <div style="margin-top:8px"><span style="color:var(--muted);font-size:.78rem">E-mail</span><br>${v(emp.email)}</div>
+        <div style="margin-top:8px;grid-column:1/-1"><span style="color:var(--muted);font-size:.78rem">Endereço</span><br>${v(enderecoEmp)} — CEP ${v(emp.cep)}</div>
+        <div style="margin-top:8px"><span style="color:var(--muted);font-size:.78rem">Responsável Legal</span><br>${v(emp.responsavel)}</div>
+        <div style="margin-top:8px"><span style="color:var(--muted);font-size:.78rem">CPF / Cargo</span><br>${v(emp.cpfResp)} — ${v(emp.cargoResp)}</div>
+      </div>`;
+  }
+
+  function _empPreencherInputs(emp) {
+    const set = (id, val) => { const el=$(id); if(el) el.value=val||""; };
+    set("empNome",       emp.nome);
+    set("empCnpj",       emp.cnpj);
+    set("empTel",        emp.tel);
+    set("empRua",        emp.rua);
+    set("empNum",        emp.num);
+    set("empBairro",     emp.bairro);
+    set("empCidade",     emp.cidade);
+    set("empUf",         emp.uf);
+    set("empCep",        emp.cep);
+    set("empEmail",      emp.email);
+    set("empResponsavel",emp.responsavel);
+    set("empCpfResp",    emp.cpfResp);
+    set("empCargoResp",  emp.cargoResp);
+  }
+
   async function carregarEmpresa() {
     try {
       const snap = await getDoc(doc(db,"configuracoes","empresa"));
       const emp  = snap.exists() ? snap.data() : {};
       _empresaCache = emp;
-      const set = (id, val) => { const el=$(id); if(el) el.value=val||""; };
-      set("empNome",       emp.nome);
-      set("empCnpj",       emp.cnpj);
-      set("empTel",        emp.tel);
-      set("empRua",        emp.rua);
-      set("empNum",        emp.num);
-      set("empBairro",     emp.bairro);
-      set("empCidade",     emp.cidade);
-      set("empUf",         emp.uf);
-      set("empCep",        emp.cep);
-      set("empEmail",      emp.email);
-      set("empResponsavel",emp.responsavel);
-      set("empCpfResp",    emp.cpfResp);
-      set("empCargoResp",  emp.cargoResp);
+      _empRenderView(emp);
+      _empPreencherInputs(emp);
     } catch(e){ console.warn("carregarEmpresa:", e); }
+  }
+
+  function empresaEditar() {
+    $("empViewMode").classList.add("hidden");
+    $("empEditMode").classList.remove("hidden");
+    $("empBtnEditar").classList.add("hidden");
+    $("empBtnSalvar").classList.remove("hidden");
+    $("empBtnCancelar").classList.remove("hidden");
+    $("empMsg").textContent = "";
+    // Garantir inputs preenchidos
+    if(_empresaCache) _empPreencherInputs(_empresaCache);
+  }
+
+  function empresaCancelar() {
+    $("empEditMode").classList.add("hidden");
+    $("empViewMode").classList.remove("hidden");
+    $("empBtnEditar").classList.remove("hidden");
+    $("empBtnSalvar").classList.add("hidden");
+    $("empBtnCancelar").classList.add("hidden");
+    $("empMsg").textContent = "";
   }
 
   async function salvarEmpresa() {
@@ -5115,6 +5184,8 @@
     try {
       await setDoc(doc(db,"configuracoes","empresa"), emp);
       _empresaCache = emp;
+      _empRenderView(emp);
+      empresaCancelar();
       setMsg("empMsg","✅ Dados da empresa salvos!","ok");
       toast("Dados da empresa salvos com sucesso!");
     } catch(e){ setMsg("empMsg","❌ Erro: "+e.message); }
@@ -5125,6 +5196,100 @@
     const snap = await getDoc(doc(db,"configuracoes","empresa"));
     _empresaCache = snap.exists() ? snap.data() : {};
     return _empresaCache;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // AUTOCOMPLETE DE COLABORADOR NO RH
+  // ═══════════════════════════════════════════════════════════
+  let _rhColabsCache = null;
+  let _rhBuscaTimer  = null;
+
+  async function _rhCarregarColabs() {
+    if(_rhColabsCache) return _rhColabsCache;
+    const snap = await getDocs(collection(db,"usuarios"));
+    _rhColabsCache = [];
+    snap.forEach(d => {
+      const u = d.data();
+      if(u.role !== "ADMIN") _rhColabsCache.push({ id:d.id, ...u });
+    });
+    return _rhColabsCache;
+  }
+
+  async function rhBuscarColabPorNome(valor) {
+    const caixa = $("rh_nome_sugestoes"); if(!caixa) return;
+    clearTimeout(_rhBuscaTimer);
+    if(!valor || valor.length < 2) { caixa.style.display="none"; return; }
+
+    _rhBuscaTimer = setTimeout(async () => {
+      const colabs = await _rhCarregarColabs();
+      const termo  = valor.toLowerCase();
+      const achados = colabs.filter(c =>
+        (c.nome||"").toLowerCase().includes(termo) ||
+        (c.email||"").toLowerCase().includes(termo)
+      ).slice(0, 8);
+
+      if(!achados.length) { caixa.style.display="none"; return; }
+
+      caixa.innerHTML = achados.map(c => `
+        <div onclick="App.rhSelecionarColab('${c.id}')"
+          style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:.15s"
+          onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+          ${c.fotoUrl
+            ? `<img src="${c.fotoUrl}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+            : `<div style="width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0">${(c.nome||c.email||"?")[0].toUpperCase()}</div>`}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome||"—"}</div>
+            <div style="font-size:.75rem;color:var(--muted)">${c.email||""} ${c.ativo===false?"· <span style=color:var(--danger)>inativo</span>":""}</div>
+          </div>
+          <span style="font-size:.72rem;color:var(--primary);background:#eff6ff;padding:2px 8px;border-radius:8px">Usar dados</span>
+        </div>`).join("");
+      caixa.style.display = "block";
+
+      // Fechar ao clicar fora
+      const fechar = (e) => {
+        if(!caixa.contains(e.target) && e.target.id !== "rh_nome") {
+          caixa.style.display="none";
+          document.removeEventListener("click", fechar);
+        }
+      };
+      setTimeout(() => document.addEventListener("click", fechar), 100);
+    }, 280);
+  }
+
+  async function rhSelecionarColab(uid) {
+    const caixa = $("rh_nome_sugestoes");
+    if(caixa) caixa.style.display="none";
+
+    const colabs = await _rhCarregarColabs();
+    const c = colabs.find(x => x.id === uid);
+    if(!c) return;
+
+    // Preencher dados disponíveis no cadastro de usuários
+    const d = rhFluxo.dados;
+    d.colaboradorId  = uid;
+    d.nomeCompleto   = c.nome || d.nomeCompleto;
+    d.email          = c.email || d.email;
+    d.fotoUrl        = c.fotoUrl || d.fotoUrl;   // usada na ficha
+    d.obraId         = c.obra_id || d.obraId;
+
+    // Preencher campos visíveis no formulário
+    const set = (id, val) => { const el=$(id); if(el && val) el.value = val; };
+    set("rh_nome",  d.nomeCompleto);
+    set("rh_email", d.email);
+
+    // Preencher obra no select (depois do carregamento)
+    const selObra = $("rh_obra");
+    if(selObra && d.obraId) {
+      // Tenta selecionar; se ainda não carregou, aguarda
+      const tentarSelecionar = () => {
+        const opt = selObra.querySelector(`option[value="${d.obraId}"]`);
+        if(opt) opt.selected = true;
+      };
+      tentarSelecionar();
+      setTimeout(tentarSelecionar, 600);
+    }
+
+    toast(`✅ Dados de ${d.nomeCompleto} carregados! Complete os campos trabalhistas.`);
   }
 
   function rhMaskCNPJ(el) {
@@ -5417,7 +5582,9 @@
     rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
     rhGerarFichaRegistroPDF,
     // Empresa
-    salvarEmpresa, carregarEmpresa,
+    salvarEmpresa, carregarEmpresa, empresaEditar, empresaCancelar,
+    // RH — autocomplete
+    rhBuscarColabPorNome, rhSelecionarColab,
   };
 </script>
 
