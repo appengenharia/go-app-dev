@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║                  GO — GESTÃO DE OBRAS                               ║
-  ║                                                                      ║
-  ║  Desenvolvido por: Josimar Rodrigues Da Rocha  (31)971441063         ║
-  ║  Sistema de gestão de obras, colaboradores, ponto e RH              ║
+  ║                  GO — GESTÃO DE OBRAS                                ║
+  ║  Desenvolvido por: Josimar Rodrigues Da Rocha                        ║
+  ║   (31)971441063 - josimar.rrocha@gmail.com                           ║
+  ║  Sistema de gestão de obras, colaboradores, ponto e RH               ║
   ║  Todos os direitos reservados © 2026                                 ║
   ╚══════════════════════════════════════════════════════════════════════╝
 -->
@@ -5913,7 +5913,7 @@
     // Linha interna separando título dos dados da empresa
     pdf.setDrawColor(160,160,160); pdf.setLineWidth(0.2); pdf.line(ml,20,mr,20);
 
-    F("Da firma: ",  V(emp.nome), ml+2, 25, fn);
+    F("Empresa: ",  V(emp.nome), ml+2, 25, fn);
     pdf.setFont("helvetica","normal"); pdf.setFontSize(fn);
     F("Endereço: ", [emp.rua,emp.num,emp.bairro].filter(Boolean).join(", "), ml+2, 31, fn);
     pdf.text("CNPJ / CEI: "+V(emp.cnpj), mr-2, 31, {align:"right"});
@@ -6126,15 +6126,28 @@
     pdf.text(V(emp.responsavel)||"Responsável da Empresa", mr-42.5, yAssNome, {align:"center"});
 
     // ════════════════════════════════════════════════════════════════════
-    // RODAPÉ AZUL — fixo em 283mm
+    // RODAPÉ AZUL — fixo em 283mm (altura 14mm)
     // ════════════════════════════════════════════════════════════════════
     pdf.setFillColor(15,52,96); pdf.rect(0,283,210,14,"F");
-    pdf.setTextColor(255,255,255); pdf.setFontSize(7); pdf.setFont("helvetica","normal");
-    pdf.text("GO — Gestão de Obras  |  Ficha de Registro do Empregado  |  Gerado em "+dataGer, ml, 290);
-    pdf.text(V(emp.nome), mr, 290, {align:"right"});
-    // Assinatura do criador
-    pdf.setFontSize(6); pdf.setTextColor(180,200,255);
-    pdf.text("Criado por Josimar Rodrigues Da Rocha  —  Sistema GO Gestão de Obras", ml+pw/2, 294, {align:"center"});
+    pdf.setTextColor(255,255,255); pdf.setFont("helvetica","normal");
+
+    // Linha 1: info do sistema à esquerda
+    pdf.setFontSize(7);
+    pdf.text("GO — Gestão de Obras  |  Ficha de Registro do Empregado  |  Gerado em "+dataGer, ml, 288.5);
+
+    // Linha 1: nome da empresa à direita
+    pdf.setFont("helvetica","bold"); pdf.setFontSize(7.5);
+    pdf.text(V(emp.nome), mr, 288.5, {align:"right"});
+
+    // Linha 2: CNPJ | e-mail | telefone da empresa (abaixo do nome)
+    pdf.setFont("helvetica","normal"); pdf.setFontSize(6.5);
+    const infos = [
+      emp.cnpj  ? "CNPJ: "+V(emp.cnpj)  : "",
+      emp.email ? V(emp.email)           : "",
+      emp.tel   ? "Tel: "+V(emp.tel)     : "",
+    ].filter(Boolean).join("   |   ");
+    if(infos) pdf.text(infos, mr, 293.5, {align:"right"});
+
     pdf.setTextColor(0,0,0);
 
     return pdf;
@@ -6448,7 +6461,7 @@
     empHeader.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
-          <span style="color:#555;font-size:11px">Da firma:&nbsp;</span>
+          <span style="color:#555;font-size:11px">Empresa:&nbsp;</span>
           <strong style="font-size:12px">${semDados
             ? "<span style='color:#e87a3b;font-size:10px'>⚠️ Cadastre os dados em Administração › Empresa</span>"
             : emp.nome}</strong>
