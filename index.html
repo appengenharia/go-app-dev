@@ -477,6 +477,17 @@
         </table>
       </div>
 
+      <!-- Modal: fotos do ponto do dia -->
+      <div class="modal-overlay hidden" id="modalFotosPonto">
+        <div class="modal" style="max-width:480px">
+          <h3>📷 Fotos do Registro de Ponto</h3>
+          <div id="fotosPontoGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px"></div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="App.closeModal('modalFotosPonto')">Fechar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal correção admin -->
       <div class="modal-overlay hidden" id="modalCorrecaoPonto">
         <div class="modal" style="max-width:400px">
@@ -3463,23 +3474,27 @@
     const colabSel = $("pontoFiltroColab");
     if(!obraSel || !colabSel) return;
 
-    // Obras ativas
+    // Todas as obras (incluindo inativas para consulta histórica)
     const obrasSnap = await getDocs(collection(db,"obras"));
     obraSel.innerHTML = '<option value="">Todas as obras</option>';
     obrasSnap.forEach(d => {
-      if(d.data().ativa !== false) {
-        obraSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
-      }
+      const nome = d.data().nome + (d.data().ativa===false ? " (inativa)" : "");
+      obraSel.innerHTML += `<option value="${d.id}">${nome}</option>`;
     });
 
-    // Colaboradores ativos (exceto admins)
+    // TODOS os colaboradores — incluindo inativos para consulta histórica
     const usersSnap = await getDocs(collection(db,"usuarios"));
     colabSel.innerHTML = '<option value="">Selecione colaborador</option>';
+    const ativos=[], inativos=[];
     usersSnap.forEach(d => {
-      if(d.data().ativo !== false && d.data().role !== "ADMIN") {
-        colabSel.innerHTML += `<option value="${d.id}">${d.data().nome || d.data().email}</option>`;
-      }
+      if(d.data().role === "ADMIN") return;
+      const nome = d.data().nome || d.data().email;
+      const opt  = `<option value="${d.id}">${nome}${d.data().ativo===false?" (inativo)":""}</option>`;
+      if(d.data().ativo===false) inativos.push(opt);
+      else ativos.push(opt);
     });
+    if(ativos.length)   colabSel.innerHTML += `<optgroup label="── Ativos">${ativos.join("")}</optgroup>`;
+    if(inativos.length) colabSel.innerHTML += `<optgroup label="── Inativos (histórico)">${inativos.join("")}</optgroup>`;
 
     // Mês atual
     const hoje = new Date();
@@ -3589,8 +3604,12 @@
         if(p.justificativa) justifs++;
       }
 
+      const fotoBtn = p && (p.fotoEntrada || p.fotoAlmoco || p.fotoRetorno || p.fotoSaida)
+        ? `<button onclick="App.verFotosPonto('${p.fotoEntrada||""}','${p.fotoAlmoco||""}','${p.fotoRetorno||""}','${p.fotoSaida||""}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:4px" title="Ver fotos do dia">📷</button>`
+        : "";
+
       const acoes = currentRole==="ADMIN"
-        ? `<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:4px" title="Corrigir ponto">✏️</button>`
+        ? `${fotoBtn}<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:4px" title="Corrigir ponto">✏️</button>`
         : "—";
 
       const entradaStyle = isAtrasoEntrada(p?.anomalias) ? "color:#dc2626;font-weight:700" : "";
@@ -3819,18 +3838,45 @@
     } catch(e){ setMsg("pontoEmailMsg","❌ Erro: "+e.message); }
   }
 
-  async function _gerarCartaoPDF(colabId, colabNome, ano, mes) {
+  function verFotosPonto(fotoEntrada, fotoAlmoco, fotoRetorno, fotoSaida) {
+    const grid = $("fotosPontoGrid");
+    const fases = [
+      {label:"🟢 Entrada",    url: fotoEntrada},
+      {label:"🟡 Almoço",     url: fotoAlmoco},
+      {label:"🔵 Retorno",    url: fotoRetorno},
+      {label:"🔴 Saída",      url: fotoSaida},
+    ];
+    grid.innerHTML = fases.map(f => `
+      <div style="text-align:center">
+        <div style="font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:6px">${f.label}</div>
+        ${f.url && f.url !== "[foto_offline]"
+          ? `<img src="${f.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:2px solid var(--border)">`
+          : `<div style="width:100%;aspect-ratio:1;background:#f3f4f6;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;color:#aaa;font-size:.8rem">${f.url==="[foto_offline]"]?"📵 offline":"Sem foto"}</div>`
+        }
+      </div>`).join("");
+    $("modalFotosPonto").classList.remove("hidden");
+  }
+
+  // Gera cartão de um colaborador dentro de um PDF já existente (ou cria novo se pdf=null)
+  // Retorna o pdf com as páginas adicionadas
+  async function _gerarCartaoPDF(colabId, colabNome, ano, mes, pdfExistente) {
     const inicio = `${ano}-${String(mes).padStart(2,"0")}-01`;
     const fim    = new Date(ano, mes, 0).toISOString().split("T")[0];
     const q = query(collection(db,"pontos"), where("uid","==",colabId));
     const snap = await getDocs(q);
     const pontos = {};
     snap.forEach(d => { const dt=d.data().data; if(dt>=inicio&&dt<=fim) pontos[dt]={...d.data(),id:d.id}; });
+
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const pdf = pdfExistente || new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
     const mesesNomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     const mesTxt=mesesNomes[mes-1]+" "+ano;
     const dataGer=new Date().toLocaleDateString("pt-BR");
+
+    // Se for um PDF existente, adiciona nova página antes do cartão
+    if(pdfExistente) pdf.addPage();
+
+    // Cabeçalho do cartão
     pdf.setFillColor(15,52,96); pdf.rect(0,0,210,26,"F");
     pdf.setTextColor(255,255,255);
     pdf.setFontSize(13); pdf.setFont("helvetica","bold"); pdf.text("GO — Gestão de Obras",14,10);
@@ -3838,6 +3884,7 @@
     pdf.text("Cartão de Ponto — "+colabNome,14,17);
     pdf.text("Período: "+mesTxt+" | Gerado em: "+dataGer,14,23);
     pdf.setTextColor(0,0,0);
+
     const semanas=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
     const diasMes=new Date(ano,mes,0).getDate();
     let diasTrab=0,faltas=0,atrasos=0;
@@ -3859,9 +3906,8 @@
     let y=pdf.lastAutoTable.finalY+8;
     pdf.setFontSize(9);pdf.setFont("helvetica","bold");pdf.setTextColor(15,52,96);
     pdf.text(`Resumo: Dias trabalhados: ${diasTrab}  |  Faltas: ${faltas}  |  Atrasos/Anomalias: ${atrasos}`,14,y);
-    const pc=pdf.internal.getNumberOfPages();
-    for(let i=1;i<=pc;i++){pdf.setPage(i);pdf.setFillColor(15,52,96);pdf.rect(0,285,210,12,"F");pdf.setTextColor(255,255,255);pdf.setFontSize(7);pdf.setFont("helvetica","normal");pdf.text("GO — Gestão de Obras | "+colabNome+" — "+mesTxt,14,291);pdf.text("Pág. "+i+"/"+pc,196,291,{align:"right"});}
-    return pdf.output("datauristring").split(",")[1];
+
+    return { pdf, diasTrab, faltas, atrasos };
   }
 
   async function enviarPontoMensalManual() {
@@ -3891,43 +3937,119 @@
       const cfgSnap=await getDoc(doc(db,"configuracoes","emailPonto"));
       const emails=cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
       if(!emails.length){setM("⚠️ Configure os e-mails de destino primeiro.");return;}
+
+      // Busca todos os colaboradores ativos agrupados por obra
       const usersSnap=await getDocs(collection(db,"usuarios"));
-      const colaboradores=[];
-      usersSnap.forEach(d=>{if(d.data().ativo!==false&&d.data().role!=="ADMIN") colaboradores.push({id:d.id,nome:d.data().nome||d.data().email});});
-      if(!colaboradores.length){setM("⚠️ Nenhum colaborador ativo.");return;}
+      const obrasSnap=await getDocs(collection(db,"obras"));
+      const obrasMap={}; obrasSnap.forEach(d=>obrasMap[d.id]=d.data().nome||d.id);
+
+      // Agrupa colaboradores por obra
+      const porObra={};  // { obraId: { nome, colaboradores: [{id, nome}] } }
+      const semObra=[];  // colaboradores sem obra
+
+      usersSnap.forEach(d => {
+        if(d.data().ativo===false||d.data().role==="ADMIN") return;
+        const colab={id:d.id, nome:d.data().nome||d.data().email};
+        const obras=d.data().obras?.length?d.data().obras:(d.data().obra_id?[d.data().obra_id]:[]);
+        if(obras.length){
+          obras.forEach(obraId=>{
+            if(!porObra[obraId]) porObra[obraId]={nome:obrasMap[obraId]||obraId, colaboradores:[]};
+            porObra[obraId].colaboradores.push(colab);
+          });
+        } else semObra.push(colab);
+      });
+
+      if(!Object.keys(porObra).length&&!semObra.length){setM("⚠️ Nenhum colaborador ativo.");return;}
+
       const mesesNomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
       const mesTxt=mesesNomes[mes-1]+" "+ano;
-      setM("⏳ Gerando PDFs ("+colaboradores.length+" colaboradores)...");
       const dataEnvio=new Date().toLocaleDateString("pt-BR");
-      for(const colab of colaboradores){
-        const pdfB64=await _gerarCartaoPDF(colab.id,colab.nome,ano,mes);
-        const inicio=`${ano}-${String(mes).padStart(2,"0")}-01`;
-        const fim=new Date(ano,mes,0).toISOString().split("T")[0];
-        const q=query(collection(db,"pontos"),where("uid","==",colab.id));
-        const snap=await getDocs(q);
-        let dt=0,at=0;
-        snap.forEach(d=>{const p=d.data();if(p.data>=inicio&&p.data<=fim){dt++;if(isAtrasoEntrada(p.anomalias)||p.status==="anomalia")at++;}});
-        const diasMes=new Date(ano,mes,0).getDate();let uteis=0;
-        for(let d=1;d<=diasMes;d++){const dw=new Date(`${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}T12:00:00`).getDay();if(dw!==0&&dw!==6)uteis++;}
-        const fa=Math.max(0,uteis-dt);
-        const payload={
-          emails,
-          assunto:"Cartão de Ponto — "+colab.nome+" — "+mesTxt,
-          corpo:`<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0">GO — Gestão de Obras</h2><p style="margin:6px 0 0;opacity:.85">Cartão de Ponto — ${colab.nome} — ${mesTxt}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p><strong>Colaborador:</strong> ${colab.nome}</p><p><strong>Período:</strong> ${mesTxt}</p><p><strong>Dias trabalhados:</strong> ${dt} &nbsp;|&nbsp; <strong>Faltas:</strong> ${fa} &nbsp;|&nbsp; <strong>Atrasos:</strong> ${at}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">Cartão completo em PDF em anexo.<br>GO — Gestão de Obras · Gerado em ${dataEnvio}</p></div></div>`,
-          pdf:pdfB64,
-          nomeArquivo:"Ponto_"+colab.nome.replace(/\s+/g,"_")+"_"+mesTxt.replace(/\s/g,"_")+".pdf"
-        };
+      const { jsPDF } = window.jspdf;
+
+      const grupos=[...Object.entries(porObra).map(([id,ob])=>({nome:ob.nome,colaboradores:ob.colaboradores}))];
+      if(semObra.length) grupos.push({nome:"Sem obra definida",colaboradores:semObra});
+
+      setM("⏳ Gerando PDFs por obra...");
+
+      for(const grupo of grupos){
+        // Gera UM PDF para a obra inteira — capa + um cartão por colaborador
+        const pdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+
+        // ── Capa da obra ──
+        pdf.setFillColor(15,52,96); pdf.rect(0,0,210,297,"F");
+        pdf.setTextColor(255,255,255);
+        pdf.setFontSize(22); pdf.setFont("helvetica","bold");
+        pdf.text("GO — Gestão de Obras",105,90,{align:"center"});
+        pdf.setFontSize(15); pdf.setFont("helvetica","normal");
+        pdf.text("Cartão de Ponto",105,108,{align:"center"});
+        pdf.setFontSize(18); pdf.setFont("helvetica","bold");
+        pdf.text(grupo.nome,105,128,{align:"center"});
+        pdf.setFontSize(13); pdf.setFont("helvetica","normal");
+        pdf.text(mesTxt,105,142,{align:"center"});
+        pdf.setFontSize(9); pdf.text(grupo.colaboradores.length+" colaborador(es)",105,156,{align:"center"});
+        pdf.setFontSize(8); pdf.text("Gerado em "+dataEnvio,105,170,{align:"center"});
+
+        let totalDiasTrab=0,totalFaltas=0,totalAtrasos=0;
+        const resumoLinhas=[];
+
+        for(const colab of grupo.colaboradores){
+          const res = await _gerarCartaoPDF(colab.id, colab.nome, ano, mes, pdf);
+          totalDiasTrab+=res.diasTrab; totalFaltas+=res.faltas; totalAtrasos+=res.atrasos;
+          resumoLinhas.push(`<tr><td style="padding:4px 8px;border-bottom:1px solid #eee">${colab.nome}</td><td style="text-align:center;padding:4px 8px;border-bottom:1px solid #eee">${res.diasTrab}</td><td style="text-align:center;padding:4px 8px;border-bottom:1px solid #eee;color:#e94560">${res.faltas}</td><td style="text-align:center;padding:4px 8px;border-bottom:1px solid #eee;color:#d97706">${res.atrasos}</td></tr>`);
+        }
+
+        // Rodapé em todas as páginas (exceto capa)
+        const pc=pdf.internal.getNumberOfPages();
+        for(let i=2;i<=pc;i++){
+          pdf.setPage(i);
+          pdf.setFillColor(15,52,96); pdf.rect(0,285,210,12,"F");
+          pdf.setTextColor(255,255,255); pdf.setFontSize(7); pdf.setFont("helvetica","normal");
+          pdf.text("GO — "+grupo.nome+" — "+mesTxt,14,291);
+          pdf.text("Pág. "+(i-1)+"/"+(pc-1),196,291,{align:"right"});
+        }
+
+        const pdfB64=pdf.output("datauristring").split(",")[1];
+        const nomeArquivo="Ponto_"+grupo.nome.replace(/[^a-zA-Z0-9]/g,"_")+"_"+mesTxt.replace(/\s/g,"_")+".pdf";
+
+        const htmlBody=`<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
+          <div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0">
+            <h2 style="margin:0">GO — Gestão de Obras</h2>
+            <p style="margin:6px 0 0;opacity:.85">Cartão de Ponto — ${grupo.nome} — ${mesTxt}</p>
+          </div>
+          <div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none">
+            <p><strong>Obra:</strong> ${grupo.nome} &nbsp;|&nbsp; <strong>Período:</strong> ${mesTxt} &nbsp;|&nbsp; <strong>Gerado em:</strong> ${dataEnvio}</p>
+            <table style="width:100%;border-collapse:collapse;margin:12px 0">
+              <thead><tr style="background:#f0f4ff">
+                <th style="padding:6px 8px;text-align:left;font-size:12px">Colaborador</th>
+                <th style="padding:6px 8px;text-align:center;font-size:12px">Dias Trab.</th>
+                <th style="padding:6px 8px;text-align:center;font-size:12px;color:#e94560">Faltas</th>
+                <th style="padding:6px 8px;text-align:center;font-size:12px;color:#d97706">Atrasos</th>
+              </tr></thead>
+              <tbody>${resumoLinhas.join("")}</tbody>
+              <tfoot><tr style="background:#f0f4ff;font-weight:bold">
+                <td style="padding:6px 8px;font-size:12px">TOTAL</td>
+                <td style="text-align:center;padding:6px 8px;font-size:12px">${totalDiasTrab}</td>
+                <td style="text-align:center;padding:6px 8px;font-size:12px;color:#e94560">${totalFaltas}</td>
+                <td style="text-align:center;padding:6px 8px;font-size:12px;color:#d97706">${totalAtrasos}</td>
+              </tr></tfoot>
+            </table>
+            <p style="font-size:11px;color:#888">PDF em anexo contém o cartão individual de cada colaborador.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p>
+          </div>
+        </div>`;
+
+        const payload={emails,assunto:"Cartão de Ponto — "+grupo.nome+" — "+mesTxt,corpo:htmlBody,pdf:pdfB64,nomeArquivo};
         const iframeName="pontoFrame_"+Date.now();
         const iframe=document.createElement("iframe");iframe.name=iframeName;iframe.style.display="none";document.body.appendChild(iframe);
         const form=document.createElement("form");form.method="POST";form.action=APPS_SCRIPT_URL;form.target=iframeName;form.style.display="none";
         const input=document.createElement("input");input.type="hidden";input.name="payload";input.value=JSON.stringify(payload);
         form.appendChild(input);document.body.appendChild(form);form.submit();document.body.removeChild(form);
-        await new Promise(r=>setTimeout(r,1500));
+        await new Promise(r=>setTimeout(r,2000));
         document.body.removeChild(iframe);
       }
-      await setDoc(doc(db,"pontos_enviados","PONTO_"+Date.now()),{periodo:mesTxt,ano,mes,colaboradores:colaboradores.map(c=>c.nome),enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
-      toast("✅ Cartões de ponto enviados para "+emails.length+" e-mail(s)!");
-      setM("✅ Enviado para "+emails.length+" destinatário(s) — "+colaboradores.length+" cartão(s) em PDF!","ok");
+
+      await setDoc(doc(db,"pontos_enviados","PONTO_"+Date.now()),{periodo:mesTxt,ano,mes,obras:grupos.map(g=>g.nome),enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
+      toast("✅ Cartões de ponto enviados — "+grupos.length+" obra(s)!");
+      setM("✅ Enviado para "+emails.length+" destinatário(s) — "+grupos.length+" PDF(s) por obra!","ok");
     } catch(e){console.error(e);setM("❌ Erro: "+e.message);}
   }
 
@@ -3966,7 +4088,7 @@
     // Configuração e envio mensal de ponto
     setPontoEnvioAuto, addPontoEmailDest, savePontoEmailConfig,
     enviarPontoMensalManual,
-    abrirCorrecao, salvarCorrecaoPonto,
+    abrirCorrecao, salvarCorrecaoPonto, verFotosPonto,
   };
 </script>
 
