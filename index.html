@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -34,6 +35,9 @@
   🔄 Sincronizando lançamentos pendentes...
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     TELA DE LOGIN PRINCIPAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="auth-page hidden" id="loginPage">
   <div class="deco deco-1"></div><div class="deco deco-2"></div>
   <div class="auth-box">
@@ -80,13 +84,13 @@
       <h2 style="margin-bottom:4px">Identificação</h2>
       <p class="subtitle">Entre com suas credenciais para registrar o ponto.</p>
       <label>E-mail</label>
-      <input id="pontoEmail" type="email" class="input" placeholder="seu@email.com" autocomplete="username">
+      <input id="pontoEmail" type="email" placeholder="seu@email.com" autocomplete="username">
       <label>Senha</label>
-      <div class="pass-wrap">
-        <input id="pontoSenha" type="password" class="input" placeholder="••••••••">
+      <div class="pass-row">
+        <input id="pontoSenha" type="password" placeholder="••••••••">
         <button class="eye-btn" type="button" onclick="App.togglePass('pontoSenha')">👁</button>
       </div>
-      <button class="btn btn-primary full" onclick="App.loginPonto()" style="margin-top:8px">Continuar →</button>
+      <button class="btn btn-primary full" onclick="App.loginPonto()" style="margin-top:16px">Continuar →</button>
       <div class="msg" id="pontoLoginMsg"></div>
       <p class="login-hint" style="margin-top:12px">
         <a href="#" onclick="App.voltarLogin()" style="color:#0f3460;text-decoration:none">← Voltar ao login</a>
@@ -152,10 +156,10 @@
       <h2 style="color:#e94560;margin-bottom:4px">⚠️ Justificativa Pendente</h2>
       <p style="font-size:13px;color:#666;margin-bottom:12px" id="pontoJustMsg">—</p>
       <label>Motivo</label>
-      <textarea id="pontoJustTexto" class="input" rows="3" placeholder="Descreva o motivo..." style="resize:vertical"></textarea>
+      <textarea id="pontoJustTexto" rows="3" placeholder="Descreva o motivo..." style="resize:vertical"></textarea>
       <label style="margin-top:8px">Documento (opcional)</label>
-      <input id="pontoJustDoc" type="file" accept="image/*,application/pdf" class="input" style="padding:6px">
-      <button class="btn btn-primary full" onclick="App.salvarJustificativa()" style="margin-top:8px">Enviar Justificativa</button>
+      <input id="pontoJustDoc" type="file" accept="image/*,application/pdf" style="padding:6px">
+      <button class="btn btn-primary full" onclick="App.salvarJustificativa()" style="margin-top:16px">Enviar Justificativa</button>
       <button class="btn btn-outline full" onclick="App.voltarLogin()" style="margin-top:6px">Agora não</button>
       <div class="msg" id="pontoJustMsgResult"></div>
     </div>
@@ -163,12 +167,15 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     TELA TROCA DE SENHA (PRIMEIRO ACESSO)
+     ═══════════════════════════════════════════════════════ -->
 <div class="auth-page hidden" id="changePwPage">
   <div class="deco deco-1"></div><div class="deco deco-2"></div>
   <div class="auth-box">
     <div class="auth-logo">
       <div class="icon">🔐</div>
-      <div><div class="name">CFO</div><div class="sub">Primeiro acesso</div></div>
+      <div><div class="name">GO</div><div class="sub">Primeiro acesso</div></div>
     </div>
     <div class="alert-banner">⚠️ Por segurança, crie uma nova senha antes de continuar.</div>
     <h2>Crie sua senha</h2>
@@ -188,6 +195,9 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     APP PRINCIPAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="app-layout hidden" id="appLayout">
   <nav class="side-nav hidden" id="sideNav">
     <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span> Dashboard</button>
@@ -200,6 +210,7 @@
 
   <main class="app-content">
 
+    <!-- ── DASHBOARD ── -->
     <div class="tab-panel active" id="tab-dashboard">
       <div class="welcome-card">
         <h2 id="welcomeName">Olá! 👋</h2>
@@ -247,6 +258,7 @@
       </div>
     </div>
 
+    <!-- ── LANÇAMENTOS ── -->
     <div class="tab-panel" id="tab-lancamentos">
       <div class="page-header"><h1>Registrar Despesa</h1><p>Adicione um novo gasto à obra selecionada.</p></div>
 
@@ -313,6 +325,7 @@
       </div>
     </div>
 
+    <!-- ── RELATÓRIOS ── -->
     <div class="tab-panel" id="tab-relatorios">
       <div class="page-header"><h1>Relatórios</h1><p>Gere e exporte relatórios de despesas por obra e período.</p></div>
 
@@ -373,75 +386,77 @@
       </div>
     </div>
 
+    <!-- ── CARTÃO DE PONTO ── -->
     <div class="tab-panel" id="tab-ponto">
-  <div class="page-header"><h1>🕐 Cartão de Ponto</h1><p>Gerencie e visualize os registros de ponto por colaborador e obra.</p></div>
+      <div class="page-header"><h1>🕐 Cartão de Ponto</h1><p>Gerencie e visualize os registros de ponto por colaborador e obra.</p></div>
 
-  <!-- Filtros -->
-  <div class="card" style="padding:16px 20px;margin-bottom:16px">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:1;min-width:160px">
-        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Obra</label>
-        <select id="pontoFiltroObra" class="input" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+      <!-- Filtros -->
+      <div class="card" style="padding:16px 20px;margin-bottom:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Obra</label>
+            <select id="pontoFiltroObra" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+          </div>
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Colaborador</label>
+            <select id="pontoFiltroColab" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Mês</label>
+            <input id="pontoFiltroMes" type="month" onchange="App.loadCartaoPonto()" style="margin:0">
+          </div>
+          <button class="btn btn-outline" onclick="App.exportarCartaoPDF()" style="white-space:nowrap">📄 Exportar PDF</button>
+          <button class="btn btn-primary" onclick="App.enviarCartaoEmail()" style="white-space:nowrap">📧 Enviar E-mail</button>
+        </div>
       </div>
-      <div style="flex:1;min-width:160px">
-        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Colaborador</label>
-        <select id="pontoFiltroColab" class="input" onchange="App.loadCartaoPonto()" style="margin:0"></select>
+
+      <!-- Resumo -->
+      <div id="pontoResumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px"></div>
+
+      <!-- Tabela -->
+      <div class="card" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px" id="pontoTabela">
+          <thead>
+            <tr style="background:#0f3460;color:white">
+              <th style="padding:10px 12px;text-align:left">Dia</th>
+              <th style="padding:10px 12px;text-align:center">Entrada</th>
+              <th style="padding:10px 12px;text-align:center">Almoço</th>
+              <th style="padding:10px 12px;text-align:center">Retorno</th>
+              <th style="padding:10px 12px;text-align:center">Saída</th>
+              <th style="padding:10px 12px;text-align:center">H. Extra</th>
+              <th style="padding:10px 12px;text-align:center">Status</th>
+              <th style="padding:10px 12px;text-align:center">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pontoTabelaBody">
+            <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Selecione obra e colaborador</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div style="flex:1;min-width:120px">
-        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Mês</label>
-        <input id="pontoFiltroMes" type="month" class="input" onchange="App.loadCartaoPonto()" style="margin:0">
+
+      <!-- Modal correção admin -->
+      <div class="modal-overlay hidden" id="modalCorrecaoPonto">
+        <div class="modal" style="max-width:400px">
+          <h3>✏️ Corrigir Ponto</h3>
+          <p id="correcaoInfo" style="font-size:13px;color:#666;margin-bottom:12px"></p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">
+            <div><label style="font-size:12px;margin-top:0">Entrada</label><input id="corEntrada" type="time" style="margin:2px 0"></div>
+            <div><label style="font-size:12px;margin-top:0">Almoço</label><input id="corAlmoco" type="time" style="margin:2px 0"></div>
+            <div><label style="font-size:12px;margin-top:0">Retorno</label><input id="corRetorno" type="time" style="margin:2px 0"></div>
+            <div><label style="font-size:12px;margin-top:0">Saída</label><input id="corSaida" type="time" style="margin:2px 0"></div>
+          </div>
+          <label style="font-size:12px;margin-top:0">Observação da correção</label>
+          <textarea id="corObs" rows="2" style="margin:4px 0 12px;resize:vertical"></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="App.salvarCorrecaoPonto()">💾 Salvar</button>
+            <button class="btn btn-outline" onclick="App.closeModal('modalCorrecaoPonto')">Cancelar</button>
+          </div>
+        </div>
       </div>
-      <button class="btn btn-outline" onclick="App.exportarCartaoPDF()" style="white-space:nowrap">📄 Exportar PDF</button>
-      <button class="btn btn-primary" onclick="App.enviarCartaoEmail()" style="white-space:nowrap">📧 Enviar E-mail</button>
     </div>
-  </div>
 
-  <!-- Resumo -->
-  <div id="pontoResumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px"></div>
-
-  <!-- Tabela -->
-  <div class="card" style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px" id="pontoTabela">
-      <thead>
-        <tr style="background:#0f3460;color:white">
-          <th style="padding:10px 12px;text-align:left">Dia</th>
-          <th style="padding:10px 12px;text-align:center">Entrada</th>
-          <th style="padding:10px 12px;text-align:center">Almoço</th>
-          <th style="padding:10px 12px;text-align:center">Retorno</th>
-          <th style="padding:10px 12px;text-align:center">Saída</th>
-          <th style="padding:10px 12px;text-align:center">H. Extra</th>
-          <th style="padding:10px 12px;text-align:center">Status</th>
-          <th style="padding:10px 12px;text-align:center">Ações</th>
-        </tr>
-      </thead>
-      <tbody id="pontoTabelaBody">
-        <tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Selecione obra e colaborador</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Modal correção admin -->
-  <div class="modal-overlay hidden" id="modalCorrecaoPonto">
-    <div class="modal" style="max-width:400px">
-      <h3>✏️ Corrigir Ponto</h3>
-      <p id="correcaoInfo" style="font-size:13px;color:#666"></p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">
-        <div><label style="font-size:12px">Entrada</label><input id="corEntrada" type="time" class="input" style="margin:2px 0"></div>
-        <div><label style="font-size:12px">Almoço</label><input id="corAlmoco" type="time" class="input" style="margin:2px 0"></div>
-        <div><label style="font-size:12px">Retorno</label><input id="corRetorno" type="time" class="input" style="margin:2px 0"></div>
-        <div><label style="font-size:12px">Saída</label><input id="corSaida" type="time" class="input" style="margin:2px 0"></div>
-      </div>
-      <label style="font-size:12px">Observação da correção</label>
-      <textarea id="corObs" class="input" rows="2" style="margin:4px 0 12px;resize:vertical"></textarea>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="App.salvarCorrecaoPonto()">💾 Salvar</button>
-        <button class="btn btn-outline" onclick="App.closeModal('modalCorrecaoPonto')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="tab-panel" id="tab-admin">
+    <!-- ── ADMINISTRAÇÃO ── -->
+    <div class="tab-panel" id="tab-admin">
       <div class="page-header"><h1>Administração</h1><p>Gerencie obras e colaboradores do sistema.</p></div>
       <div class="admin-tabs">
         <button class="admin-tab-btn active" onclick="App.adminTab('obras')">🏗️ Obras</button>
@@ -497,7 +512,6 @@
             <div><h3>Colaboradores</h3></div>
             <button class="btn btn-outline sm" onclick="App.loadUsers()">🔄 Atualizar</button>
           </div>
-          
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
             <button class="admin-tab-btn active" id="filterAll"    onclick="App.filterUsers('all')">Todos</button>
             <button class="admin-tab-btn"         id="filterActive" onclick="App.filterUsers('active')">✅ Ativos</button>
@@ -506,24 +520,26 @@
           <div id="userList"><div class="empty"><div class="empty-icon">👥</div><p>Nenhum colaborador cadastrado ainda.</p></div></div>
         </div>
       </div>
-
     </div>
+
   </main>
 
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
     <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span><span>Lançar</span></button>
     <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span><span>Relatórios</span></button>
+    <button class="nav-item hidden" id="bottomPonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span><span>Ponto</span></button>
     <button class="nav-item hidden" id="bottomAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span><span>Admin</span></button>
   </nav>
 </div>
 
+<!-- ═══════════ MODAIS GLOBAIS ═══════════ -->
 <div class="modal-overlay hidden" id="modalConfirm">
   <div class="modal">
     <h3 id="modalTitle">Confirmar ação</h3>
     <p id="modalText" style="color:var(--muted);font-size:.9rem"></p>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="App.closeModal()">Cancelar</button>
+      <button class="btn btn-outline" onclick="App.closeModal('modalConfirm')">Cancelar</button>
       <button class="btn btn-danger" id="modalConfirmBtn">Confirmar</button>
     </div>
   </div>
@@ -541,16 +557,24 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT PRINCIPAL
+     ═══════════════════════════════════════════════════════ -->
 <script type="module">
   import { initializeApp }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
-           createUserWithEmailAndPassword, updatePassword }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, collection, getDocs,
-           updateDoc, deleteDoc, serverTimestamp, query, orderBy }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+    createUserWithEmailAndPassword, updatePassword
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs,
+    updateDoc, deleteDoc, serverTimestamp, query, orderBy, where
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+  // ─────────────────────────────────────────
+  // CONFIGURAÇÃO FIREBASE
+  // ─────────────────────────────────────────
   const SENHA_PADRAO = "user123";
 
   const firebaseConfig = {
@@ -568,8 +592,9 @@
   const authAux = getAuth(firebaseHelper);
   const db      = getFirestore(firebaseMain);
 
-  // Persistência offline gerenciada pelo IndexedDB próprio do app
-
+  // ─────────────────────────────────────────
+  // UTILITÁRIOS
+  // ─────────────────────────────────────────
   const $ = id => document.getElementById(id);
 
   function setMsg(id, text, ok=false) {
@@ -596,22 +621,30 @@
   }
 
   function showPage(page) {
-    ["loginPage","changePwPage","appLayout"].forEach(id=>$(id).classList.add("hidden"));
-    $(page).classList.remove("hidden");
+    ["loginPage","pontoPage","changePwPage","appLayout"].forEach(id=>{
+      const el=$(id);
+      if(el) el.classList.add("hidden");
+    });
+    const target=$(page);
+    if(target) target.classList.remove("hidden");
     if(page==="appLayout"){ $("sideNav").classList.remove("hidden"); }
   }
 
+  // ─────────────────────────────────────────
+  // NAVEGAÇÃO POR ABAS
+  // ─────────────────────────────────────────
   function goTab(tab) {
-    // bloqueia acesso ao admin para não-admins
     if(tab==="admin" && currentRole!=="ADMIN") return;
+    if(tab==="ponto" && currentRole!=="ADMIN") return;
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
     document.querySelectorAll(".nav-item[data-tab]").forEach(b=>b.classList.remove("active"));
     $(`tab-${tab}`)?.classList.add("active");
     document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b=>b.classList.add("active"));
-    if(tab==="admin")      { loadObras(); fillObraSelect(); }
+    if(tab==="admin")       { loadObras(); fillObraSelect(); }
     if(tab==="lancamentos") { fillLancObras(); loadLancs(); setTodayDate(); }
     if(tab==="dashboard")   { fillDashFilters().then(()=>loadDashboard()); }
     if(tab==="relatorios")  { fillRelatorioFiltros(); }
+    if(tab==="ponto")       { fillPontoFiltros(); }
   }
 
   function adminTab(tab) {
@@ -627,6 +660,9 @@
     const el=$(id); if(el) el.type=el.type==="password"?"text":"password";
   }
 
+  // ─────────────────────────────────────────
+  // MODAIS
+  // ─────────────────────────────────────────
   function showModal(title, text, cb, btnLabel="Confirmar", danger=true) {
     $("modalTitle").textContent=title;
     $("modalText").textContent=text;
@@ -634,11 +670,18 @@
     const btn=$("modalConfirmBtn");
     btn.textContent=btnLabel;
     btn.className="btn "+(danger?"btn-danger":"btn-success");
-    btn.onclick=()=>{ closeModal(); cb(); };
+    btn.onclick=()=>{ closeModal("modalConfirm"); cb(); };
   }
-  function closeModal(){ $("modalConfirm").classList.add("hidden"); }
 
-  // ── LOGIN ──
+  function closeModal(modalId) {
+    const id = modalId || "modalConfirm";
+    const el = $(id);
+    if(el) el.classList.add("hidden");
+  }
+
+  // ─────────────────────────────────────────
+  // AUTENTICAÇÃO
+  // ─────────────────────────────────────────
   async function login() {
     setMsg("loginMsg","");
     const email=$("loginEmail").value.trim();
@@ -658,29 +701,21 @@
         "auth/invalid-credential":"E-mail ou senha incorretos."
       };
       setMsg("loginMsg",msgs[e.code]||"Erro: "+e.message);
-    } finally { btn.disabled=false; btn.textContent="Entrar"; }
+    } finally { btn.disabled=false; btn.textContent="Entrar no Sistema"; }
   }
 
   async function logout(){
     await signOut(auth);
-    // Limpa estado da UI completamente
     currentUser = null;
     currentRole = null;
-    // Esconde todas as abas e painéis
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    // Esconde menu admin
-    const adminNav = $("navAdmin");
-    if(adminNav) adminNav.style.display = "none";
-    // Limpa conteúdos dinâmicos
     ["obraList","userList","lancList","dashTable","relPreviewContent"].forEach(id => {
       const el = $(id); if(el) el.innerHTML = "";
     });
-    // Força reload para garantir estado limpo
     window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
   }
 
-  // ── TROCA DE SENHA ──
   async function changePassword() {
     setMsg("changePwMsg","");
     const p1=$("newPass1").value, p2=$("newPass2").value;
@@ -707,14 +742,14 @@
 
   async function initApp(user) {
     currentUser=user;
-    // Resetar UI antes de carregar perfil
     $("sideAdmin")?.classList.add("hidden");
     $("bottomAdmin")?.classList.add("hidden");
+    $("sidePonto")?.classList.add("hidden");
+    $("bottomPonto")?.classList.add("hidden");
     const profile=await loadProfile(user.uid);
     const nome=profile?.nome||user.email.split("@")[0];
     currentRole=profile?.role||"USER";
 
-    // ── CONTA DESATIVADA ──
     if(profile?.ativo===false){
       await signOut(auth);
       setMsg("loginMsg","⛔ Sua conta foi desativada. Fale com o administrador.");
@@ -722,7 +757,6 @@
       return;
     }
 
-    // ── PRIMEIRO ACESSO ──
     if(profile?.primeiro_acesso===true){
       showPage("changePwPage");
       return;
@@ -738,13 +772,15 @@
       $("sideAdmin")?.classList.remove("hidden");
       $("bottomAdmin")?.classList.remove("hidden");
       $("sidePonto")?.classList.remove("hidden");
+      $("bottomPonto")?.classList.remove("hidden");
     }
 
     try {
       const obras=await getDocs(collection(db,"obras"));
       $("statObras").textContent=obras.docs.filter(d=>d.data().ativa!==false).length||"0";
       const users=await getDocs(collection(db,"usuarios"));
-      $("statUsers").textContent=users.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+      const statUsers=$("statUsers");
+      if(statUsers) statUsers.textContent=users.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
     } catch(_){}
 
     showPage("appLayout");
@@ -771,7 +807,9 @@
     } catch(_){}
   }
 
-  // ── OBRAS ──
+  // ─────────────────────────────────────────
+  // OBRAS
+  // ─────────────────────────────────────────
   async function saveObra() {
     setMsg("obraMsg","");
     const nome=$("obraName").value.trim(), desc=$("obraDesc").value.trim();
@@ -820,7 +858,7 @@
   async function deleteObra(id, nome) {
     showModal(
       "Excluir obra",
-      "Tem certeza que deseja excluir a obra permanentemente? Esta ação não pode ser desfeita.",
+      `Tem certeza que deseja excluir "${nome}" permanentemente? Esta ação não pode ser desfeita.`,
       async () => {
         try {
           await deleteDoc(doc(db,"obras",id));
@@ -829,8 +867,7 @@
           const snap = await getDocs(collection(db,"obras"));
           $("statObras").textContent = snap.docs.filter(d=>d.data().ativa!==false).length;
         } catch(e){ toast("Erro: "+e.message, false); }
-      },
-      true // botão vermelho
+      }
     );
   }
 
@@ -844,7 +881,9 @@
     } catch(e){ toast("Erro: "+e.message,false); }
   }
 
-  // ── COLABORADORES ──
+  // ─────────────────────────────────────────
+  // COLABORADORES
+  // ─────────────────────────────────────────
   let allUsers = [];
   let currentFilter = "all";
 
@@ -861,8 +900,8 @@
       await signOut(authAux);
       await setDoc(doc(db,"usuarios",cred.user.uid),{
         uid:cred.user.uid, nome, email, role,
-        obra_id: obra||"",           // compatibilidade legada
-        obras:   obra ? [obra] : [], // array de obras (novo)
+        obra_id: obra||"",
+        obras:   obra ? [obra] : [],
         ativo:true, primeiro_acesso:true,
         criadoPor:currentUser.uid, criadoEm:serverTimestamp()
       });
@@ -884,11 +923,9 @@
     const el=$("userList"); if(!el) return;
     el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
     try {
-      // carrega obras para resolver nomes
       const obrasSnap=await getDocs(collection(db,"obras"));
       const obrasMap={};
       obrasSnap.forEach(d=>{ obrasMap[d.id]=d.data().nome; obrasMapRender[d.id]=d.data().nome; });
-
       const snap=await getDocs(query(collection(db,"usuarios"),orderBy("criadoEm","desc")));
       allUsers=snap.docs.map(d=>{
         const data=d.data();
@@ -905,7 +942,8 @@
   function filterUsers(filter) {
     currentFilter=filter;
     ["filterAll","filterActive","filterInact"].forEach(id=>$(id)?.classList.remove("active"));
-    $("filter"+filter.charAt(0).toUpperCase()+filter.slice(1))?.classList.add("active");
+    const map = {all:"filterAll", active:"filterActive", inactive:"filterInact"};
+    $(map[filter])?.classList.add("active");
     renderUsers();
   }
 
@@ -966,11 +1004,13 @@
       await loadUsers();
     }
     const snap2=await getDocs(collection(db,"usuarios"));
-    $("statUsers").textContent=snap2.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
+    const stEl=$("statUsers");
+    if(stEl) stEl.textContent=snap2.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
   }
 
-  // ── AUTH STATE ──
-  // Timeout de segurança — esconde loading após 8s mesmo se Firebase travar
+  // ─────────────────────────────────────────
+  // AUTH STATE OBSERVER
+  // ─────────────────────────────────────────
   setTimeout(() => {
     const ls = $("loadingScreen");
     if(ls && ls.style.display !== "none") {
@@ -995,9 +1035,9 @@
 
   initOffline();
 
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   // LANÇAMENTOS
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   const CATEGORIAS = [
     "Hospedagem","Combustível","Locação de automóvel","Alimentação",
     "Passagem de avião","Ferramentas","Materiais de construção","Outros gastos"
@@ -1008,7 +1048,6 @@
   let editingLancId = null;
   let selectedFile  = null;
 
-  // Preenche select de obras no formulário de lançamento
   async function fillLancObras() {
     const sel  = $("lancObra");
     const filt = $("filterLancObra");
@@ -1022,7 +1061,6 @@
       snap.forEach(d => {
         const o = d.data();
         if(o.ativa === false) return;
-        // colaborador só vê suas obras
         if(currentRole !== "ADMIN" && !obrasDoColab.includes(d.id)) return;
         const opt1 = document.createElement("option");
         opt1.value = d.id; opt1.textContent = o.nome;
@@ -1033,7 +1071,6 @@
           filt.appendChild(opt2);
         }
       });
-      // pré-seleciona obra do colaborador
       if(currentRole !== "ADMIN" && prof?.obra_id) {
         sel.value = prof.obra_id;
         if(filt) filt.value = prof.obra_id;
@@ -1086,7 +1123,6 @@
     } catch(e) { console.error("Upload error:", e); return null; }
   }
 
-  // data de hoje como padrão
   function setTodayDate() {
     const d = $("lancData");
     if(d && !d.value) d.value = new Date().toISOString().split("T")[0];
@@ -1108,7 +1144,7 @@
     if(!desc)        { setMsg("lancMsg","Informe a descrição.");return; }
     if(isNaN(valor)||valor<=0) { setMsg("lancMsg","Informe um valor válido.");return; }
     if(currentRole !== "ADMIN" && !selectedFile && !editingLancId) {
-      setMsg("lancMsg","⚠️ Anexe o comprovante (foto ou PDF) para continuar.");return;
+      setMsg("lancMsg","⚠️ Anexe o comprovante para continuar.");return;
     }
 
     btn.disabled = true;
@@ -1129,31 +1165,22 @@
         colaborador_nome: prof?.nome || currentUser.email,
       };
 
-      // Se offline, salva localmente e sai
       if(!navigator.onLine) {
         await saveOffline(lancData);
         await updatePendingCount();
         setMsg("lancMsg","📵 Salvo localmente! Será enviado quando a internet voltar.",true);
         toast("📵 Salvo offline!");
-        // limpa form
-        $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
-        $("lancDesc").value=""; $("lancValor").value="";
-        $("lancReemb").value="nao";
-        $("reembNao").classList.add("active-opt");
-        $("reembSim").classList.remove("active-opt");
-        removeFile();
+        resetLancForm();
         btn.disabled=false; btn.textContent="💾 Salvar Despesa";
         return;
       }
 
-      // Online: upload foto se tiver
       let comprovante = null;
       if(selectedFile) {
         comprovante = await uploadFile();
         if(!comprovante) { setMsg("lancMsg","Erro ao enviar arquivo. Tente novamente."); btn.disabled=false; btn.textContent="💾 Salvar Despesa"; return; }
       }
 
-      // busca nome da obra
       const obraDoc = await getDoc(doc(db,"obras",obra));
       lancData.obra_nome  = obraDoc.exists() ? obraDoc.data().nome : obra;
       lancData.comprovante = comprovante;
@@ -1167,16 +1194,7 @@
         toast("Despesa registrada! 💾");
       }
 
-      // limpa form
-      $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
-      $("lancDesc").value=""; $("lancValor").value="";
-      $("lancReemb").value="nao";
-      $("reembNao").classList.add("active-opt");
-      $("reembSim").classList.remove("active-opt");
-      removeFile();
-      editingLancId = null;
-      $("formLancTitle").textContent = "Nova Despesa";
-      $("btnCancelLanc").classList.add("hidden");
+      resetLancForm();
       setMsg("lancMsg","✅ Despesa salva com sucesso!",true);
       await loadLancs();
       await updateStatTotal();
@@ -1184,16 +1202,21 @@
     finally { btn.disabled=false; btn.textContent="💾 Salvar Despesa"; }
   }
 
-  function cancelLanc() {
-    editingLancId = null;
-    $("formLancTitle").textContent = "Nova Despesa";
-    $("btnCancelLanc").classList.add("hidden");
+  function resetLancForm() {
     $("lancObra").value=""; $("lancData").value=""; $("lancCategoria").value="";
     $("lancDesc").value=""; $("lancValor").value="";
     $("lancReemb").value="nao";
     $("reembNao").classList.add("active-opt");
     $("reembSim").classList.remove("active-opt");
-    removeFile(); setMsg("lancMsg","");
+    removeFile();
+    editingLancId = null;
+    $("formLancTitle").textContent = "Nova Despesa";
+    $("btnCancelLanc").classList.add("hidden");
+  }
+
+  function cancelLanc() {
+    resetLancForm();
+    setMsg("lancMsg","");
   }
 
   function editLanc(id) {
@@ -1234,10 +1257,7 @@
       let q = query(collection(db,"lancamentos"), orderBy("criadoEm","desc"));
       const snap = await getDocs(q);
       allLancs = snap.docs.map(d=>({id:d.id,...d.data()}));
-
-      // filtra por obra se selecionado
       const filtObra = $("filterLancObra")?.value || "";
-      // colaborador vê apenas sua obra
       let list = allLancs;
       if(currentRole !== "ADMIN") {
         const prof = await loadProfile(currentUser.uid);
@@ -1245,12 +1265,10 @@
       } else if(filtObra) {
         list = list.filter(l=>l.obra_id===filtObra);
       }
-
       if(!list.length){
         el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div>`;
         return;
       }
-
       const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       el.innerHTML="";
       list.forEach(l=>{
@@ -1299,9 +1317,9 @@
     } catch(_){}
   }
 
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   // OFFLINE / SYNC
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   const OFFLINE_DB_NAME    = "cfo_offline";
   const OFFLINE_DB_VERSION = 1;
   const OFFLINE_STORE      = "lancamentos_pendentes";
@@ -1360,10 +1378,6 @@
       const pending = await getPendingOffline();
       const el = $("statPending");
       if(el) el.textContent = pending.length || "0";
-      // Mostra badge no nav se tiver pendentes
-      if(pending.length > 0) {
-        toast(`⏳ ${pending.length} lançamento(s) pendente(s) para sincronizar`, true);
-      }
     } catch(_){}
   }
 
@@ -1377,7 +1391,6 @@
       for(const record of pending) {
         try {
           const { localId, syncStatus, savedAt, ...lancData } = record;
-          // Busca nome da obra
           const obraDoc = await getDoc(doc(db,"obras", lancData.obra_id));
           lancData.obra_nome = obraDoc.exists() ? obraDoc.data().nome : lancData.obra_id;
           lancData.criadoEm  = serverTimestamp();
@@ -1399,14 +1412,13 @@
     }
   }
 
-  // Ouve reconexão para sincronizar automaticamente
   window.addEventListener("online", () => {
     setTimeout(syncPendingLancs, 1500);
   });
 
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   // DASHBOARD
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   const CATEGORIAS_CORES = {
     "Hospedagem":              "#6366f1",
     "Combustível":             "#f59e0b",
@@ -1425,9 +1437,7 @@
     try {
       const obrasSnap = await getDocs(collection(db,"obras"));
       const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
-
       if(currentRole !== "ADMIN") {
-        // Colaborador: vê só sua(s) obra(s)
         const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
         selObra.innerHTML = `<option value="">Todas as minhas obras</option>`;
         obrasSnap.forEach(d => {
@@ -1437,16 +1447,12 @@
           o.value = d.id; o.textContent = d.data().nome;
           selObra.appendChild(o);
         });
-        selObra.disabled = false;
-        // Filtro de colaborador — pré-seleciona ele mesmo
-        $("dashColabWrap").style.display = "";
         if(selColab) {
           selColab.innerHTML = `
             <option value="">Todos da obra</option>
             <option value="${currentUser.uid}" selected>${prof?.nome || currentUser.email}</option>`;
         }
       } else {
-        // Admin: vê todas as obras
         selObra.innerHTML = `<option value="">Todas as obras</option>`;
         obrasSnap.forEach(d => {
           if(d.data().ativa === false) return;
@@ -1454,9 +1460,6 @@
           o.value = d.id; o.textContent = d.data().nome;
           selObra.appendChild(o);
         });
-        selObra.disabled = false;
-        $("dashColabWrap").style.display = "";
-        // Preenche colaboradores
         const usersSnap = await getDocs(collection(db,"usuarios"));
         if(selColab) {
           selColab.innerHTML = `<option value="">Todos</option>`;
@@ -1471,7 +1474,6 @@
     } catch(_){}
   }
 
-  // Quando troca obra, filtra colaboradores daquela obra
   async function onDashObraChange() {
     const obraId   = $("dashObra").value;
     const selColab = $("dashColab");
@@ -1482,7 +1484,7 @@
       usersSnap.forEach(d => {
         const u = d.data();
         if(u.ativo === false) return;
-        if(obraId && u.obra_id !== obraId) return; // filtra por obra
+        if(obraId && u.obra_id !== obraId) return;
         const o = document.createElement("option");
         o.value = u.uid; o.textContent = u.nome || u.email;
         selColab.appendChild(o);
@@ -1495,87 +1497,61 @@
     const el = $("dashTable");
     if(!el) return;
     el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
-
     const obraFilt  = $("dashObra")?.value  || "";
     const colabFilt = $("dashColab")?.value || "";
     const deFilt    = $("dashDe")?.value    || "";
     const ateFilt   = $("dashAte")?.value   || "";
-
     try {
       let snap = await getDocs(query(collection(db,"lancamentos"), orderBy("criadoEm","desc")));
       let lancs = snap.docs.map(d => d.data());
-
       if(currentRole !== "ADMIN") {
         const prof = await loadProfile(currentUser.uid);
         const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
-        if(obraFilt) {
-          lancs = lancs.filter(l => l.obra_id === obraFilt);
-        } else {
-          lancs = lancs.filter(l => obrasDoColab.includes(l.obra_id));
-        }
-        if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
+        lancs = obraFilt ? lancs.filter(l=>l.obra_id===obraFilt) : lancs.filter(l=>obrasDoColab.includes(l.obra_id));
+        if(colabFilt) lancs = lancs.filter(l=>l.colaborador_uid===colabFilt);
       } else {
-        if(obraFilt)  lancs = lancs.filter(l => l.obra_id === obraFilt);
-        if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
+        if(obraFilt)  lancs = lancs.filter(l=>l.obra_id===obraFilt);
+        if(colabFilt) lancs = lancs.filter(l=>l.colaborador_uid===colabFilt);
       }
-      if(deFilt)  lancs = lancs.filter(l => l.data >= deFilt);
-      if(ateFilt) lancs = lancs.filter(l => l.data <= ateFilt);
-
-      // Agrupa por categoria
+      if(deFilt)  lancs = lancs.filter(l=>l.data>=deFilt);
+      if(ateFilt) lancs = lancs.filter(l=>l.data<=ateFilt);
       const totais = {};
       const cats   = Object.keys(CATEGORIAS_CORES);
-      cats.forEach(c => totais[c] = 0);
+      cats.forEach(c=>totais[c]=0);
       let totalGeral = 0;
-      lancs.forEach(l => {
-        const cat = l.categoria || "Outros gastos";
-        if(totais[cat] !== undefined) totais[cat] += Number(l.valor||0);
-        else totais["Outros gastos"] += Number(l.valor||0);
-        totalGeral += Number(l.valor||0);
+      lancs.forEach(l=>{
+        const cat=l.categoria||"Outros gastos";
+        if(totais[cat]!==undefined) totais[cat]+=Number(l.valor||0);
+        else totais["Outros gastos"]+=Number(l.valor||0);
+        totalGeral+=Number(l.valor||0);
       });
-
-      // Atualiza stats
       $("statTotal").textContent = totalGeral.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       $("statCount").textContent = lancs.length;
-
-      // Monta tabela
-      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+      const brl = n=>Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       let rows = "";
-      cats.forEach(cat => {
-        const cor = CATEGORIAS_CORES[cat];
-        rows += `<tr>
-          <td><span class="cat-dot" style="background:${cor}"></span>${cat}</td>
-          <td>${brl(totais[cat])}</td>
-        </tr>`;
+      cats.forEach(cat=>{
+        const cor=CATEGORIAS_CORES[cat];
+        rows+=`<tr><td><span class="cat-dot" style="background:${cor}"></span>${cat}</td><td>${brl(totais[cat])}</td></tr>`;
       });
-
-      el.innerHTML = `
+      el.innerHTML=`
         <table class="dash-table">
           <thead><tr><th>Categoria</th><th>Total Acumulado</th></tr></thead>
-          <tbody>
-            ${rows}
-            <tr class="total-row">
-              <td>TOTAL GERAL</td>
-              <td>${brl(totalGeral)}</td>
-            </tr>
-          </tbody>
+          <tbody>${rows}<tr class="total-row"><td>TOTAL GERAL</td><td>${brl(totalGeral)}</td></tr></tbody>
         </table>`;
-
     } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar.</p>`; }
   }
 
   function clearDashFilters() {
-    const selObra  = $("dashObra");
-    const selColab = $("dashColab");
-    if(selObra && currentRole === "ADMIN")  selObra.value  = "";
-    if(selColab) selColab.value = "";
-    if($("dashDe"))  $("dashDe").value  = "";
-    if($("dashAte")) $("dashAte").value = "";
+    if($("dashObra") && currentRole==="ADMIN") $("dashObra").value="";
+    if($("dashColab")) $("dashColab").value="";
+    if($("dashDe"))  $("dashDe").value="";
+    if($("dashAte")) $("dashAte").value="";
     loadDashboard();
   }
 
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   // ALOCAÇÃO EM OBRAS
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
   let alocUserId = null;
 
   async function openAlocModal(userId, userName) {
@@ -1586,9 +1562,7 @@
     lista.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted)">Carregando...</div>`;
     $("modalAlocacao").classList.remove("hidden");
     try {
-      // Busca obras ativas
       const obrasSnap = await getDocs(collection(db,"obras"));
-      // Busca obras atuais do colaborador
       const userDoc = await getDoc(doc(db,"usuarios",userId));
       const obrasAtuais = userDoc.exists() ? (userDoc.data().obras || []) : [];
       lista.innerHTML = "";
@@ -1615,7 +1589,7 @@
     if(!alocUserId) return;
     const checkboxes = $("alocObrasList").querySelectorAll("input[type=checkbox]");
     const obrasSel = Array.from(checkboxes).filter(c=>c.checked).map(c=>c.value);
-    const obraId   = obrasSel.length > 0 ? obrasSel[0] : ""; // compatibilidade legada
+    const obraId   = obrasSel.length > 0 ? obrasSel[0] : "";
     try {
       await updateDoc(doc(db,"usuarios",alocUserId),{
         obras:   obrasSel,
@@ -1624,7 +1598,6 @@
       toast("Alocação atualizada! 🏗️");
       closeAlocModal();
       await loadUsers();
-      // Atualiza selects de obras nos formulários
       await fillObraSelect();
       await fillLancObras();
     } catch(e){ toast("Erro: "+e.message, false); }
@@ -1635,18 +1608,15 @@
     alocUserId = null;
   }
 
-  // ══════════════════════════════
-  // RELATÓRIOS — PARTE 6
-  // ══════════════════════════════
+  // ─────────────────────────────────────────
+  // RELATÓRIOS
+  // ─────────────────────────────────────────
   const EMAILJS_SERVICE  = "service_3termna";
   const EMAILJS_TEMPLATE = "template_4f1db2i";
   const EMAILJS_KEY      = "ja6wdJjmvOxLKziFp";
-  const RESEND_API_KEY   = "re_7rgRJtoC_7KSxY8bBvjapypfPn3ZNDLKa";
   const APPS_SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbxSKJcHOAKREo7vxsWg1fu878nAc-bB-XmgGA0zyhRhrwXAvyVPzJxc8rlJLHSv95TauA/exec";
 
   if(typeof emailjs !== "undefined") emailjs.init(EMAILJS_KEY);
-
-  const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
   async function fillRelatorioFiltros() {
     const selObra  = $("relObra");
@@ -1753,7 +1723,7 @@
         if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
       });
       const rows = lancs.map(l =>
-        "<tr><td>"+formatDate(l.data)+"</td><td>"+( l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(l.reembolsavel?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
+        "<tr><td>"+formatDate(l.data)+"</td><td>"+(l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(l.reembolsavel?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
       ).join("");
       const catRows = cats.map(c =>
         "<tr><td><span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:"+CATEGORIAS_CORES[c]+";margin-right:6px'></span>"+c+"</td><td style='text-align:right;font-weight:600'>"+brl(totCat[c])+"</td></tr>"
@@ -1771,88 +1741,57 @@
       const lancs = await getLancsFiltrados();
       if(!lancs.length) { setMsg("relMsg","⚠️ Nenhum lançamento no período."); return null; }
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      const docPdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
       const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
       const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
       const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
-      // Cabeçalho
-      doc.setFillColor(15,52,96); doc.rect(0,0,210,28,"F");
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(16); doc.setFont("helvetica","bold");
-      doc.text("GO — Gestão de Obras", 14, 12);
-      doc.setFontSize(10); doc.setFont("helvetica","normal");
-      doc.text("Obra: "+obraNome, 14, 20);
-      doc.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
-      // Tabela lançamentos
-      doc.setTextColor(0,0,0);
-      doc.setFontSize(11); doc.setFont("helvetica","bold");
-      doc.text("Lançamentos", 14, 38);
-      // Agrupar lançamentos por colaborador
+      docPdf.setFillColor(15,52,96); docPdf.rect(0,0,210,28,"F");
+      docPdf.setTextColor(255,255,255);
+      docPdf.setFontSize(16); docPdf.setFont("helvetica","bold");
+      docPdf.text("GO — Gestão de Obras", 14, 12);
+      docPdf.setFontSize(10); docPdf.setFont("helvetica","normal");
+      docPdf.text("Obra: "+obraNome, 14, 20);
+      docPdf.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
+      docPdf.setTextColor(0,0,0);
+      docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
+      docPdf.text("Lançamentos", 14, 38);
       const porColab = {};
       lancs.forEach(l => {
         const nome = l.colaborador_nome || "Sem nome";
         if(!porColab[nome]) porColab[nome] = [];
         porColab[nome].push(l);
       });
-
       let startY = 42;
       for(const [colaborador, lancColab] of Object.entries(porColab)) {
-        // Título do colaborador
-        doc.setFontSize(10); doc.setFont("helvetica","bold");
-        doc.setTextColor(15,52,96);
-        doc.text("Colaborador: " + colaborador, 14, startY);
+        docPdf.setFontSize(10); docPdf.setFont("helvetica","bold");
+        docPdf.setTextColor(15,52,96);
+        docPdf.text("Colaborador: " + colaborador, 14, startY);
         startY += 5;
-
-        const rows = lancColab.map(l => [
-          formatDate(l.data),
-          l.categoria||"—",
-          (l.descricao||"—").substring(0,35),
-          brl(l.valor),
-          l.reembolsavel ? "✓ REIMB." : "EMPRESA"
-        ]);
-
-        // Total do colaborador
+        const rows = lancColab.map(l => [formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),l.reembolsavel?"✓ REIMB.":"EMPRESA"]);
         const totalColab = lancColab.reduce((s,l)=>s+Number(l.valor||0),0);
         const reembColab = lancColab.filter(l=>l.reembolsavel).reduce((s,l)=>s+Number(l.valor||0),0);
         rows.push(["","TOTAL","", brl(totalColab), ""]);
-
-        doc.autoTable({
+        docPdf.autoTable({
           startY,
           head:[["Data","Categoria","Descrição","Valor","Tipo"]],
           body: rows,
           styles:{fontSize:8,cellPadding:2.5},
           headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
           alternateRowStyles:{fillColor:[245,247,250]},
-          columnStyles:{
-            3:{halign:"right",fontStyle:"bold"},
-            4:{halign:"center",fontStyle:"bold"}
-          },
-          didParseCell: (data) => {
-            // Destacar reembolsável em amarelo
-            if(data.column.index===4 && data.cell.raw==="✓ REIMB.") {
-              data.cell.styles.textColor = [180,120,0];
-              data.cell.styles.fillColor = [255,251,230];
-            }
-            // Destacar linha de total
-            if(data.row.index===rows.length-1) {
-              data.cell.styles.fontStyle="bold";
-              data.cell.styles.fillColor=[230,240,255];
-            }
+          columnStyles:{3:{halign:"right",fontStyle:"bold"},4:{halign:"center",fontStyle:"bold"}},
+          didParseCell:(data)=>{
+            if(data.column.index===4&&data.cell.raw==="✓ REIMB."){data.cell.styles.textColor=[180,120,0];data.cell.styles.fillColor=[255,251,230];}
+            if(data.row.index===rows.length-1){data.cell.styles.fontStyle="bold";data.cell.styles.fillColor=[230,240,255];}
           },
           margin:{left:14,right:14}
         });
-
-        // Resumo do colaborador
-        const fy = doc.lastAutoTable.finalY + 3;
-        doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(80,80,80);
-        doc.text(`  Total: ${brl(totalColab)}  |  Empresa: ${brl(totalColab-reembColab)}  |  Reembolsável: ${brl(reembColab)}`, 14, fy);
+        const fy = docPdf.lastAutoTable.finalY + 3;
+        docPdf.setFontSize(8); docPdf.setFont("helvetica","normal"); docPdf.setTextColor(80,80,80);
+        docPdf.text(`  Total: ${brl(totalColab)}  |  Empresa: ${brl(totalColab-reembColab)}  |  Reembolsável: ${brl(reembColab)}`, 14, fy);
         startY = fy + 8;
-
-        // Nova página se necessário
-        if(startY > 250) { doc.addPage(); startY = 20; }
+        if(startY > 250) { docPdf.addPage(); startY = 20; }
       }
-      // Resumo por categoria
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat = {}; cats.forEach(c=>totCat[c]=0);
       let totalGeral=0,totalReemb=0,totalEmp=0;
@@ -1861,23 +1800,22 @@
         totCat[cat]+=v; totalGeral+=v;
         if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
       });
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(11); doc.setFont("helvetica","bold");
-      doc.text("Monitoramento por Categoria", 14, finalY);
-      const catRows = cats.map(c => [c, brl(totCat[c])]);
-      catRows.push(["TOTAL GERAL", brl(totalGeral)]);
-      doc.autoTable({startY:finalY+4, head:[["Categoria","Total Acumulado"]], body:catRows, styles:{fontSize:9,cellPadding:2}, headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"}, columnStyles:{1:{halign:"right"}}, didParseCell:(d)=>{ if(d.row.index===catRows.length-1){d.cell.styles.fontStyle="bold";d.cell.styles.textColor=[233,69,96];}}, margin:{left:14,right:14}});
-      // Rodapé
-      const pg = doc.internal.getNumberOfPages();
+      const finalY = docPdf.lastAutoTable.finalY + 10;
+      docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
+      docPdf.text("Monitoramento por Categoria", 14, finalY);
+      const catRows = cats.map(c=>[c,brl(totCat[c])]);
+      catRows.push(["TOTAL GERAL",brl(totalGeral)]);
+      docPdf.autoTable({startY:finalY+4,head:[["Categoria","Total Acumulado"]],body:catRows,styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},columnStyles:{1:{halign:"right"}},didParseCell:(d)=>{if(d.row.index===catRows.length-1){d.cell.styles.fontStyle="bold";d.cell.styles.textColor=[233,69,96];}},margin:{left:14,right:14}});
+      const pg = docPdf.internal.getNumberOfPages();
       for(let i=1;i<=pg;i++){
-        doc.setPage(i); doc.setFontSize(7); doc.setTextColor(150,150,150);
-        doc.text("CFO — Relatório gerado em "+new Date().toLocaleDateString("pt-BR")+" · Pág. "+i+"/"+pg, 14, 292);
-        doc.text("Empresa: "+brl(totalEmp)+" · Reembolsável: "+brl(totalReemb), 196, 292, {align:"right"});
+        docPdf.setPage(i); docPdf.setFontSize(7); docPdf.setTextColor(150,150,150);
+        docPdf.text("GO — Relatório gerado em "+new Date().toLocaleDateString("pt-BR")+" · Pág. "+i+"/"+pg, 14, 292);
+        docPdf.text("Empresa: "+brl(totalEmp)+" · Reembolsável: "+brl(totalReemb), 196, 292, {align:"right"});
       }
-      const fileName = "CFO_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
-      doc.save(fileName);
+      const fileName = "GO_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
+      docPdf.save(fileName);
       setMsg("relMsg","✅ PDF gerado com sucesso!",true);
-      return doc.output("datauristring");
+      return docPdf.output("datauristring");
     } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao gerar PDF: "+e.message); return null; }
   }
 
@@ -1907,7 +1845,6 @@
           onfocus="this.parentElement.style.borderColor='var(--brand)'"
           onblur="this.parentElement.style.borderColor='var(--border)'">
         <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:2px 6px;border-radius:6px"
-          title="Remover este e-mail"
           onclick="if(confirm('Remover este e-mail?'))this.parentElement.remove()">🗑️</button>`;
       el.appendChild(div);
     });
@@ -1926,7 +1863,6 @@
         onfocus="this.parentElement.style.borderColor='var(--brand)'"
         onblur="this.parentElement.style.borderColor='var(--border)'">
       <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:2px 6px;border-radius:6px"
-        title="Remover este e-mail"
         onclick="if(confirm('Remover este e-mail?'))this.parentElement.remove()">🗑️</button>`;
     el.appendChild(div);
   }
@@ -1957,7 +1893,6 @@
       const cfgSnap = await getDoc(doc(db,"configuracoes","email"));
       const emails  = cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
       if(!emails.length){ setMsg("relMsg","⚠️ Configure os e-mails primeiro."); return; }
-
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
       const deFmt    = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
       const ateFmt   = $("relAte")?.value ? formatDate($("relAte").value) : "—";
@@ -1971,14 +1906,9 @@
         if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
       });
       const dataEnvio = new Date().toLocaleDateString("pt-BR");
-
-      // ── GERAR PDF ──────────────────────────────────────────
       const { jsPDF } = window.jspdf;
       const doc2 = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-
-      // Cabeçalho
-      doc2.setFillColor(15,52,96);
-      doc2.rect(0,0,210,28,"F");
+      doc2.setFillColor(15,52,96); doc2.rect(0,0,210,28,"F");
       doc2.setTextColor(255,255,255);
       doc2.setFontSize(14); doc2.setFont("helvetica","bold");
       doc2.text("GO — Gestão de Obras", 14, 11);
@@ -1986,8 +1916,6 @@
       doc2.text("Relatório de Despesas — "+obraNome, 14, 18);
       doc2.text("Período: "+deFmt+" a "+ateFmt+" | Emitido em: "+dataEnvio, 14, 24);
       doc2.setTextColor(0,0,0);
-
-      // Resumo financeiro
       let y = 36;
       doc2.setFontSize(10); doc2.setFont("helvetica","bold");
       doc2.text("RESUMO FINANCEIRO", 14, y); y+=6;
@@ -1998,167 +1926,64 @@
       doc2.text("TOTAL GERAL:   "+brl(totalGeral), 14, y); y+=5;
       doc2.setFont("helvetica","normal");
       doc2.text("Lançamentos:   "+lancs.length, 14, y); y+=8;
-
-      // Tabela por colaborador
       const porColab = {};
       lancs.forEach(l => {
         const nome = l.colaborador_nome || "Sem nome";
         if(!porColab[nome]) porColab[nome] = {empresa:0, reemb:0, itens:[]};
         const v = Number(l.valor||0);
-        if(l.reembolsavel) porColab[nome].reemb += v;
-        else porColab[nome].empresa += v;
+        if(l.reembolsavel) porColab[nome].reemb+=v; else porColab[nome].empresa+=v;
         porColab[nome].itens.push(l);
       });
-
-      doc2.setFontSize(10); doc2.setFont("helvetica","bold");
-      doc2.text("LANÇAMENTOS POR COLABORADOR", 14, y); y+=4;
-
       for(const [colaborador, dados] of Object.entries(porColab)) {
         doc2.setFontSize(9); doc2.setFont("helvetica","bold");
         doc2.setTextColor(15,52,96);
         doc2.text("Colaborador: "+colaborador, 14, y); y+=4;
         doc2.setTextColor(0,0,0);
-
-        const rows = dados.itens.map(l => [
-          formatDate(l.data),
-          l.categoria||"—",
-          (l.descricao||"—").substring(0,35),
-          brl(l.valor),
-          l.reembolsavel ? "REIMB." : "EMPRESA"
-        ]);
-        const totalColab = dados.empresa + dados.reemb;
-        rows.push(["","TOTAL","", brl(totalColab), ""]);
-
-        doc2.autoTable({
-          startY: y,
-          head:[["Data","Categoria","Descrição","Valor","Tipo"]],
-          body: rows,
-          styles:{fontSize:8,cellPadding:2},
-          headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
-          alternateRowStyles:{fillColor:[245,247,250]},
-          columnStyles:{3:{halign:"right",fontStyle:"bold"},4:{halign:"center"}},
-          didParseCell:(data)=>{
-            if(data.column.index===4 && data.cell.raw==="REIMB."){
-              data.cell.styles.textColor=[180,120,0];
-              data.cell.styles.fillColor=[255,251,230];
-            }
-            if(data.row.index===rows.length-1){
-              data.cell.styles.fontStyle="bold";
-              data.cell.styles.fillColor=[230,240,255];
-            }
-          },
-          margin:{left:14,right:14}
-        });
-        y = doc2.lastAutoTable.finalY + 6;
-        if(y > 250){ doc2.addPage(); y = 20; }
+        const rows = dados.itens.map(l=>[formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),l.reembolsavel?"REIMB.":"EMPRESA"]);
+        const totalColab = dados.empresa+dados.reemb;
+        rows.push(["","TOTAL","",brl(totalColab),""]);
+        doc2.autoTable({startY:y,head:[["Data","Categoria","Descrição","Valor","Tipo"]],body:rows,styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[245,247,250]},columnStyles:{3:{halign:"right",fontStyle:"bold"},4:{halign:"center"}},didParseCell:(data)=>{if(data.column.index===4&&data.cell.raw==="REIMB."){data.cell.styles.textColor=[180,120,0];data.cell.styles.fillColor=[255,251,230];}if(data.row.index===rows.length-1){data.cell.styles.fontStyle="bold";data.cell.styles.fillColor=[230,240,255];}},margin:{left:14,right:14}});
+        y=doc2.lastAutoTable.finalY+6;
+        if(y>250){doc2.addPage();y=20;}
       }
-
-      // Rodapé
-      const pageCount = doc2.internal.getNumberOfPages();
+      const pageCount=doc2.internal.getNumberOfPages();
       for(let i=1;i<=pageCount;i++){
         doc2.setPage(i);
-        doc2.setFillColor(15,52,96);
-        doc2.rect(0,285,210,12,"F");
-        doc2.setTextColor(255,255,255);
-        doc2.setFontSize(7);
+        doc2.setFillColor(15,52,96); doc2.rect(0,285,210,12,"F");
+        doc2.setTextColor(255,255,255); doc2.setFontSize(7);
         doc2.text("GO — Gestão de Obras | Gerado em "+dataEnvio, 14, 291);
         doc2.text("Pág. "+i+"/"+pageCount, 196, 291, {align:"right"});
       }
-
-      // Converter PDF para base64
       const pdfBase64 = doc2.output("datauristring").split(",")[1];
       const nomeArquivo = "Relatorio_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+"_a_"+ateFmt.replace(/\//g,"-")+".pdf";
-
-      // ── MONTAR CORPO DO E-MAIL ─────────────────────────────
       const deDate  = $("relDe")?.value  ? new Date($("relDe").value+"T12:00:00")  : new Date();
       const ateDate = $("relAte")?.value ? new Date($("relAte").value+"T12:00:00") : new Date();
       const meses   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-      const periodoLabel = meses[deDate.getMonth()]+"-"+deDate.getFullYear()
-        + (deDate.getMonth()!==ateDate.getMonth() ? " a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear() : "");
-
-      // Links comprovantes
+      const periodoLabel = meses[deDate.getMonth()]+"-"+deDate.getFullYear()+(deDate.getMonth()!==ateDate.getMonth()?" a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear():"");
       const comprovantes = lancs.filter(l=>l.comprovante?.url);
-      const linksComp = comprovantes.length > 0
-        ? comprovantes.map(l => `<a href="${l.comprovante.url}" style="color:#0f3460">${l.comprovante.url}</a>`).join("<br>")
-        : "Nenhum comprovante anexado.";
-
-      const htmlBody = `
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-  <div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0">
-    <h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2>
-    <p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p>
-  </div>
-  <div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none">
-    <p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p>
-    <p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p>
-    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
-    <p style="margin:4px 0"><strong>Empresa:</strong> ${brl(totalEmp)}</p>
-    <p style="margin:4px 0"><strong>Reembolsável:</strong> ${brl(totalReemb)}</p>
-    <p style="margin:8px 0 4px;font-size:16px;font-weight:bold;color:#e94560">TOTAL GERAL: ${brl(totalGeral)}</p>
-    <p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p>
-    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
-    <p style="margin:0 0 6px"><strong>Comprovantes (notas fiscais):</strong></p>
-    <p style="font-size:12px;line-height:1.8">${linksComp}</p>
-    <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
-    <p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p>
-  </div>
-</div>`;
-
-      // ── ENVIAR VIA GOOGLE APPS SCRIPT ─────────────────────
+      const linksComp = comprovantes.length>0?comprovantes.map(l=>`<a href="${l.comprovante.url}" style="color:#0f3460">${l.comprovante.url}</a>`).join("<br>"):"Nenhum comprovante anexado.";
+      const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2><p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p><p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:4px 0"><strong>Empresa:</strong> ${brl(totalEmp)}</p><p style="margin:4px 0"><strong>Reembolsável:</strong> ${brl(totalReemb)}</p><p style="margin:8px 0 4px;font-size:16px;font-weight:bold;color:#e94560">TOTAL GERAL: ${brl(totalGeral)}</p><p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:0 0 6px"><strong>Comprovantes:</strong></p><p style="font-size:12px;line-height:1.8">${linksComp}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p></div></div>`;
       setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
-
-      // Montar payload e enviar via iframe oculto (contorna CORS)
-      const payload = {
-        emails,
-        assunto:     "Relatório GO — "+obraNome+" — "+periodoLabel,
-        corpo:       htmlBody,
-        pdf:         pdfBase64,
-        nomeArquivo: nomeArquivo
-      };
-
-      // Usar iframe oculto para não abrir nova aba
-      const iframeName = "emailFrame_" + Date.now();
+      const payload = {emails,assunto:"Relatório GO — "+obraNome+" — "+periodoLabel,corpo:htmlBody,pdf:pdfBase64,nomeArquivo};
+      const iframeName = "emailFrame_"+Date.now();
       const iframe = document.createElement("iframe");
-      iframe.name  = iframeName;
-      iframe.style.display = "none";
+      iframe.name = iframeName; iframe.style.display="none";
       document.body.appendChild(iframe);
-
       const form = document.createElement("form");
-      form.method = "POST";
-      form.action = APPS_SCRIPT_URL;
-      form.target = iframeName;
-      form.style.display = "none";
-
+      form.method="POST"; form.action=APPS_SCRIPT_URL; form.target=iframeName; form.style.display="none";
       const input = document.createElement("input");
-      input.type  = "hidden";
-      input.name  = "payload";
-      input.value = JSON.stringify(payload);
-      form.appendChild(input);
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-
-      // Aguardar 4 segundos para o envio completar
-      await new Promise(r => setTimeout(r, 4000));
+      input.type="hidden"; input.name="payload"; input.value=JSON.stringify(payload);
+      form.appendChild(input); document.body.appendChild(form);
+      form.submit(); document.body.removeChild(form);
+      await new Promise(r=>setTimeout(r,4000));
       document.body.removeChild(iframe);
-
-      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{
-        obra_nome: obraNome,
-        periodo_de: $("relDe")?.value,
-        periodo_ate: $("relAte")?.value,
-        total: totalGeral,
-        enviado_por: currentUser.uid,
-        enviado_em: serverTimestamp(),
-        destinatarios: emails
-      });
-
-      toast("✅ Relatório enviado com PDF para "+emails.length+" e-mail(s)!");
-      setMsg("relMsg","✅ Enviado para "+emails.length+" destinatário(s) com PDF anexado!",true);
+      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome,periodo_de:$("relDe")?.value,periodo_ate:$("relAte")?.value,total:totalGeral,enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
+      toast("✅ Relatório enviado para "+emails.length+" e-mail(s)!");
+      setMsg("relMsg","✅ Enviado para "+emails.length+" destinatário(s) com PDF!",true);
     } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao enviar: "+e.message); }
   }
 
-    async function verificarFechamentoMensal() {
+  async function verificarFechamentoMensal() {
     if(currentRole !== "ADMIN") return;
     try {
       const hoje = new Date();
@@ -2176,40 +2001,37 @@
     } catch(e){ console.error("Erro no fechamento mensal:",e); }
   }
 
-  // ══════════════════════════════════════════════════════════
-  // MÓDULO DE PONTO
-  // ══════════════════════════════════════════════════════════
-
-  const HORARIOS = {
-    // 0=Dom,1=Seg,2=Ter,3=Qua,4=Qui,5=Sex,6=Sab
-    entrada:  "07:00",
-    almoco:   "12:00",
-    retorno:  "13:00",
-    saida:    { 0:"17:00", 1:"17:00", 2:"17:00", 3:"17:00", 4:"17:00", 5:"17:00", 6:"17:00" },
-    saidaMax: { 0:"17:00", 1:"17:00", 2:"17:00", 3:"17:00", 4:"17:00", 5:"17:00", 6:"17:00" }
-    // Sexta: saída às 16:00 ainda conta como dia normal
-  };
-
-  let pontoUser     = null;  // usuário logado no módulo ponto
-  let pontoStream   = null;  // stream da câmera
-  let pontoFotoB64  = null;  // foto tirada
-  let pontoGPS      = null;  // {lat, lng}
-  let pontoFaseAtual = null; // fase atual do ponto
-  let pontoObraData  = null; // dados da obra do colaborador
-  let correcaoDia   = null;  // dia sendo corrigido pelo admin
-  let justPontoId   = null;  // id do ponto aguardando justificativa
+  // ═══════════════════════════════════════════════════════════
+  // MÓDULO DE PONTO — REGISTRO (TELA PÚBLICA)
+  // ═══════════════════════════════════════════════════════════
+  let pontoUser     = null;
+  let pontoStream   = null;
+  let pontoFotoB64  = null;
+  let pontoGPS      = null;
+  let pontoFaseAtual = null;
+  let pontoObraData  = null;
+  let correcaoDia   = null;
+  let justPontoId   = null;
 
   function irParaPonto() {
-    showPage("pontoPage");
+    // Limpa estado anterior
+    pontoUser=null; pontoStream=null; pontoFotoB64=null; pontoGPS=null;
+    pontoFaseAtual=null; pontoObraData=null; justPontoId=null;
+    $("pontoEmail").value=""; $("pontoSenha").value="";
+    setMsg("pontoLoginMsg","");
     $("pontoStepLogin").classList.remove("hidden");
     $("pontoStepCamera").classList.add("hidden");
     $("pontoStepOk").classList.add("hidden");
     $("pontoStepJustificativa").classList.add("hidden");
+    showPage("pontoPage");
   }
 
   function voltarLogin() {
     pararCamera();
-    showPage("loginPage");
+    $("loginPage").classList.remove("hidden");
+    $("pontoPage").classList.add("hidden");
+    $("changePwPage").classList.add("hidden");
+    $("appLayout").classList.add("hidden");
   }
 
   async function loginPonto() {
@@ -2226,7 +2048,6 @@
         setMsg("pontoLoginMsg","⛔ Conta inativa.");
         return;
       }
-
       // Verificar justificativa pendente do dia anterior
       const justPendente = await verificarJustificativaPendente(pontoUser.uid);
       if(justPendente) {
@@ -2236,23 +2057,21 @@
         $("pontoStepJustificativa").classList.remove("hidden");
         return;
       }
-
       // Carregar obra do colaborador
       const obras = prof.obras?.length ? prof.obras : (prof.obra_id ? [prof.obra_id] : []);
       if(obras.length > 0) {
-        const obraSnap = await getDoc(doc(db,"obras",obras[0]));
-        pontoObraData = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
+        try {
+          const obraSnap = await getDoc(doc(db,"obras",obras[0]));
+          pontoObraData = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
+        } catch(_){}
       }
-
       // Determinar fase atual
       pontoFaseAtual = await determinarFase(pontoUser.uid);
-
       // Atualizar UI
       $("pontoNomeColab").textContent = prof.nome || email;
       $("pontoObraColab").textContent = pontoObraData?.nome || "Sem obra definida";
       atualizarDataHoraPonto();
       atualizarFaseLabel();
-
       // Iniciar câmera e GPS
       $("pontoStepLogin").classList.add("hidden");
       $("pontoStepCamera").classList.remove("hidden");
@@ -2260,7 +2079,12 @@
       await obterGPS();
       setMsg("pontoLoginMsg","");
     } catch(e) {
-      const msgs = {"auth/invalid-credential":"E-mail ou senha incorretos.","auth/too-many-requests":"Muitas tentativas. Aguarde."};
+      const msgs = {
+        "auth/invalid-credential":"E-mail ou senha incorretos.",
+        "auth/too-many-requests":"Muitas tentativas. Aguarde.",
+        "auth/user-not-found":"Usuário não encontrado.",
+        "auth/wrong-password":"Senha incorreta."
+      };
       setMsg("pontoLoginMsg", msgs[e.code] || "Erro: "+e.message);
     }
   }
@@ -2273,39 +2097,43 @@
   function atualizarFaseLabel() {
     const fases = { entrada:"🟢 Entrada", almoco:"🟡 Saída para Almoço", retorno:"🔵 Retorno do Almoço", saida:"🔴 Saída", extra:"🟠 Hora Extra" };
     const horarios = { entrada:"07:00", almoco:"12:00", retorno:"13:00", saida: getSaidaPrevista(), extra:"após 17:00" };
-    $("pontoFaseLabel").textContent  = fases[pontoFaseAtual]  || "Sem fase";
-    $("pontoHorarioEsperado").textContent = "Previsto: " + (horarios[pontoFaseAtual] || "—");
+    if($("pontoFaseLabel")) $("pontoFaseLabel").textContent  = fases[pontoFaseAtual]  || "Sem fase";
+    if($("pontoHorarioEsperado")) $("pontoHorarioEsperado").textContent = "Previsto: " + (horarios[pontoFaseAtual] || "—");
   }
 
   function getSaidaPrevista() {
     const dia = new Date().getDay();
-    return dia === 5 ? "16:00 (dia normal até 17:00)" : "17:00";
+    return dia === 5 ? "16:00" : "17:00";
   }
 
   async function determinarFase(uid) {
     const hoje = new Date().toISOString().split("T")[0];
-    const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",hoje));
-    const snap = await getDocs(q);
-    if(snap.empty) return "entrada";
-    const pontoHoje = snap.docs[0].data();
-    if(!pontoHoje.entrada) return "entrada";
-    if(!pontoHoje.almoco)  return "almoco";
-    if(!pontoHoje.retorno) return "retorno";
-    if(!pontoHoje.saida)   return "saida";
-    return "extra";
+    try {
+      const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",hoje));
+      const snap = await getDocs(q);
+      if(snap.empty) return "entrada";
+      const pontoHoje = snap.docs[0].data();
+      if(!pontoHoje.entrada) return "entrada";
+      if(!pontoHoje.almoco)  return "almoco";
+      if(!pontoHoje.retorno) return "retorno";
+      if(!pontoHoje.saida)   return "saida";
+      return "extra";
+    } catch(_){ return "entrada"; }
   }
 
   async function verificarJustificativaPendente(uid) {
     const ontem = new Date(); ontem.setDate(ontem.getDate()-1);
     const ontemStr = ontem.toISOString().split("T")[0];
-    const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",ontemStr));
-    const snap = await getDocs(q);
-    if(snap.empty) return null;
-    const p = snap.docs[0];
-    const d = p.data();
-    if(!d.saida && !d.justificativa && !d.justificativaEnviada) {
-      return { id: p.id, msg: `Você não registrou a saída em ${ontem.toLocaleDateString("pt-BR")}. Por favor justifique.` };
-    }
+    try {
+      const q = query(collection(db,"pontos"), where("uid","==",uid), where("data","==",ontemStr));
+      const snap = await getDocs(q);
+      if(snap.empty) return null;
+      const p = snap.docs[0];
+      const d = p.data();
+      if(!d.saida && !d.justificativa && !d.justificativaEnviada) {
+        return { id: p.id, msg: `Você não registrou a saída em ${ontem.toLocaleDateString("pt-BR")}. Por favor justifique.` };
+      }
+    } catch(_){}
     return null;
   }
 
@@ -2317,6 +2145,8 @@
       $("pontoFotoPreview").classList.add("hidden");
     } catch(e) {
       setMsg("pontoCameraMsg","⚠️ Câmera não disponível: "+e.message);
+      // Permite confirmar ponto mesmo sem câmera
+      $("btnRegistrarPonto").disabled = false;
     }
   }
 
@@ -2325,24 +2155,26 @@
   }
 
   async function obterGPS() {
-    $("pontoGpsTxt").textContent = "Obtendo localização...";
-    if(!navigator.geolocation) { $("pontoGpsTxt").textContent = "GPS não disponível"; return; }
+    const gpsTxt = $("pontoGpsTxt");
+    const gpsIcon = $("pontoGpsIcon");
+    if(gpsTxt) gpsTxt.textContent = "Obtendo localização...";
+    if(!navigator.geolocation) {
+      if(gpsTxt) gpsTxt.textContent = "GPS não disponível";
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       pos => {
         pontoGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
-        $("pontoGpsIcon").textContent = "✅";
-        $("pontoGpsTxt").textContent = `Localização obtida (±${Math.round(pos.coords.accuracy)}m)`;
-        // Verificar geofencing
+        if(gpsIcon) gpsIcon.textContent = "✅";
+        if(gpsTxt)  gpsTxt.textContent = `Localização obtida (±${Math.round(pos.coords.accuracy)}m)`;
         if(pontoObraData?.lat && pontoObraData?.lng) {
           const dist = calcularDistancia(pontoGPS.lat, pontoGPS.lng, pontoObraData.lat, pontoObraData.lng);
-          if(dist > 100) {
-            $("pontoGeoAviso").classList.remove("hidden");
-          }
+          if(dist > 100) $("pontoGeoAviso")?.classList.remove("hidden");
         }
       },
-      err => {
-        $("pontoGpsIcon").textContent = "⚠️";
-        $("pontoGpsTxt").textContent = "Localização não obtida";
+      () => {
+        if(gpsIcon) gpsIcon.textContent = "⚠️";
+        if(gpsTxt)  gpsTxt.textContent = "Localização não obtida";
         pontoGPS = null;
       },
       { timeout: 10000, enableHighAccuracy: true }
@@ -2360,6 +2192,7 @@
   function tirarFoto() {
     const video  = $("pontoVideo");
     const canvas = $("pontoCanvas");
+    if(!video || !canvas) return;
     canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -2375,12 +2208,11 @@
     pontoFotoB64 = null;
     $("pontoFotoImg").src = "";
     $("pontoFotoPreview").classList.add("hidden");
-    $("pontoVideo").style.display = "block";
+    if($("pontoVideo")) $("pontoVideo").style.display = "block";
     $("btnRegistrarPonto").disabled = true;
   }
 
   async function confirmarPonto() {
-    if(!pontoFotoB64) { setMsg("pontoCameraMsg","⚠️ Tire uma foto primeiro."); return; }
     $("btnRegistrarPonto").disabled = true;
     $("btnRegistrarPonto").textContent = "⏳ Registrando...";
     try {
@@ -2389,48 +2221,50 @@
       const horaStr = agora.toTimeString().substring(0,5);
       const dia     = agora.getDay();
 
-      // Upload da foto para Cloudinary
+      // Upload da foto para Cloudinary (se tiver)
       let fotoUrl = "";
-      try {
-        const fd = new FormData();
-        fd.append("file", "data:image/jpeg;base64,"+pontoFotoB64);
-        fd.append("upload_preset", CLOUDINARY_PRESET);
-        fd.append("folder", "pontos");
-        const cr = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {method:"POST",body:fd});
-        const cj = await cr.json();
-        fotoUrl = cj.secure_url || "";
-      } catch(e) { console.warn("Foto não enviada:", e.message); }
+      if(pontoFotoB64) {
+        try {
+          const fd = new FormData();
+          fd.append("file", "data:image/jpeg;base64,"+pontoFotoB64);
+          fd.append("upload_preset", CLOUDINARY_PRESET);
+          fd.append("folder", "pontos");
+          const cr = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {method:"POST",body:fd});
+          const cj = await cr.json();
+          fotoUrl = cj.secure_url || "";
+        } catch(e) { console.warn("Foto não enviada:", e.message); }
+      }
 
       // Verificar se já existe ponto hoje
       const q = query(collection(db,"pontos"), where("uid","==",pontoUser.uid), where("data","==",hoje));
       const snap = await getDocs(q);
-
-      // Calcular hora extra e status
       const isAnomalia = verificarAnomalia(horaStr, pontoFaseAtual, dia);
 
       if(snap.empty) {
         // Primeiro ponto do dia — criar documento
         await addDoc(collection(db,"pontos"), {
-          uid:             pontoUser.uid,
+          uid:              pontoUser.uid,
           colaborador_nome: $("pontoNomeColab").textContent,
-          obra_id:         pontoObraData?.id || "",
-          obra_nome:       pontoObraData?.nome || "",
-          data:            hoje,
-          diaSemana:       dia,
-          entrada:         horaStr,
-          fotoEntrada:     fotoUrl,
-          gpsEntrada:      pontoGPS,
-          almoco:          null, retorno: null, saida: null,
-          horaExtra:       "0h00",
-          status:          isAnomalia ? "anomalia" : "ok",
-          anomalias:       isAnomalia ? [pontoFaseAtual] : [],
-          criadoEm:        serverTimestamp()
+          obra_id:          pontoObraData?.id || "",
+          obra_nome:        pontoObraData?.nome || "",
+          data:             hoje,
+          diaSemana:        dia,
+          entrada:          horaStr,
+          fotoEntrada:      fotoUrl,
+          gpsEntrada:       pontoGPS,
+          almoco:           null,
+          retorno:          null,
+          saida:            null,
+          horaExtra:        "0h00",
+          status:           isAnomalia ? "anomalia" : "ok",
+          anomalias:        isAnomalia ? [pontoFaseAtual] : [],
+          criadoEm:         serverTimestamp()
         });
       } else {
         // Atualizar ponto existente
         const pontoRef = snap.docs[0].ref;
         const upd = {};
-        upd[pontoFaseAtual]         = horaStr;
+        upd[pontoFaseAtual]                   = horaStr;
         upd["foto"+capitalize(pontoFaseAtual)] = fotoUrl;
         upd["gps"+capitalize(pontoFaseAtual)]  = pontoGPS;
         if(isAnomalia) {
@@ -2438,11 +2272,9 @@
           upd.anomalias = [...anoAtual, pontoFaseAtual];
           upd.status = "anomalia";
         }
-        // Calcular hora extra na saída
         if(pontoFaseAtual === "saida" || pontoFaseAtual === "extra") {
           const pontoData = snap.docs[0].data();
           upd.horaExtra = calcularHoraExtra(pontoData.entrada, horaStr, dia);
-          if(upd.horaExtra !== "0h00") upd.status = upd.status==="anomalia" ? "anomalia" : "ok";
         }
         await updateDoc(pontoRef, upd);
       }
@@ -2465,12 +2297,12 @@
   function verificarAnomalia(hora, fase, dia) {
     const toMin = h => { const [hh,mm]=h.split(":").map(Number); return hh*60+mm; };
     const m = toMin(hora);
-    if(fase==="entrada" && m > toMin("07:30")) return true; // atraso
-    if(fase==="almoco"  && m < toMin("11:30")) return true; // saiu cedo
-    if(fase==="retorno" && m > toMin("13:30")) return true; // voltou tarde
+    if(fase==="entrada" && m > toMin("07:30")) return true;
+    if(fase==="almoco"  && m < toMin("11:30")) return true;
+    if(fase==="retorno" && m > toMin("13:30")) return true;
     if(fase==="saida") {
       const saidaNormal = dia===5 ? toMin("16:00") : toMin("17:00");
-      if(m < saidaNormal - 15) return true; // saiu mais cedo
+      if(m < saidaNormal - 15) return true;
     }
     return false;
   }
@@ -2478,8 +2310,7 @@
   function calcularHoraExtra(entrada, saida, dia) {
     if(!entrada || !saida) return "0h00";
     const toMin = h => { const [hh,mm]=h.split(":").map(Number); return hh*60+mm; };
-    const saidaPrevista = dia===5 ? toMin("17:00") : toMin("17:00"); // sexta 16:00 = normal, mas extra só após 17
-    const totalTrab = toMin(saida) - toMin(entrada) - 60; // descontar 1h almoço
+    const totalTrab = toMin(saida) - toMin(entrada) - 60;
     const normalMin = (dia===5 ? toMin("16:00") : toMin("17:00")) - toMin("07:00") - 60;
     const extra = Math.max(0, totalTrab - normalMin);
     if(extra <= 0) return "0h00";
@@ -2513,46 +2344,67 @@
     } catch(e) { setMsg("pontoJustMsgResult","❌ Erro: "+e.message); }
   }
 
-  async function obterLocalizacaoObra() {
-    if(!navigator.geolocation) { alert("GPS não disponível"); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        $("obraLat").value = pos.coords.latitude.toFixed(6);
-        $("obraLng").value = pos.coords.longitude.toFixed(6);
-        toast("📍 Localização capturada!");
-      },
-      () => alert("Não foi possível obter localização")
-    );
+  // ═══════════════════════════════════════════════════════════
+  // MÓDULO DE PONTO — CARTÃO (ADMIN — ABA INTERNA)
+  // ═══════════════════════════════════════════════════════════
+  async function fillPontoFiltros() {
+    const obraSel  = $("pontoFiltroObra");
+    const colabSel = $("pontoFiltroColab");
+    if(!obraSel || !colabSel) return;
+
+    // Obras ativas
+    const obrasSnap = await getDocs(collection(db,"obras"));
+    obraSel.innerHTML = '<option value="">Todas as obras</option>';
+    obrasSnap.forEach(d => {
+      if(d.data().ativa !== false) {
+        obraSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
+      }
+    });
+
+    // Colaboradores ativos (exceto admins)
+    const usersSnap = await getDocs(collection(db,"usuarios"));
+    colabSel.innerHTML = '<option value="">Selecione colaborador</option>';
+    usersSnap.forEach(d => {
+      if(d.data().ativo !== false && d.data().role !== "ADMIN") {
+        colabSel.innerHTML += `<option value="${d.id}">${d.data().nome || d.data().email}</option>`;
+      }
+    });
+
+    // Mês atual
+    const hoje = new Date();
+    $("pontoFiltroMes").value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
   }
 
-  // ── CARTÃO DE PONTO (ADMIN) ────────────────────────────
   async function loadCartaoPonto() {
-    const obraId = $("pontoFiltroObra")?.value;
     const colabId = $("pontoFiltroColab")?.value;
-    const mes = $("pontoFiltroMes")?.value;
-    if(!colabId || !mes) return;
-
+    const mes     = $("pontoFiltroMes")?.value;
+    if(!colabId || !mes) {
+      $("pontoTabelaBody").innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Selecione um colaborador e mês</td></tr>';
+      return;
+    }
     const [ano, mesNum] = mes.split("-").map(Number);
     const inicio = `${ano}-${String(mesNum).padStart(2,"0")}-01`;
     const fim    = new Date(ano, mesNum, 0).toISOString().split("T")[0];
-
-    const q = query(collection(db,"pontos"),
-      where("uid","==",colabId),
-      where("data",">=",inicio),
-      where("data","<=",fim)
-    );
-    const snap = await getDocs(q);
-    const pontosMes = {};
-    snap.forEach(d => { pontosMes[d.data().data] = {...d.data(), id: d.id}; });
-
-    renderCartaoPonto(ano, mesNum, pontosMes);
+    try {
+      const q = query(collection(db,"pontos"),
+        where("uid","==",colabId),
+        where("data",">=",inicio),
+        where("data","<=",fim)
+      );
+      const snap = await getDocs(q);
+      const pontosMes = {};
+      snap.forEach(d => { pontosMes[d.data().data] = {...d.data(), id: d.id}; });
+      renderCartaoPonto(ano, mesNum, pontosMes);
+    } catch(e){
+      $("pontoTabelaBody").innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--danger)">Erro ao carregar pontos.</td></tr>`;
+    }
   }
 
   function renderCartaoPonto(ano, mes, pontos) {
     const diasMes = new Date(ano, mes, 0).getDate();
     const semanas = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
     let rows = "";
-    let diasTrab=0, horasNorm=0, horasExtra=0, faltas=0, atrasos=0, justifs=0;
+    let diasTrab=0, horasExtra=0, faltas=0, atrasos=0, justifs=0;
 
     for(let d=1; d<=diasMes; d++) {
       const dataStr = `${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
@@ -2561,7 +2413,6 @@
       const nomeDia = semanas[diaSem];
       const p = pontos[dataStr];
       const isFimSemana = diaSem===0||diaSem===6;
-
       let bgRow = "";
       let statusBadge = "";
       let horaExtraCell = "—";
@@ -2570,9 +2421,16 @@
         bgRow = "background:#f5f5f5;color:#aaa";
         statusBadge = '<span style="background:#e0e0e0;color:#888;padding:2px 8px;border-radius:10px;font-size:11px">FOLGA</span>';
       } else if(!p) {
-        faltas++;
-        bgRow = "background:#fff0f0";
-        statusBadge = '<span style="background:#ffebee;color:#e94560;padding:2px 8px;border-radius:10px;font-size:11px">FALTA</span>';
+        // Só marca falta em dias úteis passados
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+        if(dt < hoje) {
+          faltas++;
+          bgRow = "background:#fff0f0";
+          statusBadge = '<span style="background:#ffebee;color:#e94560;padding:2px 8px;border-radius:10px;font-size:11px">FALTA</span>';
+        } else {
+          bgRow = "";
+          statusBadge = '<span style="background:#f3f4f6;color:#888;padding:2px 8px;border-radius:10px;font-size:11px">—</span>';
+        }
       } else {
         diasTrab++;
         if(p.horaExtra && p.horaExtra!=="0h00") {
@@ -2583,6 +2441,8 @@
           atrasos++;
           bgRow = "background:#fffbeb";
           statusBadge = '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px">ATRASO</span>';
+        } else if(p.status==="corrigido") {
+          statusBadge = '<span style="background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:10px;font-size:11px">CORRIGIDO</span>';
         } else {
           statusBadge = '<span style="background:#ecfdf5;color:#10b981;padding:2px 8px;border-radius:10px;font-size:11px">OK</span>';
         }
@@ -2590,7 +2450,7 @@
       }
 
       const acoes = currentRole==="ADMIN"
-        ? `<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px" title="Corrigir">✏️</button>`
+        ? `<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:4px" title="Corrigir ponto">✏️</button>`
         : "—";
 
       rows += `<tr style="${bgRow}">
@@ -2612,11 +2472,11 @@
 
     // Resumo
     $("pontoResumo").innerHTML = [
-      {label:"Dias Trab.", valor:diasTrab, cor:"#10b981"},
-      {label:"H. Extras",  valor:horasExtra+"h", cor:"#f59e0b"},
-      {label:"Faltas",     valor:faltas, cor:"#e94560"},
-      {label:"Atrasos",    valor:atrasos, cor:"#d97706"},
-      {label:"Justif.",    valor:justifs, cor:"#6366f1"},
+      {label:"Dias Trab.", valor:diasTrab,    cor:"#10b981"},
+      {label:"H. Extras",  valor:horasExtra,  cor:"#f59e0b"},
+      {label:"Faltas",     valor:faltas,      cor:"#e94560"},
+      {label:"Atrasos",    valor:atrasos,     cor:"#d97706"},
+      {label:"Justif.",    valor:justifs,     cor:"#6366f1"},
     ].map(i=>`
       <div style="background:white;border-radius:8px;padding:12px 16px;border-left:4px solid ${i.cor};box-shadow:0 1px 4px rgba(0,0,0,.06)">
         <div style="font-size:11px;color:#888;text-transform:uppercase">${i.label}</div>
@@ -2628,16 +2488,21 @@
     correcaoDia = dataStr;
     const colabId = $("pontoFiltroColab")?.value;
     if(!colabId) return;
-    const q = query(collection(db,"pontos"),where("uid","==",colabId),where("data","==",dataStr));
-    const snap = await getDocs(q);
     $("correcaoInfo").textContent = "Dia: " + new Date(dataStr+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
-    if(!snap.empty) {
-      const p = snap.docs[0].data();
-      $("corEntrada").value  = p.entrada  || "";
-      $("corAlmoco").value   = p.almoco   || "";
-      $("corRetorno").value  = p.retorno  || "";
-      $("corSaida").value    = p.saida    || "";
-    }
+    try {
+      const q = query(collection(db,"pontos"),where("uid","==",colabId),where("data","==",dataStr));
+      const snap = await getDocs(q);
+      if(!snap.empty) {
+        const p = snap.docs[0].data();
+        $("corEntrada").value  = p.entrada  || "";
+        $("corAlmoco").value   = p.almoco   || "";
+        $("corRetorno").value  = p.retorno  || "";
+        $("corSaida").value    = p.saida    || "";
+      } else {
+        $("corEntrada").value=""; $("corAlmoco").value="";
+        $("corRetorno").value=""; $("corSaida").value="";
+      }
+    } catch(_){}
     $("corObs").value = "";
     $("modalCorrecaoPonto").classList.remove("hidden");
   }
@@ -2649,64 +2514,146 @@
       const q = query(collection(db,"pontos"),where("uid","==",colabId),where("data","==",correcaoDia));
       const snap = await getDocs(q);
       const upd = {
-        entrada:  $("corEntrada").value  || null,
-        almoco:   $("corAlmoco").value   || null,
-        retorno:  $("corRetorno").value  || null,
-        saida:    $("corSaida").value    || null,
-        corrigidoPor:  currentUser.uid,
-        corrigidoEm:   serverTimestamp(),
-        obsCorrecao:   $("corObs").value,
-        status: "corrigido"
+        entrada:      $("corEntrada").value  || null,
+        almoco:       $("corAlmoco").value   || null,
+        retorno:      $("corRetorno").value  || null,
+        saida:        $("corSaida").value    || null,
+        corrigidoPor: currentUser.uid,
+        corrigidoEm:  serverTimestamp(),
+        obsCorrecao:  $("corObs").value,
+        status:       "corrigido"
       };
       if(snap.empty) {
-        await addDoc(collection(db,"pontos"),{...upd, uid:colabId, data:correcaoDia, diaSemana: new Date(correcaoDia+"T12:00:00").getDay()});
+        await addDoc(collection(db,"pontos"),{...upd, uid:colabId, data:correcaoDia, diaSemana: new Date(correcaoDia+"T12:00:00").getDay(), criadoEm: serverTimestamp()});
       } else {
         await updateDoc(snap.docs[0].ref, upd);
       }
       closeModal("modalCorrecaoPonto");
       toast("✅ Ponto corrigido!");
       await loadCartaoPonto();
-    } catch(e) { alert("Erro: "+e.message); }
+    } catch(e) { toast("Erro: "+e.message, false); }
   }
 
-  async function fillPontoFiltros() {
-    const obraSel = $("pontoFiltroObra");
-    const colabSel = $("pontoFiltroColab");
-    if(!obraSel || !colabSel) return;
+  async function exportarCartaoPDF() {
+    const colabId = $("pontoFiltroColab")?.value;
+    const mes     = $("pontoFiltroMes")?.value;
+    if(!colabId || !mes) { toast("Selecione colaborador e mês.", false); return; }
+    const [ano, mesNum] = mes.split("-").map(Number);
+    const inicio = `${ano}-${String(mesNum).padStart(2,"0")}-01`;
+    const fim    = new Date(ano, mesNum, 0).toISOString().split("T")[0];
+    try {
+      // Buscar dados do colaborador
+      const userDoc = await getDoc(doc(db,"usuarios",colabId));
+      const userName = userDoc.exists() ? (userDoc.data().nome || userDoc.data().email) : colabId;
+      const q = query(collection(db,"pontos"), where("uid","==",colabId), where("data",">=",inicio), where("data","<=",fim));
+      const snap = await getDocs(q);
+      const pontosMes = {};
+      snap.forEach(d => { pontosMes[d.data().data] = d.data(); });
 
-    // Obras
-    const obrasSnap = await getDocs(collection(db,"obras"));
-    obraSel.innerHTML = '<option value="">Todas as obras</option>';
-    obrasSnap.forEach(d => {
-      if(d.data().status==="ativa") obraSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
-    });
+      const { jsPDF } = window.jspdf;
+      const docPdf = new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const mesesNomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-    // Colaboradores
-    const usersSnap = await getDocs(collection(db,"usuarios"));
-    colabSel.innerHTML = '<option value="">Selecione colaborador</option>';
-    usersSnap.forEach(d => {
-      if(d.data().ativo!==false && d.data().role!=="ADMIN")
-        colabSel.innerHTML += `<option value="${d.id}">${d.data().nome}</option>`;
-    });
+      // Cabeçalho
+      docPdf.setFillColor(15,52,96); docPdf.rect(0,0,297,22,"F");
+      docPdf.setTextColor(255,255,255);
+      docPdf.setFontSize(14); docPdf.setFont("helvetica","bold");
+      docPdf.text("GO — Cartão de Ponto", 14, 10);
+      docPdf.setFontSize(10); docPdf.setFont("helvetica","normal");
+      docPdf.text(`Colaborador: ${userName}  |  Período: ${mesesNomes[mesNum-1]}/${ano}`, 14, 18);
+      docPdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, 240, 18);
 
-    // Mês atual
-    const hoje = new Date();
-    $("pontoFiltroMes").value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
+      // Tabela
+      const diasMes = new Date(ano, mesNum, 0).getDate();
+      const semanas = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      const rows = [];
+      let diasTrab=0, faltas=0, atrasos=0;
+      for(let d=1; d<=diasMes; d++) {
+        const dataStr = `${ano}-${String(mesNum).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        const dt = new Date(dataStr+"T12:00:00");
+        const diaSem = dt.getDay();
+        const p = pontosMes[dataStr];
+        const isFimSemana = diaSem===0||diaSem===6;
+        let status = "—";
+        if(isFimSemana && !p) status = "FOLGA";
+        else if(!p) { status = "FALTA"; faltas++; }
+        else {
+          diasTrab++;
+          if(p.status==="anomalia") { status="ATRASO"; atrasos++; }
+          else if(p.status==="corrigido") status="CORRIGIDO";
+          else status="OK";
+        }
+        rows.push([
+          `${String(d).padStart(2,"0")} ${semanas[diaSem]}`,
+          p?.entrada||"—", p?.almoco||"—", p?.retorno||"—", p?.saida||"—",
+          p?.horaExtra||"—", status
+        ]);
+      }
+      docPdf.autoTable({
+        startY: 26,
+        head:[["Dia","Entrada","Almoço","Retorno","Saída","H. Extra","Status"]],
+        body: rows,
+        styles:{fontSize:8,cellPadding:2,halign:"center"},
+        headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},
+        columnStyles:{0:{halign:"left"}},
+        alternateRowStyles:{fillColor:[245,247,250]},
+        didParseCell:(data)=>{
+          if(data.section==="body"&&data.column.index===6){
+            const v=data.cell.raw;
+            if(v==="OK")        {data.cell.styles.textColor=[16,185,129];data.cell.styles.fontStyle="bold";}
+            if(v==="FALTA")     {data.cell.styles.textColor=[239,68,68];data.cell.styles.fillColor=[255,240,240];}
+            if(v==="ATRASO")    {data.cell.styles.textColor=[217,119,6];data.cell.styles.fillColor=[255,251,235];}
+            if(v==="CORRIGIDO") {data.cell.styles.textColor=[59,130,246];}
+          }
+        },
+        margin:{left:14,right:14}
+      });
+      const fy = docPdf.lastAutoTable.finalY + 6;
+      docPdf.setFontSize(9); docPdf.setFont("helvetica","normal"); docPdf.setTextColor(80,80,80);
+      docPdf.text(`Dias trabalhados: ${diasTrab}  |  Faltas: ${faltas}  |  Atrasos: ${atrasos}`, 14, fy);
+      docPdf.save(`CartaoPonto_${userName.replace(/\s+/g,"_")}_${mesesNomes[mesNum-1]}_${ano}.pdf`);
+      toast("📄 PDF exportado com sucesso!");
+    } catch(e){ toast("Erro ao exportar: "+e.message, false); }
   }
 
+  async function enviarCartaoEmail() {
+    toast("⚙️ Função de envio de e-mail em breve...", true);
+    // TODO: Implementar envio via Apps Script
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // EXPOSIÇÃO GLOBAL DAS FUNÇÕES (window.App)
+  // ═══════════════════════════════════════════════════════════
   window.App = {
-    login, logout, togglePass, goTab, adminTab,
-    changePassword,
+    // Auth
+    login, logout, togglePass, changePassword,
+    // Navegação
+    goTab, adminTab,
+    // Obras
     saveObra, loadObras, toggleObra, deleteObra,
+    // Colaboradores
     saveUser, loadUsers, filterUsers, toggleUser,
+    // Alocação
     openAlocModal, saveAlocacao, closeAlocModal,
+    // Lançamentos
     toggleReemb, onFileSelect, removeFile,
     saveLanc, cancelLanc, editLanc, deleteLanc, loadLancs,
     syncPendingLancs,
+    // Dashboard
     loadDashboard, onDashObraChange, clearDashFilters,
+    // Relatórios
     previewRelatorio, gerarPDF, enviarRelatorioEmail,
     addEmailDest, saveEmailConfig, setEnvioAuto,
-    closeModal
+    // Modal
+    closeModal,
+    // Ponto — tela pública
+    irParaPonto, voltarLogin, loginPonto,
+    tirarFoto, retirarFoto, confirmarPonto,
+    salvarJustificativa,
+    // Ponto — cartão admin
+    fillPontoFiltros, loadCartaoPonto,
+    exportarCartaoPDF, enviarCartaoEmail,
+    abrirCorrecao, salvarCorrecaoPonto,
   };
 </script>
 
