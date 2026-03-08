@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -15,7 +16,39 @@
   .ponto-status-item.fail{background:#fef2f2;border-color:#fca5a5;}
   .ponto-status-item.loading{background:#eff6ff;border-color:#bfdbfe;}
   .ponto-status-icon{font-size:1rem;min-width:20px;text-align:center;}
-  .ponto-status-txt{flex:1;color:var(--text);font-weight:500;}</style>
+  .ponto-status-txt{flex:1;color:var(--text);font-weight:500;}
+
+  /* ── RH ── */
+  .rh-screen { display:none }
+  .rh-screen.active { display:block }
+  .rh-action-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.1) }
+  .rh-step { display:flex;flex-direction:column;align-items:center;flex:1;min-width:64px;position:relative;cursor:default }
+  .rh-step:not(:last-child)::after { content:"";position:absolute;top:16px;left:calc(50% + 18px);right:calc(-50% + 18px);height:2px;background:var(--border) }
+  .rh-step.done::after,.rh-step.active::after { background:var(--primary) }
+  .rh-step-circle { width:32px;height:32px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;background:var(--surface);color:var(--muted);transition:.2s;z-index:1 }
+  .rh-step.done .rh-step-circle { background:var(--primary);border-color:var(--primary);color:#fff }
+  .rh-step.active .rh-step-circle { border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 3px rgba(15,52,96,.15) }
+  .rh-step-label { font-size:.65rem;color:var(--muted);margin-top:4px;text-align:center;max-width:64px;line-height:1.2 }
+  .rh-step.active .rh-step-label { color:var(--primary);font-weight:600 }
+  .rh-step.done .rh-step-label { color:var(--primary) }
+  .rh-doc-item { border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;background:var(--surface) }
+  .rh-doc-item.ok { border-color:#6ee7b7;background:#f0fdf4 }
+  .rh-doc-item.pending { border-color:#fcd34d;background:#fffbeb }
+  .rh-doc-icon { font-size:1.5rem;min-width:32px;text-align:center }
+  .rh-doc-info { flex:1 }
+  .rh-doc-title { font-weight:600;font-size:.9rem }
+  .rh-doc-sub { font-size:.75rem;color:var(--muted);margin-top:2px }
+  .rh-field-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+  @media(max-width:480px){ .rh-field-grid{grid-template-columns:1fr} }
+  .rh-section-title { font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px }
+  .rh-processo-card { border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s }
+  .rh-processo-card:hover { background:var(--hover,#f8f9fc);border-color:var(--primary) }
+  .rh-badge-cont { background:#dbeafe;color:#1e40af;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
+  .rh-badge-dem { background:#fee2e2;color:#991b1b;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
+  .rh-badge-ok { background:#d1fae5;color:#065f46;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
+  .nr-chip { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);font-size:.78rem;margin:3px;cursor:pointer;transition:.15s;background:var(--surface) }
+  .nr-chip.selected { background:var(--primary);color:#fff;border-color:var(--primary) }
+  .nr-chip input[type=checkbox] { display:none }</style>
 </head>
 <body>
 
@@ -248,6 +281,7 @@
     <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span> Relatórios</button>
     <div class="nav-divider"></div>
     <button class="nav-item hidden" id="sidePonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span> Cartão de Ponto</button>
+    <button class="nav-item hidden" id="sideRH" onclick="App.goTab('rh')" data-tab="rh"><span class="nav-icon">👔</span> RH</button>
     <button class="nav-item hidden" id="sideAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span> Administração</button>
   </nav>
 
@@ -686,11 +720,92 @@
 
   </main>
 
+  <!-- ══════════════════════════════════════════════════════════
+       ABA RH — RECURSOS HUMANOS
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-rh" style="padding:0">
+
+    <!-- ── Tela inicial: escolher colaborador ou criar novo ── -->
+    <div id="rh-home" class="rh-screen active">
+      <div class="page-header"><h1>👔 Recursos Humanos</h1><p>Gerencie processos de contratação e demissão de colaboradores.</p></div>
+
+      <!-- Ações rápidas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;max-width:600px">
+        <div class="card rh-action-card" onclick="App.rhIniciarFluxo('contratacao')" style="cursor:pointer;text-align:center;padding:28px 16px;transition:.2s">
+          <div style="font-size:2.5rem;margin-bottom:8px">📋</div>
+          <div style="font-weight:700;font-size:1rem;color:var(--primary)">Nova Contratação</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:4px">Iniciar processo admissional</div>
+        </div>
+        <div class="card rh-action-card" onclick="App.rhIniciarFluxo('demissao')" style="cursor:pointer;text-align:center;padding:28px 16px;transition:.2s">
+          <div style="font-size:2.5rem;margin-bottom:8px">📤</div>
+          <div style="font-weight:700;font-size:1rem;color:#e94560">Demissão</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:4px">Iniciar processo demissional</div>
+        </div>
+      </div>
+
+      <!-- Lista de processos em andamento -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom:12px">
+          <h3>📂 Processos em Andamento</h3>
+          <input id="rhBusca" type="text" placeholder="Buscar colaborador..." oninput="App.rhFiltrarLista()" style="max-width:240px;margin:0">
+        </div>
+        <div id="rhListaProcessos">
+          <div style="text-align:center;padding:32px;color:var(--muted)">Nenhum processo em andamento.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tela de fluxo: stepper de etapas ── -->
+    <div id="rh-fluxo" class="rh-screen" style="display:none">
+
+      <!-- Header do fluxo -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <button onclick="App.rhVoltarHome()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;padding:4px" title="Voltar">←</button>
+        <div>
+          <h2 id="rhFluxoTitulo" style="margin:0;font-size:1.1rem"></h2>
+          <div id="rhFluxoSubtitulo" style="font-size:.8rem;color:var(--muted)"></div>
+        </div>
+        <div style="margin-left:auto">
+          <span id="rhFluxoBadge" class="badge"></span>
+        </div>
+      </div>
+
+      <!-- Stepper visual -->
+      <div id="rhStepper" style="display:flex;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:4px"></div>
+
+      <!-- Conteúdo da etapa atual -->
+      <div id="rhEtapaConteudo"></div>
+
+      <!-- Botões de navegação -->
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;align-items:center" id="rhNavBtns">
+        <button class="btn btn-outline" id="rhBtnAnterior" onclick="App.rhEtapaAnterior()">← Anterior</button>
+        <button class="btn btn-primary" id="rhBtnProximo" onclick="App.rhEtapaProxima()">Próximo →</button>
+        <button class="btn btn-primary hidden" id="rhBtnFinalizar" onclick="App.rhFinalizar()" style="background:var(--success,#10b981)">✅ Finalizar e Gerar Documentos</button>
+        <span id="rhEtapaMsg" style="font-size:.82rem;color:var(--danger)"></span>
+      </div>
+    </div>
+
+    <!-- ── Modal: visualizar processo existente ── -->
+    <div class="modal-overlay hidden" id="modalRhProcesso">
+      <div class="modal" style="max-width:520px">
+        <h3 id="modalRhTitulo">Processo RH</h3>
+        <div id="modalRhConteudo" style="max-height:60vh;overflow-y:auto"></div>
+        <div class="modal-footer" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="App.rhReabrirProcesso()">✏️ Continuar Edição</button>
+          <button class="btn btn-outline" onclick="App.rhGerarPDFs()" id="btnRhGerarPDF">📄 Gerar PDFs</button>
+          <button class="btn btn-outline" onclick="App.closeModal('modalRhProcesso')">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- fim tab-rh -->
+
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
     <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span><span>Lançar</span></button>
     <button class="nav-item" onclick="App.goTab('relatorios')" data-tab="relatorios"><span class="nav-icon">📋</span><span>Relatórios</span></button>
     <button class="nav-item hidden" id="bottomPonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span><span>Ponto</span></button>
+    <button class="nav-item hidden" id="bottomRH" onclick="App.goTab('rh')" data-tab="rh"><span class="nav-icon">👔</span><span>RH</span></button>
     <button class="nav-item hidden" id="bottomAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span><span>Admin</span></button>
   </nav>
 </div>
@@ -895,6 +1010,7 @@
   function goTab(tab) {
     if(tab==="admin" && currentRole!=="ADMIN") return;
     if(tab==="ponto" && currentRole!=="ADMIN") return;
+    if(tab==="rh"    && currentRole!=="ADMIN") return;
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
     document.querySelectorAll(".nav-item[data-tab]").forEach(b=>b.classList.remove("active"));
     $(`tab-${tab}`)?.classList.add("active");
@@ -904,6 +1020,7 @@
     if(tab==="dashboard")   { fillDashFilters().then(()=>loadDashboard()); }
     if(tab==="relatorios")  { fillRelatorioFiltros(); }
     if(tab==="ponto")       { fillPontoFiltros(); }
+    if(tab==="rh")          { rhCarregarLista(); }
   }
 
   function adminTab(tab) {
@@ -1038,6 +1155,8 @@
       $("bottomAdmin")?.classList.remove("hidden");
       $("sidePonto")?.classList.remove("hidden");
       $("bottomPonto")?.classList.remove("hidden");
+      $("sideRH")?.classList.remove("hidden");
+      $("bottomRH")?.classList.remove("hidden");
     }
 
     try {
@@ -4053,6 +4172,749 @@
     } catch(e){console.error(e);setM("❌ Erro: "+e.message);}
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // MÓDULO RH — RECURSOS HUMANOS
+  // ═══════════════════════════════════════════════════════════
+
+  // --- Matriz de NRs por função ---
+  const RH_MATRIZ_NR = {
+    "Pedreiro":                ["NR01","NR06","NR18","NR35"],
+    "Ajudante":                ["NR01","NR06","NR18","NR35"],
+    "Engenheiro":              ["NR01","NR06","NR18","NR35"],
+    "Bombeiro Hidráulico":     ["NR01","NR06","NR18","NR33","NR35"],
+    "Eletricista":             ["NR01","NR06","NR10","NR18","NR35"],
+    "Pintor":                  ["NR01","NR06","NR18","NR35"],
+    "Serralheiro":             ["NR01","NR06","NR18","NR35"],
+    "Carpinteiro":             ["NR01","NR06","NR18","NR35"],
+    "Operador de Retroescavadeira": ["NR01","NR06","NR18","NR11"],
+    "Mestre de Obras":         ["NR01","NR06","NR18","NR35"],
+    "Encanador":               ["NR01","NR06","NR18","NR35"],
+    "Armador":                 ["NR01","NR06","NR18","NR35"],
+  };
+
+  const RH_NR_DESCRICAO = {
+    "NR01":"Disposições Gerais e Gerenciamento de Riscos",
+    "NR06":"Equipamentos de Proteção Individual (EPI)",
+    "NR10":"Segurança em Instalações Elétricas",
+    "NR11":"Transporte, Movimentação, Armazenagem e Manuseio de Materiais",
+    "NR12":"Segurança no Trabalho em Máquinas e Equipamentos",
+    "NR15":"Atividades e Operações Insalubres",
+    "NR18":"Segurança e Saúde no Trabalho na Indústria da Construção",
+    "NR33":"Segurança e Saúde nos Trabalhos em Espaços Confinados",
+    "NR34":"Condições e Meio Ambiente de Trabalho na Indústria da Construção Naval",
+    "NR35":"Trabalho em Altura",
+  };
+
+  // Estado do fluxo atual
+  let rhFluxo = {
+    tipo: null,           // "contratacao" | "demissao"
+    processoId: null,     // id no Firestore (null = novo)
+    etapaAtual: 0,
+    dados: {},            // todos os dados preenchidos
+    arquivos: {},         // { chave: { url, nome, tipo } }
+  };
+
+  // Etapas do fluxo — definidas dinamicamente conforme tipo
+  function rhGetEtapas(tipo) {
+    const base = [
+      { id:"dados",    label:"Dados",      icon:"👤" },
+      { id:"docs",     label:"Documentos", icon:"📄" },
+      { id:"exames",   label:"Exames",     icon:"🩺" },
+      { id:"anuencia", label:"Anuência",   icon:"✍️" },
+      { id:"nrs",      label:"NRs",        icon:"🦺" },
+      { id:"resumo",   label:"Resumo",     icon:"✅" },
+    ];
+    return base;
+  }
+
+  // --- Iniciar fluxo ---
+  async function rhIniciarFluxo(tipo) {
+    rhFluxo = { tipo, processoId: null, etapaAtual: 0, dados: { tipo }, arquivos: {} };
+
+    // Se demissão, precisamos selecionar colaborador existente
+    if(tipo === "demissao") {
+      await rhSelecionarColaborador();
+      return;
+    }
+
+    // Contratação: pergunta se cria novo ou seleciona existente
+    rhMostrarFluxo();
+  }
+
+  async function rhSelecionarColaborador() {
+    // Carrega colaboradores ativos para demissão
+    const snap = await getDocs(collection(db,"usuarios"));
+    const colabs = [];
+    snap.forEach(d => { if(d.data().role !== "ADMIN" && d.data().ativo !== false) colabs.push({id:d.id,...d.data()}); });
+
+    const opts = colabs.map(c => `<option value="${c.id}">${c.nome||c.email}</option>`).join("");
+    const html = `
+      <div style="padding:8px 0">
+        <label>Selecione o colaborador para iniciar o processo demissional:</label>
+        <select id="rhSelectColab" style="margin:8px 0 16px">
+          <option value="">— Selecione —</option>
+          ${opts}
+        </select>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="App._rhConfirmarColab()">Continuar →</button>
+          <button class="btn btn-outline" onclick="App.rhVoltarHome()">Cancelar</button>
+        </div>
+      </div>`;
+
+    rhMostrarFluxo();
+    $("rhEtapaConteudo").innerHTML = `<div class="card">${html}</div>`;
+    $("rhNavBtns").style.display = "none";
+  }
+
+  function _rhConfirmarColab() {
+    const sel = $("rhSelectColab");
+    if(!sel||!sel.value) { toast("Selecione um colaborador."); return; }
+    const nome = sel.selectedOptions[0]?.text || "";
+    rhFluxo.dados.colaboradorId = sel.value;
+    rhFluxo.dados.nomeCompleto  = nome;
+    $("rhNavBtns").style.display = "";
+    rhMostrarFluxo();
+  }
+
+  function rhMostrarFluxo() {
+    $("rh-home").classList.remove("active"); $("rh-home").style.display = "none";
+    $("rh-fluxo").style.display = "block";
+    const tipo = rhFluxo.tipo;
+    $("rhFluxoTitulo").textContent = tipo==="contratacao" ? "📋 Nova Contratação" : "📤 Processo Demissional";
+    $("rhFluxoSubtitulo").textContent = rhFluxo.dados.nomeCompleto || "Preencha os dados do colaborador";
+    $("rhFluxoBadge").className = tipo==="contratacao" ? "rh-badge-cont" : "rh-badge-dem";
+    $("rhFluxoBadge").textContent = tipo==="contratacao" ? "CONTRATAÇÃO" : "DEMISSÃO";
+    rhRenderStepper();
+    rhRenderEtapa();
+  }
+
+  function rhRenderStepper() {
+    const etapas = rhGetEtapas(rhFluxo.tipo);
+    const atual  = rhFluxo.etapaAtual;
+    $("rhStepper").innerHTML = etapas.map((e,i) => `
+      <div class="rh-step ${i<atual?"done":i===atual?"active":""}">
+        <div class="rh-step-circle">${i<atual?"✓":(i+1)}</div>
+        <div class="rh-step-label">${e.icon} ${e.label}</div>
+      </div>`).join("");
+  }
+
+  function rhRenderEtapa() {
+    const etapas = rhGetEtapas(rhFluxo.tipo);
+    const etapa  = etapas[rhFluxo.etapaAtual];
+    const ultimo = rhFluxo.etapaAtual === etapas.length - 1;
+    const primeiro = rhFluxo.etapaAtual === 0;
+
+    $("rhBtnAnterior").classList.toggle("hidden", primeiro);
+    $("rhBtnProximo").classList.toggle("hidden", ultimo);
+    $("rhBtnFinalizar").classList.toggle("hidden", !ultimo);
+    $("rhEtapaMsg").textContent = "";
+
+    switch(etapa.id) {
+      case "dados":    $("rhEtapaConteudo").innerHTML = rhHtmlDados();    rhPreencherDados();   break;
+      case "docs":     $("rhEtapaConteudo").innerHTML = rhHtmlDocs();     rhPreencherDocs();    break;
+      case "exames":   $("rhEtapaConteudo").innerHTML = rhHtmlExames();   break;
+      case "anuencia": $("rhEtapaConteudo").innerHTML = rhHtmlAnuencia(); break;
+      case "nrs":      $("rhEtapaConteudo").innerHTML = rhHtmlNRs();      rhPreencherNRs();     break;
+      case "resumo":   $("rhEtapaConteudo").innerHTML = rhHtmlResumo();   break;
+    }
+  }
+
+  // ── ETAPA 1: DADOS PESSOAIS ──
+  function rhHtmlDados() {
+    const tipo = rhFluxo.tipo;
+    const d = rhFluxo.dados;
+    return `
+    <div class="card">
+      <div class="rh-section-title">Identificação</div>
+      <div class="rh-field-grid">
+        <div><label>Nome Completo *</label><input id="rh_nome" value="${d.nomeCompleto||""}" placeholder="Nome completo"></div>
+        <div><label>CPF *</label><input id="rh_cpf" value="${d.cpf||""}" placeholder="000.000.000-00" oninput="App.rhMaskCPF(this)"></div>
+        <div><label>Data de Nascimento *</label><input id="rh_nascimento" type="date" value="${d.nascimento||""}"></div>
+        <div><label>Sexo</label>
+          <select id="rh_sexo">
+            <option value="">Selecione</option>
+            <option value="M" ${d.sexo==="M"?"selected":""}>Masculino</option>
+            <option value="F" ${d.sexo==="F"?"selected":""}>Feminino</option>
+          </select>
+        </div>
+        <div><label>Telefone</label><input id="rh_tel" value="${d.telefone||""}" placeholder="(00) 00000-0000" oninput="App.rhMaskTel(this)"></div>
+        <div><label>E-mail</label><input id="rh_email" type="email" value="${d.email||""}" placeholder="email@..."></div>
+        <div><label>Estado Civil</label>
+          <select id="rh_estcivil" onchange="App.rhToggleEstCivil(this.value)">
+            <option value="">Selecione</option>
+            <option value="solteiro" ${d.estCivil==="solteiro"?"selected":""}>Solteiro(a)</option>
+            <option value="casado" ${d.estCivil==="casado"?"selected":""}>Casado(a)</option>
+            <option value="uniao" ${d.estCivil==="uniao"?"selected":""}>União Estável</option>
+            <option value="divorciado" ${d.estCivil==="divorciado"?"selected":""}>Divorciado(a)</option>
+            <option value="viuvo" ${d.estCivil==="viuvo"?"selected":""}>Viúvo(a)</option>
+          </select>
+        </div>
+        <div><label>Naturalidade</label><input id="rh_natural" value="${d.naturalidade||""}" placeholder="Cidade/UF"></div>
+      </div>
+
+      <div class="rh-section-title">Endereço</div>
+      <div class="rh-field-grid">
+        <div><label>CEP</label><input id="rh_cep" value="${d.cep||""}" placeholder="00000-000" oninput="App.rhBuscarCEP(this)"></div>
+        <div><label>Logradouro</label><input id="rh_rua" value="${d.rua||""}" placeholder="Rua / Av."></div>
+        <div><label>Número</label><input id="rh_endnum" value="${d.endNum||""}" placeholder="Nº"></div>
+        <div><label>Bairro</label><input id="rh_bairro" value="${d.bairro||""}" placeholder="Bairro"></div>
+        <div><label>Cidade</label><input id="rh_cidade" value="${d.cidade||""}" placeholder="Cidade"></div>
+        <div><label>UF</label><input id="rh_uf" value="${d.uf||""}" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+
+      <div class="rh-section-title">Dados Profissionais</div>
+      <div class="rh-field-grid">
+        <div>
+          <label>Função / Cargo *</label>
+          <select id="rh_funcao" onchange="App.rhFuncaoChange(this.value)">
+            <option value="">Selecione</option>
+            ${Object.keys(RH_MATRIZ_NR).map(f=>`<option value="${f}" ${d.funcao===f?"selected":""}>${f}</option>`).join("")}
+            <option value="outro" ${d.funcao==="outro"?"selected":""}>Outra função</option>
+          </select>
+        </div>
+        <div id="rh_funcao_outro_wrap" style="${d.funcao==="outro"?"":"display:none"}">
+          <label>Especifique a função</label>
+          <input id="rh_funcao_outro" value="${d.funcaoOutro||""}" placeholder="Ex: Gesseiro">
+        </div>
+        <div><label>Data de Admissão *</label><input id="rh_admissao" type="date" value="${d.admissao||""}"></div>
+        <div><label>Salário (R$)</label><input id="rh_salario" type="number" value="${d.salario||""}" placeholder="0,00" step="0.01"></div>
+        <div><label>Obra / Local de Trabalho</label>
+          <select id="rh_obra">
+            <option value="">Selecione a obra</option>
+          </select>
+        </div>
+        <div><label>PIS/PASEP</label><input id="rh_pis" value="${d.pis||""}" placeholder="000.00000.00-0"></div>
+        <div><label>Nº CTPS</label><input id="rh_ctps" value="${d.ctps||""}" placeholder="Número CTPS"></div>
+        <div><label>Série CTPS</label><input id="rh_ctps_serie" value="${d.ctpsSerie||""}" placeholder="Série"></div>
+        <div><label>Nº Registro</label><input id="rh_registro" value="${d.numRegistro||""}" placeholder="Gerado automaticamente" readonly style="background:#f3f4f6"></div>
+      </div>
+
+      <div class="rh-section-title" id="rhFilhosSection">Filhos Menores de 18 anos</div>
+      <div id="rhFilhosList" style="margin-bottom:8px"></div>
+      <button class="btn btn-outline sm" onclick="App.rhAddFilho()" style="margin-bottom:4px">+ Adicionar Filho</button>
+    </div>`;
+  }
+
+  function rhPreencherDados() {
+    // Preencher select de obras
+    getDocs(collection(db,"obras")).then(snap => {
+      const sel = $("rh_obra");
+      if(!sel) return;
+      snap.forEach(d => {
+        if(d.data().ativa !== false) {
+          const opt = document.createElement("option");
+          opt.value = d.id; opt.textContent = d.data().nome;
+          if(rhFluxo.dados.obraId === d.id) opt.selected = true;
+          sel.appendChild(opt);
+        }
+      });
+    });
+    // Gerar número de registro se novo
+    if(!rhFluxo.dados.numRegistro) {
+      const nr = "REG-" + Date.now().toString().slice(-6);
+      rhFluxo.dados.numRegistro = nr;
+      const el = $("rh_registro"); if(el) el.value = nr;
+    }
+    // Filhos
+    rhRenderFilhos();
+  }
+
+  function rhSalvarDados() {
+    const d = rhFluxo.dados;
+    d.nomeCompleto = $("rh_nome")?.value.trim();
+    d.cpf          = $("rh_cpf")?.value.trim();
+    d.nascimento   = $("rh_nascimento")?.value;
+    d.sexo         = $("rh_sexo")?.value;
+    d.telefone     = $("rh_tel")?.value.trim();
+    d.email        = $("rh_email")?.value.trim();
+    d.estCivil     = $("rh_estcivil")?.value;
+    d.naturalidade = $("rh_natural")?.value.trim();
+    d.cep          = $("rh_cep")?.value.trim();
+    d.rua          = $("rh_rua")?.value.trim();
+    d.endNum       = $("rh_endnum")?.value.trim();
+    d.bairro       = $("rh_bairro")?.value.trim();
+    d.cidade       = $("rh_cidade")?.value.trim();
+    d.uf           = $("rh_uf")?.value.trim().toUpperCase();
+    d.funcao       = $("rh_funcao")?.value;
+    d.funcaoOutro  = $("rh_funcao_outro")?.value.trim();
+    d.admissao     = $("rh_admissao")?.value;
+    d.salario      = $("rh_salario")?.value;
+    d.obraId       = $("rh_obra")?.value;
+    d.obraNome     = $("rh_obra")?.selectedOptions[0]?.text || "";
+    d.pis          = $("rh_pis")?.value.trim();
+    d.ctps         = $("rh_ctps")?.value.trim();
+    d.ctpsSerie    = $("rh_ctps_serie")?.value.trim();
+    // Validação mínima
+    if(!d.nomeCompleto) return "Informe o nome completo.";
+    if(!d.cpf || d.cpf.length < 11) return "Informe o CPF corretamente.";
+    if(!d.funcao) return "Selecione a função/cargo.";
+    if(!d.admissao) return "Informe a data de admissão.";
+    return null;
+  }
+
+  // Filhos
+  function rhRenderFilhos() {
+    const lista = $("rhFilhosList"); if(!lista) return;
+    const filhos = rhFluxo.dados.filhos || [];
+    if(!filhos.length) { lista.innerHTML = '<div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">Nenhum filho cadastrado.</div>'; return; }
+    lista.innerHTML = filhos.map((f,i) => `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <input value="${f.nome||""}" placeholder="Nome do filho" onchange="App.rhUpdateFilho(${i},'nome',this.value)" style="flex:2;min-width:140px;margin:0">
+        <input type="date" value="${f.nasc||""}" onchange="App.rhUpdateFilho(${i},'nasc',this.value)" style="flex:1;min-width:130px;margin:0">
+        <button onclick="App.rhRemFilho(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1.1rem;padding:4px">✕</button>
+      </div>`).join("");
+  }
+  function rhAddFilho() { if(!rhFluxo.dados.filhos) rhFluxo.dados.filhos=[]; rhFluxo.dados.filhos.push({nome:"",nasc:""}); rhRenderFilhos(); }
+  function rhRemFilho(i) { rhFluxo.dados.filhos.splice(i,1); rhRenderFilhos(); }
+  function rhUpdateFilho(i,campo,val) { if(rhFluxo.dados.filhos?.[i]) rhFluxo.dados.filhos[i][campo]=val; }
+  function rhFuncaoChange(val) {
+    const wrap = $("rh_funcao_outro_wrap");
+    if(wrap) wrap.style.display = val==="outro" ? "" : "none";
+  }
+  function rhToggleEstCivil(val) { /* futuro: mostrar/esconder campos de cônjuge */ }
+
+  // Máscaras simples
+  function rhMaskCPF(el) {
+    let v = el.value.replace(/\D/g,"").slice(0,11);
+    v = v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+    el.value = v;
+  }
+  function rhMaskTel(el) {
+    let v = el.value.replace(/\D/g,"").slice(0,11);
+    v = v.length<=10 ? v.replace(/(\d{2})(\d{4})(\d{0,4})/,"($1) $2-$3") : v.replace(/(\d{2})(\d{5})(\d{0,4})/,"($1) $2-$3");
+    el.value = v;
+  }
+  async function rhBuscarCEP(el) {
+    const cep = el.value.replace(/\D/g,"");
+    if(cep.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await r.json();
+      if(data.erro) return;
+      if($("rh_rua"))    $("rh_rua").value    = data.logradouro||"";
+      if($("rh_bairro")) $("rh_bairro").value = data.bairro||"";
+      if($("rh_cidade")) $("rh_cidade").value = data.localidade||"";
+      if($("rh_uf"))     $("rh_uf").value     = data.uf||"";
+    } catch(_){}
+  }
+
+  // ── ETAPA 2: DOCUMENTOS PESSOAIS ──
+  function rhHtmlDocs() {
+    const tipo = rhFluxo.tipo;
+    const docs = [
+      { key:"rg",       label:"RG / CNH",               icon:"🪪", desc:"Carteira de Identidade ou CNH" },
+      { key:"ctps",     label:"Carteira de Trabalho",    icon:"📘", desc:"Frente e verso ou digital" },
+      { key:"cpf_doc",  label:"CPF",                     icon:"🗂️", desc:"Documento CPF físico ou digital" },
+      { key:"comprova", label:"Comprovante de Endereço", icon:"🏠", desc:"Conta de luz, água ou bancário (últimos 3 meses)" },
+      { key:"certcas",  label:"Certidão de Casamento",   icon:"💍", desc:"Se casado(a) ou em união estável", condicional:"casado,uniao" },
+      { key:"certnasc", label:"Certidão de Nascimento dos Filhos", icon:"👶", desc:"Para filhos menores de 18 anos", condicional:"filhos" },
+      { key:"pis_doc",  label:"PIS/PASEP",               icon:"📋", desc:"Cartão PIS ou extrato" },
+    ];
+    const estCivil = rhFluxo.dados.estCivil || "";
+    const temFilhos = (rhFluxo.dados.filhos||[]).length > 0;
+
+    return `<div class="card">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px">Anexe os documentos em PDF ou imagem. Documentos marcados com ⚠️ ainda não foram anexados.</p>
+      ${docs.filter(doc => {
+        if(doc.condicional === "casado,uniao") return ["casado","uniao"].includes(estCivil);
+        if(doc.condicional === "filhos") return temFilhos;
+        return true;
+      }).map(doc => {
+        const arq = rhFluxo.arquivos[doc.key];
+        return `
+        <div class="rh-doc-item ${arq?"ok":"pending"}" id="rh_doc_${doc.key}">
+          <div class="rh-doc-icon">${arq ? "✅" : doc.icon}</div>
+          <div class="rh-doc-info">
+            <div class="rh-doc-title">${doc.label}</div>
+            <div class="rh-doc-sub">${arq ? `<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>` : doc.desc}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            <label style="cursor:pointer;margin:0">
+              <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('${doc.key}','${doc.label}',this)">
+              <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄 Substituir":"📎 Anexar"}</span>
+            </label>
+            ${arq?`<button onclick="App.rhRemDoc('${doc.key}')" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--danger)">✕ Remover</button>`:""}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }
+
+  function rhPreencherDocs() { /* já renderizado pelo HTML */ }
+
+  async function rhUploadDoc(key, label, input) {
+    const file = input.files[0]; if(!file) return;
+    const el = input.closest(".rh-doc-item");
+    if(el) el.querySelector(".rh-doc-sub").textContent = "⏳ Enviando...";
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", CLOUDINARY_PRESET);
+      fd.append("folder", "rh_documentos");
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {method:"POST",body:fd});
+      const data = await r.json();
+      if(!data.secure_url) throw new Error(data.error?.message||"Erro upload");
+      rhFluxo.arquivos[key] = { url:data.secure_url, nome:file.name, tipo:file.type };
+      toast(`✅ ${label} anexado!`);
+      // Re-renderiza o item
+      $("rhEtapaConteudo").innerHTML = rhHtmlDocs();
+    } catch(e) {
+      toast(`❌ Erro ao enviar ${label}: `+e.message);
+      if(el) el.querySelector(".rh-doc-sub").textContent = "Erro ao enviar. Tente novamente.";
+    }
+    input.value = "";
+  }
+
+  function rhRemDoc(key) { delete rhFluxo.arquivos[key]; $("rhEtapaConteudo").innerHTML = rhHtmlDocs(); }
+
+  // ── ETAPA 3: EXAMES ──
+  function rhHtmlExames() {
+    const tipo = rhFluxo.tipo;
+    const tipoExame = tipo === "contratacao" ? "Admissional" : "Demissional";
+    const arq = rhFluxo.arquivos["exame"];
+    return `<div class="card">
+      <p style="font-size:.9rem;margin-bottom:16px">Anexe o ASO (<strong>Atestado de Saúde Ocupacional</strong>) ${tipoExame} devidamente assinado pelo médico do trabalho.</p>
+      <div class="rh-doc-item ${arq?"ok":"pending"}">
+        <div class="rh-doc-icon">${arq?"✅":"🩺"}</div>
+        <div class="rh-doc-info">
+          <div class="rh-doc-title">ASO — ${tipoExame}</div>
+          <div class="rh-doc-sub">${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>`:"O documento deve estar assinado e carimbado pelo médico"}</div>
+        </div>
+        <label style="cursor:pointer;margin:0">
+          <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('exame','ASO ${tipoExame}',this)">
+          <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄 Substituir":"📎 Anexar ASO"}</span>
+        </label>
+      </div>
+      <div class="rh-section-title" style="margin-top:20px">Tipos de exame realizados</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${["Clínico Geral","Audiometria","Acuidade Visual","Hemograma","Glicemia","Raio-X Tórax","EEG","ECG"].map(ex=>{
+          const checked = (rhFluxo.dados.tiposExame||[]).includes(ex);
+          return `<label class="nr-chip ${checked?"selected":""}" onclick="App.rhToggleExame('${ex}',this)">
+            <input type="checkbox" ${checked?"checked":""}> ${ex}</label>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  function rhToggleExame(ex, el) {
+    if(!rhFluxo.dados.tiposExame) rhFluxo.dados.tiposExame = [];
+    const arr = rhFluxo.dados.tiposExame;
+    const i = arr.indexOf(ex);
+    if(i>=0) arr.splice(i,1); else arr.push(ex);
+    el.classList.toggle("selected");
+  }
+
+  // ── ETAPA 4: ANUÊNCIA ──
+  function rhHtmlAnuencia() {
+    const arq = rhFluxo.arquivos["anuencia"];
+    return `<div class="card">
+      <p style="font-size:.9rem;margin-bottom:16px">Anexe a <strong>Carta de Anuência</strong> assinada pelo colaborador e pelo responsável da empresa.</p>
+      <div class="rh-doc-item ${arq?"ok":"pending"}">
+        <div class="rh-doc-icon">${arq?"✅":"✍️"}</div>
+        <div class="rh-doc-info">
+          <div class="rh-doc-title">Carta de Anuência</div>
+          <div class="rh-doc-sub">${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>`:"Documento deve estar assinado por ambas as partes"}</div>
+        </div>
+        <label style="cursor:pointer;margin:0">
+          <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('anuencia','Carta de Anuência',this)">
+          <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄 Substituir":"📎 Anexar"}</span>
+        </label>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;margin-top:16px;font-size:.82rem;color:#92400e">
+        💡 A carta de anuência é o documento em que o colaborador declara ciência das condições de trabalho, normas internas e políticas da empresa.
+      </div>
+    </div>`;
+  }
+
+  // ── ETAPA 5: NRs / TREINAMENTOS ──
+  function rhHtmlNRs() {
+    const funcao = rhFluxo.dados.funcaoOutro || rhFluxo.dados.funcao || "";
+    const sugeridas = RH_MATRIZ_NR[funcao] || [];
+    const todas = Object.keys(RH_NR_DESCRICAO);
+    const selecionadas = rhFluxo.dados.nrsSelecionadas || [...sugeridas];
+    if(!rhFluxo.dados.nrsSelecionadas) rhFluxo.dados.nrsSelecionadas = [...sugeridas];
+
+    return `<div class="card">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:4px">Selecione as NRs exigidas para a função <strong>${funcao||"—"}</strong>. As marcadas são sugeridas pela matriz de treinamentos.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+        ${todas.map(nr => {
+          const sel = selecionadas.includes(nr);
+          const sug = sugeridas.includes(nr);
+          return `<label class="nr-chip ${sel?"selected":""}" onclick="App.rhToggleNR('${nr}',this)" title="${RH_NR_DESCRICAO[nr]}">
+            <input type="checkbox" ${sel?"checked":""}> ${nr}${sug?" ⭐":""}</label>`;
+        }).join("")}
+      </div>
+      <div class="rh-section-title">Anexar Comprovantes de Treinamento</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Para cada NR selecionada, anexe o certificado/lista de presença assinada.</p>
+      <div id="rhNRsAnexos">
+        ${selecionadas.map(nr => {
+          const arq = rhFluxo.arquivos["nr_"+nr];
+          return `
+          <div class="rh-doc-item ${arq?"ok":"pending"}" id="rhdoc_nr_${nr}">
+            <div class="rh-doc-icon">${arq?"✅":"🦺"}</div>
+            <div class="rh-doc-info">
+              <div class="rh-doc-title">${nr} — ${RH_NR_DESCRICAO[nr]||nr}</div>
+              <div class="rh-doc-sub">${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>`:"Certificado ou lista de presença assinada"}</div>
+            </div>
+            <label style="cursor:pointer;margin:0">
+              <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('nr_${nr}','${nr}',this)">
+              <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄":"📎 Anexar"}</span>
+            </label>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  function rhPreencherNRs() { /* já no HTML */ }
+
+  function rhToggleNR(nr, el) {
+    if(!rhFluxo.dados.nrsSelecionadas) rhFluxo.dados.nrsSelecionadas = [];
+    const arr = rhFluxo.dados.nrsSelecionadas;
+    const i = arr.indexOf(nr);
+    if(i>=0) arr.splice(i,1); else arr.push(nr);
+    el.classList.toggle("selected");
+    // Re-renderiza só a lista de anexos
+    const wrap = $("rhNRsAnexos"); if(!wrap) return;
+    const selecionadas = rhFluxo.dados.nrsSelecionadas;
+    wrap.innerHTML = selecionadas.map(n => {
+      const arq = rhFluxo.arquivos["nr_"+n];
+      return `
+      <div class="rh-doc-item ${arq?"ok":"pending"}" id="rhdoc_nr_${n}">
+        <div class="rh-doc-icon">${arq?"✅":"🦺"}</div>
+        <div class="rh-doc-info">
+          <div class="rh-doc-title">${n} — ${RH_NR_DESCRICAO[n]||n}</div>
+          <div class="rh-doc-sub">${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>`:"Certificado ou lista de presença assinada"}</div>
+        </div>
+        <label style="cursor:pointer;margin:0">
+          <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('nr_${n}','${n}',this)">
+          <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄":"📎 Anexar"}</span>
+        </label>
+      </div>`;
+    }).join("");
+  }
+
+  // ── ETAPA 6: RESUMO ──
+  function rhHtmlResumo() {
+    const d = rhFluxo.dados;
+    const arqs = rhFluxo.arquivos;
+    const nrs = d.nrsSelecionadas || [];
+    const docNomes = {
+      rg:"RG/CNH", ctps:"Carteira de Trabalho", cpf_doc:"CPF", comprova:"Comprovante de Endereço",
+      certcas:"Certidão de Casamento", certnasc:"Certidão de Nascimento (filhos)", pis_doc:"PIS/PASEP",
+      exame:`ASO ${d.tipo==="contratacao"?"Admissional":"Demissional"}`, anuencia:"Carta de Anuência"
+    };
+
+    const docsList = Object.entries(docNomes).map(([k,label]) => {
+      const arq = arqs[k];
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+        <span>${label}</span>
+        ${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary);font-size:.78rem">📎 Ver</a>`
+             :`<span style="color:var(--muted);font-size:.78rem">— não anexado</span>`}
+      </div>`;
+    }).join("");
+
+    const nrsList = nrs.map(nr => {
+      const arq = arqs["nr_"+nr];
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+        <span>${nr} — ${RH_NR_DESCRICAO[nr]||nr}</span>
+        ${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary);font-size:.78rem">📎 Ver</a>`
+             :`<span style="color:#d97706;font-size:.78rem">⚠️ pendente</span>`}
+      </div>`;
+    }).join("");
+
+    return `<div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div><div class="rh-section-title" style="margin-top:0">Colaborador</div>
+          <div style="font-size:.9rem;line-height:1.8">
+            <strong>${d.nomeCompleto||"—"}</strong><br>
+            CPF: ${d.cpf||"—"}<br>
+            Função: ${d.funcaoOutro||d.funcao||"—"}<br>
+            Admissão: ${d.admissao?new Date(d.admissao+"T12:00:00").toLocaleDateString("pt-BR"):"—"}<br>
+            Salário: ${d.salario?"R$ "+Number(d.salario).toLocaleString("pt-BR",{minimumFractionDigits:2}):"—"}<br>
+            Obra: ${d.obraNome||"—"}<br>
+            Registro: ${d.numRegistro||"—"}
+          </div>
+        </div>
+        <div><div class="rh-section-title" style="margin-top:0">Documentos</div>${docsList}</div>
+      </div>
+      <div class="rh-section-title">NRs / Treinamentos</div>
+      ${nrsList||'<div style="font-size:.85rem;color:var(--muted)">Nenhuma NR selecionada.</div>'}
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-top:16px;font-size:.85rem;color:#1e40af">
+        ✅ Revise todas as informações acima antes de finalizar. Após finalizar, o processo ficará salvo e disponível para geração de documentos PDF.
+      </div>
+    </div>`;
+  }
+
+  // ── NAVEGAÇÃO ENTRE ETAPAS ──
+  async function rhEtapaProxima() {
+    const etapas = rhGetEtapas(rhFluxo.tipo);
+    const etapa = etapas[rhFluxo.etapaAtual];
+
+    // Salvar dados da etapa atual
+    if(etapa.id === "dados") {
+      const erro = rhSalvarDados();
+      if(erro) { $("rhEtapaMsg").textContent = "⚠️ "+erro; return; }
+    }
+
+    if(rhFluxo.etapaAtual < etapas.length - 1) {
+      rhFluxo.etapaAtual++;
+      rhRenderStepper();
+      rhRenderEtapa();
+      await rhSalvarRascunho();
+    }
+  }
+
+  function rhEtapaAnterior() {
+    if(rhFluxo.etapaAtual > 0) {
+      if(etapas?.[rhFluxo.etapaAtual]?.id === "dados") rhSalvarDados();
+      rhFluxo.etapaAtual--;
+      rhRenderStepper();
+      rhRenderEtapa();
+    }
+  }
+
+  function rhVoltarHome() {
+    $("rh-fluxo").style.display = "none";
+    $("rh-home").style.display = "";
+    $("rh-home").classList.add("active");
+    rhCarregarLista();
+  }
+
+  // ── PERSISTÊNCIA ──
+  async function rhSalvarRascunho() {
+    try {
+      const payload = {
+        tipo:          rhFluxo.tipo,
+        etapaAtual:    rhFluxo.etapaAtual,
+        dados:         rhFluxo.dados,
+        arquivos:      rhFluxo.arquivos,
+        atualizadoEm:  serverTimestamp(),
+        atualizadoPor: currentUser?.uid,
+        status:        "rascunho",
+      };
+      if(rhFluxo.processoId) {
+        await setDoc(doc(db,"rh_processos",rhFluxo.processoId), payload, {merge:true});
+      } else {
+        const ref = await addDoc(collection(db,"rh_processos"), payload);
+        rhFluxo.processoId = ref.id;
+      }
+    } catch(e){ console.warn("rhSalvarRascunho:",e); }
+  }
+
+  async function rhFinalizar() {
+    const erro = rhSalvarDados();
+    if(erro) { $("rhEtapaMsg").textContent = "⚠️ "+erro; return; }
+    try {
+      $("rhBtnFinalizar").textContent = "⏳ Salvando...";
+      $("rhBtnFinalizar").disabled = true;
+      const payload = {
+        tipo:         rhFluxo.tipo,
+        etapaAtual:   rhGetEtapas(rhFluxo.tipo).length - 1,
+        dados:        rhFluxo.dados,
+        arquivos:     rhFluxo.arquivos,
+        status:       "concluido",
+        concluidoEm:  serverTimestamp(),
+        concluidoPor: currentUser?.uid,
+        atualizadoEm: serverTimestamp(),
+      };
+      if(rhFluxo.processoId) {
+        await setDoc(doc(db,"rh_processos",rhFluxo.processoId), payload, {merge:true});
+      } else {
+        const ref = await addDoc(collection(db,"rh_processos"), payload);
+        rhFluxo.processoId = ref.id;
+      }
+      toast("✅ Processo salvo! Você pode gerar os documentos PDF.");
+      $("rhBtnFinalizar").textContent = "✅ Finalizar e Gerar Documentos";
+      $("rhBtnFinalizar").disabled = false;
+      rhVoltarHome();
+    } catch(e){
+      toast("❌ Erro ao salvar: "+e.message);
+      $("rhBtnFinalizar").textContent = "✅ Finalizar e Gerar Documentos";
+      $("rhBtnFinalizar").disabled = false;
+    }
+  }
+
+  // ── LISTA DE PROCESSOS ──
+  async function rhCarregarLista(filtro="") {
+    const lista = $("rhListaProcessos"); if(!lista) return;
+    lista.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">⏳ Carregando...</div>';
+    try {
+      const snap = await getDocs(collection(db,"rh_processos"));
+      const processos = [];
+      snap.forEach(d => processos.push({id:d.id,...d.data()}));
+      const filtrados = filtro
+        ? processos.filter(p => (p.dados?.nomeCompleto||"").toLowerCase().includes(filtro.toLowerCase()))
+        : processos;
+      if(!filtrados.length) {
+        lista.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum processo encontrado.</div>';
+        return;
+      }
+      filtrados.sort((a,b) => (b.atualizadoEm?.seconds||0) - (a.atualizadoEm?.seconds||0));
+      lista.innerHTML = filtrados.map(p => {
+        const d = p.dados || {};
+        const badgeClass = p.tipo==="contratacao" ? "rh-badge-cont" : "rh-badge-dem";
+        const badgeTxt   = p.tipo==="contratacao" ? "CONTRATAÇÃO" : "DEMISSÃO";
+        const statusCls  = p.status==="concluido" ? "rh-badge-ok" : "badge";
+        const statusTxt  = p.status==="concluido" ? "✅ Concluído" : "🔄 Em andamento";
+        const etapas = rhGetEtapas(p.tipo);
+        const progresso  = Math.round(((p.etapaAtual||0)/(etapas.length-1))*100);
+        return `
+        <div class="rh-processo-card" onclick="App.rhAbrirProcesso('${p.id}')">
+          <div style="flex:1">
+            <div style="font-weight:600;margin-bottom:4px">${d.nomeCompleto||"Sem nome"}</div>
+            <div style="font-size:.78rem;color:var(--muted)">${d.funcaoOutro||d.funcao||"—"} · ${d.admissao?new Date(d.admissao+"T12:00:00").toLocaleDateString("pt-BR"):"—"}</div>
+            <div style="margin-top:6px;height:4px;background:var(--border);border-radius:2px;max-width:200px">
+              <div style="height:4px;background:var(--primary);border-radius:2px;width:${progresso}%"></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <span class="${badgeClass}">${badgeTxt}</span>
+            <span class="${statusCls}">${statusTxt}</span>
+          </div>
+        </div>`;
+      }).join("");
+    } catch(e) {
+      lista.innerHTML = `<div style="text-align:center;padding:20px;color:var(--danger)">❌ Erro: ${e.message}</div>`;
+    }
+  }
+
+  function rhFiltrarLista() {
+    rhCarregarLista($("rhBusca")?.value || "");
+  }
+
+  async function rhAbrirProcesso(id) {
+    const snap = await getDoc(doc(db,"rh_processos",id));
+    if(!snap.exists()) { toast("Processo não encontrado."); return; }
+    const p = {id:snap.id,...snap.data()};
+    rhFluxo = { tipo:p.tipo, processoId:id, etapaAtual:p.etapaAtual||0, dados:p.dados||{}, arquivos:p.arquivos||{} };
+
+    const d = p.dados||{};
+    const etapas = rhGetEtapas(p.tipo);
+    $("modalRhTitulo").textContent = `${p.tipo==="contratacao"?"📋 Contratação":"📤 Demissão"} — ${d.nomeCompleto||""}`;
+    $("modalRhConteudo").innerHTML = `
+      <div style="font-size:.85rem;line-height:1.9;margin-bottom:12px">
+        <strong>Função:</strong> ${d.funcaoOutro||d.funcao||"—"}<br>
+        <strong>Admissão:</strong> ${d.admissao?new Date(d.admissao+"T12:00:00").toLocaleDateString("pt-BR"):"—"}<br>
+        <strong>Obra:</strong> ${d.obraNome||"—"}<br>
+        <strong>Status:</strong> ${p.status==="concluido"?"✅ Concluído":"🔄 Em andamento"}<br>
+        <strong>Etapa atual:</strong> ${etapas[p.etapaAtual||0]?.label||"—"} (${(p.etapaAtual||0)+1}/${etapas.length})
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:16px">
+        <div style="height:6px;background:var(--primary);border-radius:3px;width:${Math.round(((p.etapaAtual||0)/(etapas.length-1))*100)}%"></div>
+      </div>`;
+    $("modalRhProcesso").classList.remove("hidden");
+  }
+
+  function rhReabrirProcesso() {
+    closeModal("modalRhProcesso");
+    rhMostrarFluxo();
+  }
+
+  async function rhGerarPDFs() {
+    toast("⚙️ Geração de PDFs completos será implementada nas próximas etapas (fichas, contratos, EPIs).");
+  }
+
   window.App = {
     // Auth
     login, logout, togglePass, changePassword,
@@ -4089,6 +4951,17 @@
     setPontoEnvioAuto, addPontoEmailDest, savePontoEmailConfig,
     enviarPontoMensalManual,
     abrirCorrecao, salvarCorrecaoPonto, verFotosPonto,
+    // RH
+    rhIniciarFluxo, rhVoltarHome, rhMostrarFluxo,
+    _rhConfirmarColab,
+    rhEtapaProxima, rhEtapaAnterior,
+    rhAddFilho, rhRemFilho, rhUpdateFilho,
+    rhFuncaoChange, rhToggleEstCivil,
+    rhMaskCPF, rhMaskTel, rhBuscarCEP,
+    rhUploadDoc, rhRemDoc,
+    rhToggleExame, rhToggleNR,
+    rhFiltrarLista, rhAbrirProcesso,
+    rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
   };
 </script>
 
