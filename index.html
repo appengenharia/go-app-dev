@@ -2592,82 +2592,113 @@
   }
 
   async function loginPonto() {
-    const email = $("pontoEmail").value.trim();
-    const senha = $("pontoSenha").value;
-    if(!email || !senha) { setMsg("pontoLoginMsg","Preencha e-mail e senha."); return; }
-    setMsg("pontoLoginMsg","⏳ Verificando credenciais...");
-    try {
-      // ── CRÍTICO: usa authAux para NÃO derrubar sessão do admin ──
-      const cred = await signInWithEmailAndPassword(authAux, email, senha);
-      pontoUser  = cred.user;
-
-      pontoProfile = await loadProfile(pontoUser.uid);
-      if(!pontoProfile || pontoProfile.ativo===false) {
-        await signOut(authAux);
-        setMsg("pontoLoginMsg","⛔ Conta inativa. Fale com o administrador.");
-        return;
-      }
-
-      // Justificativa pendente?
-      const justPendente = await verificarJustificativaPendente(pontoUser.uid);
-      if(justPendente) {
-        $("pontoStepLogin").classList.add("hidden");
-        $("pontoJustMsg").textContent = justPendente.msg;
-        justPontoId = justPendente.id;
-        $("pontoStepJustificativa").classList.remove("hidden");
-        return;
-      }
-
-      // Obra do colaborador
-      const obras = pontoProfile.obras?.length ? pontoProfile.obras : (pontoProfile.obra_id ? [pontoProfile.obra_id] : []);
-      if(obras.length > 0) {
-        try {
-          const obraSnap = await getDoc(doc(db,"obras",obras[0]));
-          pontoObraData = obraSnap.exists() ? {...obraSnap.data(), id: obraSnap.id} : null;
-        } catch(_){}
-      }
-
-      pontoFaseAtual = await determinarFase(pontoUser.uid);
-
-      // UI
-      $("pontoNomeColab").textContent = pontoProfile.nome || email;
-      $("pontoObraColab").textContent = pontoObraData?.nome || "Sem obra definida";
-      atualizarDataHoraPonto();
-      atualizarFaseLabel();
-
-      if(!pontoProfile.fotoUrl) $("pontoSemFotoAviso")?.classList.remove("hidden");
-
-      // Inicia tela da câmera
-      $("pontoStepLogin").classList.add("hidden");
-      $("pontoStepCamera").classList.remove("hidden");
-
-      // Reset dos status
-      setStatusItem("statusGps","loading","📍 Obtendo localização...");
-      setStatusItem("statusLiveness","loading","👁️ Pisque os olhos "+BLINKS_NEEDED+"x para verificar presença");
-      setStatusItem("statusFacial","loading", pontoProfile.fotoUrl ? "🔍 Aguardando foto..." : "⚪ Sem foto cadastrada (verificação dispensada)");
-
-      // Marca facial como ok se não tem foto cadastrada
-      if(!pontoProfile.fotoUrl) {
-        facialOk = true;
-        setStatusItem("statusFacial","warn","⚪ Sem foto cadastrada — verificação dispensada");
-      }
-
-      await iniciarCamera();
-      obterGPS();       // async, não bloqueia
-      iniciarLiveness(); // começa detecção de piscar
-
-      setMsg("pontoLoginMsg","");
-    } catch(e) {
-      const msgs = {
-        "auth/invalid-credential":"E-mail ou senha incorretos.",
-        "auth/too-many-requests":"Muitas tentativas. Aguarde.",
-        "auth/user-not-found":"Usuário não encontrado.",
-        "auth/wrong-password":"Senha incorreta."
-      };
-      setMsg("pontoLoginMsg", msgs[e.code] || "Erro: "+e.message);
-    }
+  const email = pontoEmail.value.trim();
+  const senha = pontoSenha.value;
+  if (!email || !senha) {
+    setMsg(pontoLoginMsg, 'Preencha e-mail e senha.');
+    return;
   }
 
+  setMsg(pontoLoginMsg, 'Verificando credenciais...');
+
+  try {
+    // CRÍTICO: usa authAux para NÃO derrubar sessão do admin
+    const cred = await signInWithEmailAndPassword(authAux, email, senha);
+    pontoUser = cred.user;
+
+    // Carrega perfil com tentativa extra em caso de lentidão do Firestore
+    pontoProfile = await loadProfile(pontoUser.uid);
+
+    // Tenta uma segunda vez se retornou null (race condition / lentidão)
+    if (!pontoProfile) {
+      await new Promise(r => setTimeout(r, 1500));
+      pontoProfile = await loadProfile(pontoUser.uid);
+    }
+
+    // Perfil realmente não encontrado (usuário não está no Firestore)
+    if (!pontoProfile) {
+      await signOut(authAux);
+      setMsg(pontoLoginMsg, 'Usuário não encontrado no sistema. Contate o administrador.');
+      return;
+    }
+
+    // Conta explicitamente desativada pelo admin
+    if (pontoProfile.ativo === false) {
+      await signOut(authAux);
+      setMsg(pontoLoginMsg, 'Conta inativa. Fale com o administrador.');
+      return;
+    }
+
+    // Justificativa pendente de dia anterior?
+    const justPendente = await verificarJustificativaPendente(pontoUser.uid);
+    if (justPendente) {
+      pontoStepLogin.classList.add('hidden');
+      pontoJustMsg.textContent = justPendente.msg;
+      justPontoId = justPendente.id;
+      pontoStepJustificativa.classList.remove('hidden');
+      return;
+    }
+
+    // Obra do colaborador
+    const obras = pontoProfile.obras?.length
+      ? pontoProfile.obras
+      : pontoProfile.obra_id
+        ? [pontoProfile.obra_id]
+        : [];
+
+    if (obras.length > 0) {
+      try {
+        const obraSnap = await getDoc(doc(db, 'obras', obras[0]));
+        pontoObraData = obraSnap.exists() ? { ...obraSnap.data(), id: obraSnap.id } : null;
+      } catch { pontoObraData = null; }
+    }
+
+    pontoFaseAtual = await determinarFase(pontoUser.uid);
+
+    // UI — info do colaborador
+    pontoNomeColab.textContent = pontoProfile.nome || email;
+    pontoObraColab.textContent = pontoObraData?.nome || 'Sem obra definida';
+    atualizarDataHoraPonto();
+    atualizarFaseLabel();
+
+    if (!pontoProfile.fotoUrl) {
+      pontoSemFotoAviso?.classList.remove('hidden');
+    }
+
+    // Avança para a tela da câmera
+    pontoStepLogin.classList.add('hidden');
+    pontoStepCamera.classList.remove('hidden');
+
+    // Reset dos status visuais
+    setStatusItem('statusGps',      'loading', 'Obtendo localização...');
+    setStatusItem('statusLiveness', 'loading', `Pisque os olhos ${BLINKS_NEEDED}x para verificar presença`);
+    setStatusItem('statusFacial',   'loading', pontoProfile.fotoUrl
+      ? 'Aguardando foto...'
+      : 'Sem foto cadastrada — verificação dispensada');
+
+    // Se não tem foto, dispensa reconhecimento facial
+    if (!pontoProfile.fotoUrl) {
+      facialOk = true;
+      setStatusItem('statusFacial', 'warn', 'Sem foto cadastrada — verificação dispensada');
+    }
+
+    await iniciarCamera();
+    obterGPS(); // async, não bloqueia
+    iniciarLiveness();
+
+    setMsg(pontoLoginMsg, '');
+
+  } catch (e) {
+    const msgs = {
+      'auth/invalid-credential':   'E-mail ou senha incorretos.',
+      'auth/too-many-requests':    'Muitas tentativas. Aguarde.',
+      'auth/user-not-found':       'Usuário não encontrado.',
+      'auth/wrong-password':       'Senha incorreta.',
+      'auth/invalid-email':        'E-mail inválido.',
+    };
+    setMsg(pontoLoginMsg, msgs[e.code] || `Erro: ${e.message}`);
+  }
+}
   // ── LIVENESS: detecta piscar via análise da região dos olhos ──
   function iniciarLiveness() {
     blinkCount = 0; eyeWasClosed = false;
