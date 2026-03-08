@@ -3189,7 +3189,7 @@
       // Offline: armazena base64 no IndexedDB para referenciar (sem upload)
       const fotoRef = fotoUrl || (pontoFotoB64 && !navigator.onLine ? "[foto_offline]" : "");
 
-      const isAnomalia = verificarAnomalia(horaStr, pontoFaseAtual, dia);
+      const anomaliaEntrada = verificarAnomalia(horaStr, pontoFaseAtual, dia);
       const faseNome   = {entrada:"Entrada",almoco:"Saída p/ Almoço",retorno:"Retorno",saida:"Saída",extra:"Hora Extra"}[pontoFaseAtual];
 
       let distanciaM = null;
@@ -3199,9 +3199,10 @@
         foraDoRaio = distanciaM > (pontoObraData.raio || 100);
       }
 
-      const anomaliasBase = isAnomalia ? [pontoFaseAtual] : [];
+      // anomaliasBase: guarda o tipo descritivo (ex: "atraso", "saida_cedo", "fora_raio")
+      const anomaliasBase = anomaliaEntrada ? [anomaliaEntrada] : [];
       if(foraDoRaio) anomaliasBase.push("fora_raio");
-      const statusFinal = (isAnomalia || foraDoRaio) ? "anomalia" : "ok";
+      const statusFinal = (anomaliaEntrada || foraDoRaio) ? "anomalia" : "ok";
 
       // ── MODO OFFLINE: salva no IndexedDB ──────────────────────
       if(!navigator.onLine) {
@@ -3303,11 +3304,24 @@
   function verificarAnomalia(hora, fase, dia) {
     const toMin=h=>{const[hh,mm]=h.split(":").map(Number);return hh*60+mm;};
     const m=toMin(hora);
-    if(fase==="entrada"&&m>toMin("07:30")) return true;
-    if(fase==="almoco" &&m<toMin("11:30")) return true;
-    if(fase==="retorno"&&m>toMin("13:30")) return true;
-    if(fase==="saida"){const s=dia===5?toMin("16:00"):toMin("17:00");if(m<s-15)return true;}
+    // Entrada: liberado a partir das 06:59. Tolerância de 10min → atraso se após 07:10
+    if(fase==="entrada") {
+      if(m < toMin("06:59")) return "adiantado";  // muito cedo (raro, mas registra)
+      if(m > toMin("07:10")) return "atraso";
+      return false;
+    }
+    if(fase==="almoco"  && m < toMin("11:30")) return "almoco_cedo";
+    if(fase==="retorno" && m > toMin("13:30")) return "retorno_tarde";
+    if(fase==="saida") {
+      const s = dia===5 ? toMin("16:00") : toMin("17:00");
+      if(m < s-15) return "saida_cedo";
+    }
     return false;
+  }
+
+  // Retorna true se a anomalia representa atraso de entrada especificamente
+  function isAtrasoEntrada(anomalias) {
+    return Array.isArray(anomalias) && anomalias.includes("atraso");
   }
 
   function calcularHoraExtra(entrada,saida,dia){
@@ -3328,7 +3342,7 @@
 
   function atualizarFaseLabel() {
     const fases={entrada:"🟢 Entrada",almoco:"🟡 Saída para Almoço",retorno:"🔵 Retorno do Almoço",saida:"🔴 Saída",extra:"🟠 Hora Extra"};
-    const horarios={entrada:"07:00",almoco:"12:00",retorno:"13:00",saida:getSaidaPrevista(),extra:"após 17:00"};
+    const horarios={entrada:"07:00 (tol. até 07:10)",almoco:"12:00",retorno:"13:00",saida:getSaidaPrevista(),extra:"após "+getSaidaPrevista()};
     if($("pontoFaseLabel"))        $("pontoFaseLabel").textContent="Próximo: "+( fases[pontoFaseAtual]||"—");
     if($("pontoHorarioEsperado"))  $("pontoHorarioEsperado").textContent="Previsto: "+(horarios[pontoFaseAtual]||"—");
   }
@@ -3504,10 +3518,35 @@
           horasExtra++;
           horaExtraCell = `<span style="color:#f59e0b;font-weight:600">${p.horaExtra}</span>`;
         }
-        if(p.status==="anomalia") {
+
+        const temAtraso = isAtrasoEntrada(p.anomalias);
+        const temOutraAnomalia = p.status==="anomalia" && !temAtraso;
+
+        if(temAtraso) {
+          // Atraso de entrada: linha vermelha com badge vermelho
+          atrasos++;
+          bgRow = "background:#fef2f2";
+          const minAtraso = (() => {
+            if(!p.entrada) return "";
+            const toMin=h=>{const[hh,mm]=h.split(":").map(Number);return hh*60+mm;};
+            const diff = toMin(p.entrada) - toMin("07:00");
+            return diff > 0 ? ` +${diff}min` : "";
+          })();
+          statusBadge = `<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;border:1px solid #fca5a5">⚠️ ATRASO${minAtraso}</span>`;
+        } else if(p.status==="anomalia") {
+          // Outras anomalias (saída cedo, fora do raio, etc): amarelo
           atrasos++;
           bgRow = "background:#fffbeb";
-          statusBadge = '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px">ATRASO</span>';
+          const tipoLabel = {
+            saida_cedo:    "SAÍDA CEDO",
+            retorno_tarde: "RET. TARDE",
+            almoco_cedo:   "ALM. CEDO",
+            fora_raio:     "FORA DO RAIO",
+            adiantado:     "ADIANTADO"
+          };
+          const tipoAnomalia = p.anomalias?.find(a => a !== "fora_raio") || p.anomalias?.[0] || "anomalia";
+          const label = tipoLabel[tipoAnomalia] || "ANOMALIA";
+          statusBadge = `<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px">${label}</span>`;
         } else if(p.status==="corrigido") {
           statusBadge = '<span style="background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:10px;font-size:11px">CORRIGIDO</span>';
         } else {
@@ -3520,12 +3559,13 @@
         ? `<button onclick="App.abrirCorrecao('${dataStr}')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:4px" title="Corrigir ponto">✏️</button>`
         : "—";
 
+      const entradaStyle = isAtrasoEntrada(p?.anomalias) ? "color:#dc2626;font-weight:700" : "";
       rows += `<tr style="${bgRow}">
         <td style="padding:8px 12px">
           <div style="font-weight:600">${String(d).padStart(2,"0")}</div>
           <div style="font-size:11px;color:#888">${nomeDia}</div>
         </td>
-        <td style="text-align:center;padding:8px">${p?.entrada||"—"}</td>
+        <td style="text-align:center;padding:8px;${entradaStyle}">${p?.entrada||"—"}</td>
         <td style="text-align:center;padding:8px">${p?.almoco||"—"}</td>
         <td style="text-align:center;padding:8px">${p?.retorno||"—"}</td>
         <td style="text-align:center;padding:8px">${p?.saida||"—"}</td>
