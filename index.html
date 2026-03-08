@@ -4463,6 +4463,51 @@
   // ═══════════════════════════════════════════════════════════
 
   // --- Matriz de NRs por função ---
+  // Mapa CBO por função (tabela MTE)
+  const RH_CBO_MAP = {
+    "Pedreiro":                     "7152-10",
+    "Ajudante":                     "7170-35",
+    "Engenheiro":                   "2142-05",
+    "Bombeiro Hidráulico":          "7241-10",
+    "Eletricista":                  "7156-10",
+    "Pintor":                       "7166-10",
+    "Serralheiro":                  "7244-15",
+    "Carpinteiro":                  "7155-10",
+    "Operador de Retroescavadeira": "7151-05",
+    "Mestre de Obras":              "7119-05",
+    "Encanador":                    "7241-05",
+    "Armador":                      "7153-10",
+  };
+
+  // Converte número para extenso em pt-BR
+  function numExtenso(valor) {
+    if(!valor || isNaN(valor)) return "";
+    const v = Math.round(Number(valor) * 100);
+    const reais = Math.floor(v / 100);
+    const cents = v % 100;
+    const u = ["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez",
+               "onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
+    const dz = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
+    const cent = ["","cem","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
+    function g3(n) {
+      if(n===0) return "";
+      if(n<=19) return u[n];
+      if(n<100) { const r=n%10; return dz[Math.floor(n/10)]+(r?" e "+u[r]:""); }
+      if(n===100) return "cem";
+      const r=n%100; return cent[Math.floor(n/100)]+(r?" e "+g3(r):"");
+    }
+    function g(n, s, p) { return n===0?"":g3(n)+" "+(n===1?s:p); }
+    const partes = [];
+    if(reais>=1000000) partes.push(g(Math.floor(reais/1000000),"milhão","milhões"));
+    if(reais>=1000)    partes.push(g(Math.floor((reais%1000000)/1000),"mil","mil"));
+    if(reais%1000)     partes.push(g(reais%1000,"",""));
+    let txt = partes.filter(Boolean).join(" e ").trim();
+    txt += " "+(reais===1?"real":"reais");
+    if(cents>0) txt += " e "+g3(cents)+" "+(cents===1?"centavo":"centavos");
+    // Capitaliza
+    return txt.charAt(0).toUpperCase()+txt.slice(1);
+  }
+
   const RH_MATRIZ_NR = {
     "Pedreiro":                ["NR01","NR06","NR18","NR35"],
     "Ajudante":                ["NR01","NR06","NR18","NR35"],
@@ -4722,6 +4767,27 @@
         <div><label>Setor</label><input id="rh_setor" value="${d.setor||""}" placeholder="Ex: Produção, Administrativo"></div>
       </div>
 
+      <div class="rh-section-title">📋 FGTS — Fundo de Garantia do Tempo de Serviço</div>
+      <div class="rh-field-grid">
+        <div>
+          <label>É optante do FGTS?</label>
+          <div style="display:flex;gap:20px;align-items:center;padding:10px 0">
+            <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:.9rem;font-weight:500;cursor:pointer">
+              <input type="checkbox" id="rh_fgts_sim" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer"
+                ${d.fgtsOptante!==false?"checked":""} onchange="document.getElementById('rh_fgts_nao').checked=!this.checked">
+              Sim
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:.9rem;font-weight:500;cursor:pointer">
+              <input type="checkbox" id="rh_fgts_nao" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer"
+                ${d.fgtsOptante===false?"checked":""} onchange="document.getElementById('rh_fgts_sim').checked=!this.checked">
+              Não
+            </label>
+          </div>
+        </div>
+        <div><label>Data da opção FGTS</label><input type="date" id="rh_fgts_opcao" value="${d.fgtsDataOpcao||""}"></div>
+        <div><label>Data de retratação</label><input type="date" id="rh_fgts_retrat" value="${d.fgtsDataRetrat||""}"></div>
+      </div>
+
       <div class="rh-section-title">📄 Documentos Trabalhistas</div>
       <div class="rh-field-grid">
         <div><label>Nº CTPS * <span style="color:var(--danger)" title="Obrigatório">●</span></label><input id="rh_ctps" value="${d.ctps||""}" placeholder="Número CTPS"></div>
@@ -4799,6 +4865,15 @@
       rhFluxo.dados.numRegistro = nr;
       const el = $("rh_registro"); if(el) el.value = nr;
     }
+    // Destacar CBO se preenchido automaticamente pela função
+    setTimeout(() => {
+      const cboCampo = $("rh_cbo");
+      const funcaoVal = $("rh_funcao")?.value;
+      if(cboCampo && funcaoVal && RH_CBO_MAP[funcaoVal] && cboCampo.value === RH_CBO_MAP[funcaoVal]) {
+        cboCampo.style.background = "#eef6ff";
+        cboCampo.title = "Preenchido automaticamente — pode editar manualmente";
+      }
+    }, 100);
     rhRenderFilhos();
   }
 
@@ -4874,6 +4949,11 @@
     d.esocial       = $("rh_esocial")?.value.trim();
     d.titulo        = $("rh_titulo")?.value.trim();
     d.zona          = $("rh_zona")?.value.trim();
+    // FGTS
+    d.fgtsOptante   = $("rh_fgts_sim")?.checked !== false;
+    if($("rh_fgts_nao")?.checked) d.fgtsOptante = false;
+    d.fgtsDataOpcao = $("rh_fgts_opcao")?.value || "";
+    d.fgtsDataRetrat= $("rh_fgts_retrat")?.value || "";
     d.bancoNome     = $("rh_banco_nome")?.value.trim();
     d.bancoCod      = $("rh_banco_cod")?.value.trim();
     d.bancoAg       = $("rh_banco_ag")?.value.trim();
@@ -4926,6 +5006,21 @@
   function rhFuncaoChange(val) {
     const wrap = $("rh_funcao_outro_wrap");
     if(wrap) wrap.style.display = val==="outro" ? "" : "none";
+    // Preenche CBO automaticamente se existir no mapa e campo ainda vazio ou era automático
+    const cboCampo = $("rh_cbo");
+    if(cboCampo && val && val !== "outro") {
+      const cboAuto = RH_CBO_MAP[val] || "";
+      // Preenche sempre que selecionar uma função mapeada
+      if(cboAuto) {
+        cboCampo.value = cboAuto;
+        cboCampo.style.background = "#eef6ff"; // leve destaque indicando preenchimento automático
+        cboCampo.title = "Preenchido automaticamente — pode editar manualmente";
+      }
+    }
+    if(cboCampo && val === "outro") {
+      cboCampo.style.background = ""; // remove destaque ao escolher "outro"
+      cboCampo.title = "";
+    }
   }
 
   // Máscaras simples
@@ -5648,7 +5743,6 @@
   // PDF — FICHA DE REGISTRO DO EMPREGADO
   // ═══════════════════════════════════════════════════════════
   async function rhGerarFichaRegistroPDF(processoId) {
-    // Carregar dados do processo
     let d = rhFluxo.dados;
     let arqs = rhFluxo.arquivos;
     if(processoId && processoId !== rhFluxo.processoId) {
@@ -5658,206 +5752,231 @@
       arqs = snap.data().arquivos || {};
     }
     const emp = await getEmpresa();
-
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-    const L=14, W=182, dataGer = new Date().toLocaleDateString("pt-BR");
-    const fmtData = v => v ? new Date(v+"T12:00:00").toLocaleDateString("pt-BR") : "___/___/______";
-    const brl = v => v ? "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2}) : "R$ ___________";
-    const val = v => v||"";
 
-    // ── Cabeçalho ──
-    pdf.setFillColor(15,52,96); pdf.rect(0,0,210,14,"F");
-    pdf.setTextColor(255,255,255); pdf.setFontSize(11); pdf.setFont("helvetica","bold");
-    pdf.text("FICHA DE REGISTRO DOS EMPREGADOS", 105, 9, {align:"center"});
-    pdf.setTextColor(0,0,0);
+    // Helpers
+    const L=12, R=198, W=R-L;
+    const fmtD = v => { try { return v ? new Date(v+"T12:00:00").toLocaleDateString("pt-BR") : "___/___/______"; } catch(_){return "___/___/______";} };
+    const val  = v => (v||"").toString().trim();
+    const brl  = v => v ? "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2}) : "R$ ___________";
+    const ecM  = {solteiro:"Solteiro(a)",casado:"Casado(a)",uniao:"União Estável",divorciado:"Divorciado(a)",viuvo:"Viúvo(a)"};
+    const funcao = val(d.funcaoOutro||d.funcao);
+    const dataGer = new Date().toLocaleDateString("pt-BR");
 
-    // Nº e eSocial
-    pdf.setFontSize(8); pdf.setFont("helvetica","normal");
-    pdf.text(`Nº ${val(d.numRegistro)||"______"}`, 196, 18, {align:"right"});
-    pdf.text(`Matrícula eSocial: ${val(d.esocial)||"__________________"}`, 196, 22, {align:"right"});
+    // Linha horizontal helper
+    const hline = (y,c=[180,180,180],w=0.3) => { pdf.setDrawColor(...c); pdf.setLineWidth(w); pdf.line(L,y,R,y); };
+    const box   = (x,y,w,h,c=[180,180,180]) => { pdf.setDrawColor(...c); pdf.setLineWidth(0.3); pdf.rect(x,y,w,h); };
 
-    // Dados da empresa
-    let y = 18;
+    // Texto bold / normal helpers
+    const B  = (t,x,y,sz=8)  => { pdf.setFont("helvetica","bold");   pdf.setFontSize(sz); pdf.text(t,x,y); };
+    const N  = (t,x,y,sz=8)  => { pdf.setFont("helvetica","normal"); pdf.setFontSize(sz); pdf.text(t,x,y); };
+    const BN = (label,value,x,y,sz=8) => { B(label,x,y,sz); N(value,x+pdf.getTextWidth(label)+1,y,sz); };
+
+    let y = 0;
+
+    // ═══════════════════════════════════════════════════
+    // CABEÇALHO DA EMPRESA (borda externa)
+    // ═══════════════════════════════════════════════════
+    box(L, 8, W, 28);
     pdf.setFontSize(9); pdf.setFont("helvetica","bold");
-    pdf.text("Da firma:", L, y); y+=5;
-    pdf.setFont("helvetica","normal"); pdf.setFontSize(8);
-    pdf.text(`Nome: ${val(emp.nome)}`, L, y); y+=4;
-    pdf.text(`Endereço: ${val(emp.rua)}${emp.num?", "+emp.num:""} — CNPJ/CEI: ${val(emp.cnpj)}`, L, y); y+=6;
+    pdf.text("FICHA DE REGISTRO DOS EMPREGADOS", R/2+L/2, 14, {align:"center"});
+    pdf.setFontSize(7.5); pdf.setFont("helvetica","normal");
+    const numFicha = val(d.numRegistro||"00001").replace(/\D/g,"").padStart(5,"0");
+    pdf.text(`Nº ${numFicha}  –  Frente`, R-2, 14, {align:"right"});
 
-    // Linha divisória
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=5;
+    BN("Da firma: ", val(emp.nome), L+2, 19, 7.5);
+    BN("Endereço: ", [emp.rua,emp.num,emp.bairro].filter(Boolean).join(", "), L+2, 23, 7.5);
+    pdf.text(`CNPJ / CEI: ${val(emp.cnpj)}`, R-2, 23, {align:"right"});
 
-    // ── Quadro principal: dados pessoais ──
-    pdf.setFontSize(8); pdf.setFont("helvetica","bold");
-    pdf.text("Nome:", L, y);
-    pdf.setFont("helvetica","normal");
-    pdf.text(val(d.nomeCompleto), L+12, y);
-
-    // Foto (quadrado — usa fotoUrl do colaborador se disponível)
-    const fotoBox = { x:165, y:y-4, w:31, h:38 };
-    pdf.setDrawColor(150,150,150); pdf.rect(fotoBox.x, fotoBox.y, fotoBox.w, fotoBox.h);
+    // Área VISTO + FOTO
+    hline(28);
+    // Caixa foto (centro)
+    const fotoX = 89, fotoY = 29, fotoW = 32, fotoH = 38;
+    box(fotoX, fotoY, fotoW, fotoH);
     pdf.setFontSize(6); pdf.setTextColor(150,150,150);
-    pdf.text("FOTO", fotoBox.x + fotoBox.w/2, fotoBox.y + fotoBox.h/2 - 2, {align:"center"});
+    pdf.text("FOTO 3x4", fotoX+fotoW/2, fotoY+fotoH/2, {align:"center"});
     pdf.setTextColor(0,0,0);
+    // Visto
+    pdf.setFontSize(7); pdf.setFont("helvetica","bold");
+    pdf.text("VISTO DA FISCALIZAÇÃO", (fotoX+fotoW+R)/2, 48, {align:"center"});
 
-    y+=5;
-    pdf.setFont("helvetica","bold"); pdf.text("Filho de:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.pai), L+14, y);
-    y+=4;
-    pdf.setFont("helvetica","bold"); pdf.text("e de:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.mae), L+10, y);
-    y+=4;
-    pdf.setFont("helvetica","bold"); pdf.text("Nascido em:", L, y);
+    y = 70;
+
+    // ═══════════════════════════════════════════════════
+    // BLOCO 1 — IDENTIFICAÇÃO PESSOAL
+    // ═══════════════════════════════════════════════════
+    box(L, y, W, 40);
+    y += 6;
+    // Linha 1: Nome + CTPS
+    BN("Nome: ", val(d.nomeCompleto), L+2, y, 8);
+    BN("Portador da C.T.P.S. nº: ", val(d.ctps), 120, y, 8);
+    y += 5;
+    hline(y-1); y++;
+
+    // Linha 2: CPF | CI | Órgão | Data Emissão | CNH
+    BN("CPF: ", val(d.cpf), L+2, y, 7.5);
+    BN("C.I. nº: ", val(d.rg), 48, y, 7.5);
+    BN("Órgão Emissor: ", val(d.rgOrgao), 85, y, 7.5);
+    BN("Data: ", fmtD(d.rgData), 130, y, 7.5);
+    BN("CNH nº: ", val(d.cnh)||"—", 163, y, 7.5);
+    y += 5;
+    hline(y-1); y++;
+
+    // Linha 3: Admissão + Função + CBO
+    BN("Foi admitido em: ", fmtD(d.admissao), L+2, y, 7.5);
+    BN("para exercer a função de: ", funcao, 58, y, 7.5);
+    BN("CBO: ", val(d.cbo), 163, y, 7.5);
+    y += 5;
+    hline(y-1); y++;
+
+    // Linha 4: Salário por extenso
+    const salNum = Number(d.salario)||0;
+    const salExt = numExtenso(salNum);
+    BN("com o salário de: ", brl(d.salario), L+2, y, 7.5);
+    N(`( ${salExt} )`, L+2+pdf.getTextWidth("com o salário de: ")+pdf.getTextWidth(brl(d.salario))+3, y, 7.5);
+    y += 5;
+    hline(y-1); y++;
+
+    // Linha 5: Por + Horário + Folga
+    const hr = `${val(d.hrEntrada)||"07:00"}  ${val(d.hrAlmocoS)||"12:00"}/${val(d.hrAlmocoR)||"13:00"}  ${val(d.hrSaida)||"17:00"}`;
+    BN("Por: ", val(d.formaPgto)||"Mês", L+2, y, 7.5);
+    BN("no seguinte horário de trabalho: ", hr, 22, y, 7.5);
+    BN("Folga semanal: ", val(d.folgaSemanal)||"Domingo", 148, y, 7.5);
+    y += 6;
+
+    // ═══════════════════════════════════════════════════
+    // BLOCO 2 — FGTS
+    // ═══════════════════════════════════════════════════
+    hline(y, [100,100,100], 0.5); y += 5;
+    pdf.setFontSize(8); pdf.setFont("helvetica","bold");
+    pdf.text("SITUAÇÃO PERANTE O FUNDO DE GARANTIA DO TEMPO DE SERVIÇO", (L+R)/2, y, {align:"center"});
+    y += 5; hline(y-1); y++;
+
+    const fgtsOpt = d.fgtsOptante === false ? false : true;
+    // Checkboxes
+    B("É optante?", L+2, y, 7.5);
+    box(L+25, y-3.5, 4, 4); if(fgtsOpt)  N("X", L+26.2, y-0.2, 7);
+    N("Sim", L+30, y, 7.5);
+    box(L+38, y-3.5, 4, 4); if(!fgtsOpt) N("X", L+39.2, y-0.2, 7);
+    N("Não", L+43, y, 7.5);
+    BN("Data da opção: ",  fmtD(d.fgtsDataOpcao),  70, y, 7.5);
+    BN("Data da retratação: ", fmtD(d.fgtsDataRetrat), 120, y, 7.5);
+    y += 4; hline(y); y += 4;
+
+    // Banco depositário (usa PIX ou banco conforme tipo)
+    const bancoInfo = d.tipoPagamento === "pix"
+      ? `PIX ${({cpf:"CPF",cnpj:"CNPJ",email:"E-mail",tel:"Telefone",aleat:"Chave Aleatória"})[d.pixTipo]||""}: ${val(d.pixChave)}`
+      : `${val(d.bancoNome)}  Ag: ${val(d.bancoAg)}  Cta: ${val(d.bancoConta)}`;
+    BN("Banco depositário: ", bancoInfo, L+2, y, 7.5);
+    y += 6;
+
+    // ═══════════════════════════════════════════════════
+    // BLOCO 3 — DADOS PESSOAIS | QUANDO ESTRANGEIRO | PIS / eSocial
+    // ═══════════════════════════════════════════════════
+    hline(y, [100,100,100], 0.5); y += 5;
+
+    // 3 colunas
+    const col1W = 65, col2W = 55, col3W = W-col1W-col2W;
+    const col2X = L+col1W+1, col3X = col2X+col2W+1;
+
+    // Cabeçalhos das colunas 2 e 3
+    pdf.setFontSize(7); pdf.setFont("helvetica","bold");
+    pdf.text("QUANDO ESTRANGEIRO", col2X+col2W/2, y, {align:"center"});
+    pdf.text("PROGRAMA DE INTEGRAÇÃO SOCIAL (PIS)", col3X+col3W/2, y, {align:"center"});
+    hline(y+1); y += 4;
+
+    // Coluna 1 — dados pessoais
+    let y1=y, y2=y, y3=y;
+    const c1 = (label,val2) => { BN(label,val2,L+2,y1,7); y1+=3.8; };
+    c1("Nacionalidade: ", val(d.nacionalidade)||"Brasil");
+    c1("Filho de: ", val(d.pai));
+    c1("e de: ", val(d.mae));
+    c1("nascido em: ", val(d.naturalidade));
+    c1("a: ", fmtD(d.nascimento));
+    c1("Estado Civil: ", ecM[d.estCivil]||"");
+    c1("Nome do Cônjuge: ", val(d.conjuge)||"—");
+    c1("Grau de instrução: ", val(d.instrucao));
+    c1("Residência: ", [d.rua,d.endNum,d.complemento].filter(Boolean).join(", "));
+    c1("Bairro: ", val(d.bairro));
+    c1("Cidade: ", val(d.cidade));
+    c1("CEP: ", val(d.cep));
+    c1("Cart. Nac. Habilitação nº: ", val(d.cnh)||"—");
+    c1("Cert. Militar nº: ", val(d.certMilitar)||"—");
+
+    // Coluna 2 — Quando Estrangeiro
+    const c2 = (label,val2) => { BN(label,val2,col2X,y2,7); y2+=3.8; };
+    c2("Carteira modelo 19 nº: ", "");
+    c2("nº Registro Geral: ", "");
+    c2("Casado(a) c/ bras.?: ", "");
+    c2("Nome do Cônjuge: ", "");
+    y2+=3;
+    c2("Tem filhos brasileiros?: ", "");
+    c2("Quantos: ", "");
+    c2("Data chegada ao Brasil: ", "");
+    c2("Naturalizado: ", "");
+    c2("Decreto nº: ", "");
+
+    // Coluna 3 — PIS + eSocial
+    const c3 = (label,val2) => { BN(label,val2,col3X,y3,7); y3+=3.8; };
+    c3("Cadastrado em: ", "");
+    c3("sob nº: ", val(d.pis));
+    c3("dep. no Banco: ", "");
+    c3("Endereço: ", "");
+    c3("Código Banco: ", d.tipoPagamento!=="pix"?val(d.bancoCod):"");
+    c3("Código Agência: ", d.tipoPagamento!=="pix"?val(d.bancoAg):"");
+    y3 += 2;
+    // eSocial box
+    box(col3X, y3, col3W, 10, [120,120,120]);
+    pdf.setFontSize(7); pdf.setFont("helvetica","bold");
+    pdf.text("e-SOCIAL", col3X+col3W/2, y3+4, {align:"center"});
     pdf.setFont("helvetica","normal");
-    pdf.text(`${val(d.naturalidade)}`, L+22, y);
-    pdf.setFont("helvetica","bold"); pdf.text("a:", 95, y);
-    pdf.setFont("helvetica","normal"); pdf.text(fmtData(d.nascimento), 98, y);
-    y+=4;
+    pdf.text(`Matrícula eSocial: ${val(d.esocial)}`, col3X+2, y3+8.5);
+    y3 += 13;
 
-    pdf.setFont("helvetica","bold"); pdf.text("Estado civil:", L, y);
-    pdf.setFont("helvetica","normal");
-    const ecMap = {solteiro:"Solteiro(a)",casado:"Casado(a)",uniao:"União Estável",divorciado:"Divorciado(a)",viuvo:"Viúvo(a)"};
-    pdf.text(ecMap[d.estCivil]||"", L+23, y);
-    if(d.conjuge) { pdf.setFont("helvetica","bold"); pdf.text("Nome do cônjuge:", 80, y); pdf.setFont("helvetica","normal"); pdf.text(val(d.conjuge), 112, y); }
-    y+=4;
+    // Avançar y para o máximo das colunas
+    y = Math.max(y1, y2, y3) + 3;
+    hline(y, [100,100,100], 0.5); y += 5;
 
-    pdf.setFont("helvetica","bold"); pdf.text("Grau de instrução:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.instrucao), L+35, y);
-    y+=4;
-
-    pdf.setFont("helvetica","bold"); pdf.text("Nacionalidade:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.nacionalidade)||"Brasil", L+27, y);
-    y+=5;
-
-    // Linha divisória
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-
-    // ── Endereço ──
-    pdf.setFont("helvetica","bold"); pdf.text("Residência:", L, y);
-    pdf.setFont("helvetica","normal");
-    const endCompleto = [d.rua, d.endNum, d.complemento, d.bairro].filter(Boolean).join(", ");
-    pdf.text(endCompleto, L+20, y);
-    y+=4;
-    pdf.setFont("helvetica","bold"); pdf.text("Cidade:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(`${val(d.cidade)} — ${val(d.uf)}`, L+14, y);
-    pdf.setFont("helvetica","bold"); pdf.text("CEP:", 100, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.cep), 110, y);
-    y+=5;
-
-    // Linha divisória
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-
-    // ── Documentos ──
-    pdf.setFontSize(7.5);
-    pdf.setFont("helvetica","bold"); pdf.text(`C.I. nº: ${val(d.rg)}`, L, y);
-    pdf.text(`Órgão: ${val(d.rgOrgao)}`, 60, y);
-    pdf.text(`Data: ${fmtData(d.rgData)}`, 100, y);
-    pdf.text(`CPF: ${val(d.cpf)}`, 140, y);
-    y+=4;
-    pdf.text(`CTPS nº: ${val(d.ctps)}`, L, y);
-    pdf.text(`Série: ${val(d.ctpsSerie)}`, 50, y);
-    pdf.text(`CTPS Rural nº: ${val(d.ctpsRural)||"—"}`, 80, y);
-    pdf.text(`PIS: ${val(d.pis)}`, 140, y);
-    y+=4;
-    pdf.text(`CNH nº: ${val(d.cnh)||"—"}`, L, y);
-    pdf.text(`Cert. Militar nº: ${val(d.certMilitar)||"—"}`, 70, y);
-    pdf.text(`Título de Eleitor: ${val(d.titulo)||"—"}`, 130, y);
-    y+=4;
-    pdf.text(`Zona: ${val(d.zona)||"—"}`, L, y);
-    y+=5;
-
-    // Linha divisória
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-
-    // ── Dados profissionais ──
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica","bold"); pdf.text("portador da C.T.P.S. nº:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.ctps), L+42, y);
-    pdf.setFont("helvetica","bold"); pdf.text("Série:", 90, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.ctpsSerie), 100, y);
-    y+=5;
-
-    pdf.setFont("helvetica","bold"); pdf.text("foi admitido em:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(fmtData(d.admissao), L+30, y);
-    pdf.setFont("helvetica","bold"); pdf.text("para exercer a função de:", 90, y);
-    pdf.setFont("helvetica","normal"); pdf.text(d.funcaoOutro||d.funcao||"", 140, y);
-    y+=5;
-
-    pdf.setFont("helvetica","bold"); pdf.text("CBO:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.cbo), L+10, y);
-    pdf.setFont("helvetica","bold"); pdf.text("com o salário de:", 50, y);
-    pdf.setFont("helvetica","normal"); pdf.text(brl(d.salario), 80, y);
-    pdf.setFont("helvetica","bold"); pdf.text("Por:", 130, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.formaPgto)||"Mensal", 136, y);
-    y+=5;
-
-    pdf.setFont("helvetica","bold"); pdf.text("Folga semanal:", L, y);
-    pdf.setFont("helvetica","normal"); pdf.text(val(d.folgaSemanal)||"Domingo", L+28, y);
-    pdf.setFont("helvetica","bold"); pdf.text("Horário:", 90, y);
-    const hr = `${val(d.hrEntrada)} ${val(d.hrAlmocoS)}/${val(d.hrAlmocoR)} ${val(d.hrSaida)}`;
-    pdf.setFont("helvetica","normal"); pdf.text(hr, 105, y);
-    y+=5;
-
-    if(d.obraNome) {
-      pdf.setFont("helvetica","bold"); pdf.text("Local/Obra:", L, y);
-      pdf.setFont("helvetica","normal"); pdf.text(val(d.obraNome), L+20, y);
-      pdf.setFont("helvetica","bold"); pdf.text("Setor:", 100, y);
-      pdf.setFont("helvetica","normal"); pdf.text(val(d.setor), 112, y);
-      y+=5;
-    }
-
-    // ── FGTS ──
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-    pdf.setFont("helvetica","bold"); pdf.setFontSize(8);
-    pdf.text("SITUAÇÃO PERANTE O FUNDO DE GARANTIA DO TEMPO DE SERVIÇO", L, y); y+=4;
-    pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
-    const fgtsOpt = d.fgtsOptante === false ? "Não" : "Sim";
-    pdf.text(`É optante? ${fgtsOpt}`, L, y);
-    pdf.text(`Data da opção: ${fmtData(d.fgtsDataOpcao)||"___/___/______"}`, 50, y);
-    pdf.text(`Banco depositário: ${val(d.bancoNome)}  Ag: ${val(d.bancoAg)}  Cta: ${val(d.bancoConta)}`, 110, y);
-    y+=5;
-
-    // ── PIS ──
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-    pdf.setFont("helvetica","bold"); pdf.text("PROGRAMA DE INTEGRAÇÃO SOCIAL (PIS)", L, y); y+=4;
-    pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
-    pdf.text(`Cadastrado em: ${val(d.pis)}`, L, y);
-    y+=5;
-
-    // ── Beneficiários (filhos) ──
+    // ═══════════════════════════════════════════════════
+    // BLOCO 4 — BENEFICIÁRIOS
+    // ═══════════════════════════════════════════════════
+    B("Beneficiários: ", L+2, y, 7.5);
     const filhos = d.filhos||[];
     if(filhos.length) {
-      pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=4;
-      pdf.setFont("helvetica","bold"); pdf.setFontSize(8);
-      pdf.text("Beneficiários:", L, y); y+=4;
-      pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5);
-      filhos.forEach(f => {
-        pdf.text(`• ${f.nome||""}  —  Nasc.: ${fmtData(f.nasc)}`, L+4, y); y+=4;
-      });
-      y+=2;
+      N(filhos.map(f=>`${val(f.nome)} (nasc. ${fmtD(f.nasc)})`).join("   |   "), L+26, y, 7);
+    } else {
+      N("—", L+26, y, 7);
     }
+    y += 8;
 
-    // ── Rodapé com assinaturas ──
-    y = Math.max(y, 240);
-    pdf.setDrawColor(180,180,180); pdf.line(L, y, L+W, y); y+=8;
-    pdf.setFontSize(8); pdf.setFont("helvetica","normal");
-    // Data de registro
-    pdf.text(`Data Registro: ${fmtData(d.admissao)}`, L, y);
-    pdf.text(`Data Rescisão: ___/___/______`, 90, y);
-    y+=10;
-    pdf.line(L, y, L+60, y);
-    pdf.line(120, y, L+W, y);
-    y+=4;
-    pdf.setFontSize(7);
-    pdf.text("Assinatura do Empregado", L, y);
-    pdf.text(`${val(emp.responsavel)||"Responsável da Empresa"}`, 120, y);
+    // ═══════════════════════════════════════════════════
+    // RODAPÉ — Datas e Assinaturas
+    // ═══════════════════════════════════════════════════
+    // Garante que o rodapé não ultrapasse a página
+    y = Math.max(y, 256);
+    hline(y, [100,100,100], 0.5); y += 5;
 
-    // Rodapé
+    BN("Data Registro: ", fmtD(d.admissao), L+2, y, 7.5);
+    BN("Data Rescisão: ", "___/___/______", 130, y, 7.5);
+    y += 12;
+
+    // Linha assinatura empregado
+    pdf.setDrawColor(80,80,80); pdf.setLineWidth(0.4);
+    pdf.line(L+2, y, L+70, y);
+    pdf.setFontSize(7); pdf.setFont("helvetica","normal");
+    pdf.text("Assinatura do Empregado", L+2, y+4);
+
+    // Linha assinatura empresa
+    pdf.line(R-68, y, R-2, y);
+    pdf.text(val(emp.responsavel)||"Responsável da Empresa", R-68, y+4);
+    pdf.text(val(emp.cargoResp)||"", R-68, y+7.5);
+
+    // Rodapé azul
     pdf.setFillColor(15,52,96); pdf.rect(0,285,210,12,"F");
-    pdf.setTextColor(255,255,255); pdf.setFontSize(7); pdf.setFont("helvetica","normal");
+    pdf.setTextColor(255,255,255); pdf.setFontSize(6.5); pdf.setFont("helvetica","normal");
     pdf.text("GO — Gestão de Obras | Ficha de Registro do Empregado | Gerado em "+dataGer, 14, 291);
-    pdf.text(val(emp.nome)||"", 196, 291, {align:"right"});
+    pdf.text(val(emp.nome), 196, 291, {align:"right"});
 
     return pdf;
   }
