@@ -1051,12 +1051,29 @@
           </div>
           <div class="rh-preview-body" id="rhPreviewBody">
             <!-- Conteúdo injetado pelo JS -->
-            <div id="prevPane_ficha">
+            <div id="prevPane_ficha" style="padding:8px">
               <div class="doc-paper">
-                <div class="doc-paper-header">Ficha de Registro dos Empregados</div>
+                <!-- Título principal da ficha -->
+                <div class="doc-paper-header">FICHA DE REGISTRO DOS EMPREGADOS</div>
+                <!-- Cabeçalho com dados da empresa — atualizado dinamicamente -->
+                <div id="prevFichaEmpresa" style="border-bottom:1px solid #d1d5db;padding:5px 8px;font-size:6.5px;font-family:'Courier New',monospace">
+                  <div style="text-align:center;color:#94a3b8;padding:4px">Carregando...</div>
+                </div>
+                <!-- Linha: FOTO (centro) + VISTO DA FISCALIZAÇÃO (direita) -->
+                <div id="prevFichaFoto" style="display:flex;align-items:flex-start;border-bottom:1px solid #d1d5db;min-height:54px">
+                  <div style="flex:1;padding:5px 8px;font-size:6px;color:#6b7280"><!-- espaço esquerdo vazio --></div>
+                  <div style="display:flex;align-items:center;justify-content:center;padding:6px 12px">
+                    <!-- foto injetada dinamicamente -->
+                    <div id="prevFotoBox" class="doc-foto-box"><span>FOTO<br>3x4</span></div>
+                  </div>
+                  <div style="flex:1;padding:5px 8px;border-left:1px solid #d1d5db;font-size:6px;font-weight:700;color:#111;text-align:center;letter-spacing:.05em">
+                    VISTO DA FISCALIZAÇÃO
+                  </div>
+                </div>
+                <!-- Corpo com todos os campos -->
                 <div class="doc-paper-body" id="prevFichaBody">
-                  <div style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:7.5px;line-height:1.8">
-                    <div style="font-size:20px;margin-bottom:6px">📋</div>
+                  <div style="text-align:center;padding:20px 12px;color:#94a3b8;font-size:7.5px;line-height:1.8">
+                    <div style="font-size:18px;margin-bottom:6px">📋</div>
                     Preencha os dados ao lado<br>para ver a ficha em tempo real
                   </div>
                 </div>
@@ -4597,6 +4614,7 @@
 
   function rhMostrarFluxo() {
     $("rh-home").classList.remove("active"); $("rh-home").style.display = "none";
+    $("rh-fluxo").classList.add("active");
     $("rhFluxoLayout").classList.add("ativo");
     _rhSetFluxoAtivo(true);
     const tipo = rhFluxo.tipo;
@@ -5326,6 +5344,7 @@
 
   function rhVoltarHome() {
     $("rhFluxoLayout").classList.remove("ativo");
+    $("rh-fluxo").classList.remove("active");
     $("rh-home").style.display = "";
     $("rh-home").classList.add("active");
     _rhSetFluxoAtivo(false);
@@ -5989,19 +6008,21 @@
     const endStr   = [d.rua, d.endNum, d.complemento].filter(Boolean).join(", ");
     const cidadeUF = [d.cidade, d.uf].filter(Boolean).join("/");
     const hrStr    = `${d.hrEntrada||"07:00"} › ${d.hrAlmocoS||"12:00"} / ${d.hrAlmocoR||"13:00"} › ${d.hrSaida||"17:00"}`;
+    const numFicha = (d.numRegistro||"00001").toString().replace(/\D/g,"").padStart(5,"0");
 
-    const fotoHtml = d.fotoUrl
-      ? `<div class="doc-foto-box"><img src="${d.fotoUrl}" alt="foto"></div>`
-      : `<div class="doc-foto-box"><span>FOTO<br>3x4</span></div>`;
+    // ── Cabeçalho da empresa (chamado via função separada para atualização independente) ──
+    _prevRenderFichaEmpresa(d);
 
+    // ── Foto ──
+    const fotoBox = $("prevFotoBox");
+    if(fotoBox) {
+      fotoBox.innerHTML = d.fotoUrl
+        ? `<img src="${d.fotoUrl}" alt="foto" style="width:100%;height:100%;object-fit:cover">`
+        : `<span>FOTO<br>3x4</span>`;
+    }
+
+    // ── Corpo da ficha ──
     body.innerHTML = `
-      ${fotoHtml}
-
-      <div class="doc-section">Da Empresa</div>
-      ${_pvr("Empresa", emp.nome)}
-      ${_pvr("CNPJ/CEI", emp.cnpj)}
-      ${_pvr("Nº Reg.", d.numRegistro)}
-
       <div class="doc-section">Identificação Pessoal</div>
       ${_pvr("Nome", d.nomeCompleto)}
       ${_pvr("Pai", d.pai)}
@@ -6023,6 +6044,7 @@
       ${_pvr("CTPS / Série", [d.ctps, d.ctpsSerie].filter(Boolean).join(" S. "))}
       ${_pvr("PIS/PASEP", d.pis)}
       ${_pvr("eSocial", d.esocial)}
+      ${_pvr("Nº Reg.", d.numRegistro)}
 
       <div class="doc-section">Dados Profissionais</div>
       ${_pvr("Admissão", fmtD(d.admissao))}
@@ -6048,7 +6070,7 @@
         <div class="doc-sig">${emp.responsavel||"_____________________"}<br>${emp.cargoResp||"Responsável"}</div>
       </div>`;
 
-    // Flash animado no body do preview
+    // Flash de atualização
     body.classList.remove("prev-updated");
     void body.offsetWidth;
     body.classList.add("prev-updated");
@@ -6140,7 +6162,11 @@
 
   // Inicializa preview quando a etapa é carregada + registra listeners
   function rhPreviewIniciar() {
-    // Atualizar label da tab ativa
+    // Renderizar cabeçalho da empresa imediatamente (independente dos campos)
+    const d0 = _rhPreviewLerDados();
+    _prevRenderFichaEmpresa(d0);
+
+    // Label da tab ativa
     const labels = { ficha:"Ficha de Registro", docs:"Documentos Pessoais", nrs:"Treinamentos / NRs" };
     const lb = $("prevEtapaLabel");
     if(lb) lb.textContent = labels[_prevTabAtual] || "";
@@ -6155,6 +6181,33 @@
         el.addEventListener("change", rhPreviewTrigger);
       });
     }, 150);
+  }
+
+  // Renderiza só o cabeçalho da empresa (chamado na init e pelo trigger)
+  function _prevRenderFichaEmpresa(d) {
+    const emp = _empresaCache || {};
+    const numFicha = (d?.numRegistro||"00001").toString().replace(/\D/g,"").padStart(5,"0");
+    const empHeader = $("prevFichaEmpresa");
+    if(!empHeader) return;
+    const endEmp = [emp.rua, emp.num, emp.bairro].filter(Boolean).join(", ");
+    empHeader.innerHTML = `
+      <div style="text-align:center;font-weight:700;font-size:7px;letter-spacing:.04em;margin-bottom:3px">
+        FICHA DE REGISTRO DOS EMPREGADOS &nbsp; N° &nbsp; ${numFicha} &nbsp;–&nbsp; Frente
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div>
+          <span style="color:#555">Da firma:&nbsp;</span>
+          <strong style="font-size:7px">${emp.nome || "<span style='color:#94a3b8'>Cadastre os dados da empresa em Administração</span>"}</strong>
+        </div>
+        <div style="text-align:right;white-space:nowrap">
+          <span style="color:#555">CNPJ / CEI:&nbsp;</span>
+          <strong style="font-size:7px">${emp.cnpj || "—"}</strong>
+        </div>
+      </div>
+      <div style="margin-top:2px">
+        <span style="color:#555">Endereço:&nbsp;</span>
+        <span style="font-size:7px">${endEmp || "—"}${emp.cidade ? " – "+emp.cidade+(emp.uf?" / "+emp.uf:"") : ""}</span>
+      </div>`;
   }
 
   // Ativar/desativar padding do app-content quando o fluxo RH está aberto
