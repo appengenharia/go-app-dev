@@ -235,6 +235,17 @@
   .rh-badge-cont { background:#dbeafe;color:#1e40af;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
   .rh-badge-dem { background:#fee2e2;color:#991b1b;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
   .rh-badge-ok { background:#d1fae5;color:#065f46;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600 }
+  /* Alertas de vencimento de exames */
+  .exame-alerta-wrap { border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.09) }
+  .exame-alerta-header { display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;font-weight:700 }
+  .exame-alerta-body { padding:0 14px 12px }
+  .exame-alerta-item { display:flex;justify-content:space-between;align-items:center;padding:6px 2px;border-bottom:1px solid rgba(0,0,0,.06);font-size:.8rem }
+  .exame-alerta-item:last-child { border-bottom:none }
+  .alerta-warning { background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d }
+  .alerta-warning .exame-alerta-header { color:#92400e }
+  .alerta-danger  { background:linear-gradient(135deg,#fff1f2,#fee2e2);border:2px solid #fca5a5;animation:pulseDanger 2s ease-in-out infinite }
+  .alerta-danger  .exame-alerta-header { color:#991b1b }
+  @keyframes pulseDanger { 0%,100%{box-shadow:0 2px 8px rgba(239,68,68,.15)} 50%{box-shadow:0 6px 24px rgba(239,68,68,.4)} }
   .nr-chip { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);font-size:.78rem;margin:3px;cursor:pointer;transition:.15s;background:var(--surface) }
   .nr-chip.selected { background:var(--primary);color:#fff;border-color:var(--primary) }
   .nr-chip input[type=checkbox] { display:none }</style>
@@ -522,6 +533,10 @@
           <div class="empty"><div class="empty-icon">📊</div><p>Nenhum lançamento encontrado.</p></div>
         </div>
       </div>
+
+      <!-- ALERTAS DE EXAMES -->
+      <div id="dashExameAlertas"></div>
+
     </div>
 
     <!-- ── LANÇAMENTOS ── -->
@@ -980,6 +995,9 @@
         </div>
       </div>
 
+      <!-- Alertas de exames vencidos/próximos do vencimento -->
+      <div id="rhAlertasExames" style="max-width:700px;margin:0 auto 4px"></div>
+
       <!-- Lista de processos em andamento -->
       <div class="card" style="max-width:700px;margin:0 auto">
         <div class="card-header" style="margin-bottom:12px">
@@ -1310,10 +1328,10 @@
     document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b=>b.classList.add("active"));
     if(tab==="admin")       { loadObras(); fillObraSelect(); }
     if(tab==="lancamentos") { fillLancObras(); loadLancs(); setTodayDate(); }
-    if(tab==="dashboard")   { fillDashFilters().then(()=>loadDashboard()); }
+    if(tab==="dashboard")   { fillDashFilters().then(()=>loadDashboard()); _rhVerificarExamesVencimento(); }
     if(tab==="relatorios")  { fillRelatorioFiltros(); }
     if(tab==="ponto")       { fillPontoFiltros(); }
-    if(tab==="rh")          { rhCarregarLista(); }
+    if(tab==="rh")          { rhCarregarLista(); _rhVerificarExamesVencimento(); }
   }
 
   function adminTab(tab) {
@@ -1469,6 +1487,7 @@
     setTimeout(syncPendingLancs, 2000);
     setTimeout(verificarFechamentoMensal, 3000);
     setTimeout(verificarFechamentoPonto, 5000);  // Fechamento mensal de ponto
+    setTimeout(_rhIniciarMonitoramentoExames, 4000); // Monitoramento de exames (ciclo 2h)
     loadPontoEmailConfig();
   }
 
@@ -2660,6 +2679,149 @@
     if($("dashDe"))  $("dashDe").value="";
     if($("dashAte")) $("dashAte").value="";
     loadDashboard();
+  }
+
+  // ─────────────────────────────────────────
+  // SISTEMA DE ALERTAS DE EXAMES (VENCIMENTO)
+  // ─────────────────────────────────────────
+  let _exameAlertaTimer = null;
+
+  // Carrega todos os processos e verifica exames críticos
+  async function _rhVerificarExamesVencimento() {
+    try {
+      const snap = await getDocs(collection(db,"rh_processos"));
+      const alertasWarning = []; // vence em ≤5 dias
+      const alertasDanger  = []; // já vencidos
+
+      snap.forEach(docSnap => {
+        const p = {id:docSnap.id,...docSnap.data()};
+        if(p.status !== "concluido") return;
+        const nome   = p.dados?.nomeCompleto || "Colaborador";
+        const funcao = p.dados?.funcaoOutro || p.dados?.funcao || "";
+        const exames = p.arquivos?.exames || {};
+
+        // Lista de exames esperados para a função
+        const esperados = RH_PCMSO_EXAMES[funcao] || [];
+        esperados.forEach(ex => {
+          const atual = exames[ex];
+          const st = rhExameStatus(atual?.data, ex);
+          if(st.status === "alerta") {
+            alertasWarning.push({ processoId:p.id, nome, funcao, exame:ex, diasRestantes:st.diasRestantes, vencimento:st.vencimento, label:st.label });
+          } else if(st.status === "vencido") {
+            alertasDanger.push({ processoId:p.id, nome, funcao, exame:ex, diasRestantes:st.diasRestantes, vencimento:st.vencimento, label:st.label });
+          }
+        });
+      });
+
+      _rhRenderAlertasDash(alertasWarning, alertasDanger);
+      _rhRenderAlertasRH(alertasWarning, alertasDanger);
+
+    } catch(e){ console.warn("Verificação de exames:",e); }
+  }
+
+  function _rhRenderAlertasDash(warning, danger) {
+    const el = $("dashExameAlertas"); if(!el) return;
+    if(!warning.length && !danger.length) { el.innerHTML=""; return; }
+
+    let html = "";
+
+    if(danger.length) {
+      html += `<div class="exame-alerta-wrap alerta-danger">
+        <div class="exame-alerta-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <span style="font-size:1.4rem">🚨</span>
+          <div style="flex:1">
+            <div>${danger.length} exame${danger.length>1?"s":""} VENCIDO${danger.length>1?"S":""} — providências imediatas necessárias!</div>
+            <div style="font-size:.75rem;font-weight:400;margin-top:2px">Clique para expandir · Acesse RH para corrigir</div>
+          </div>
+          <button onclick="event.stopPropagation();App.goTab('rh')" class="btn sm" style="background:#ef4444;color:#fff;border:none;font-size:.75rem">Ir para RH →</button>
+        </div>
+        <div class="exame-alerta-body">
+          ${danger.map(a=>`<div class="exame-alerta-item">
+            <div>
+              <strong>${a.nome}</strong> — ${a.exame}
+              <span style="display:block;font-size:.73rem;color:#991b1b">${a.funcao} · Venceu: ${a.vencimento?.toLocaleDateString("pt-BR")||"—"}</span>
+            </div>
+            <button onclick="App.rhAbrirProcesso('${a.processoId}')" class="btn btn-outline sm" style="font-size:.72rem;border-color:#ef4444;color:#ef4444">Corrigir</button>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    }
+
+    if(warning.length) {
+      html += `<div class="exame-alerta-wrap alerta-warning">
+        <div class="exame-alerta-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <span style="font-size:1.3rem">⚠️</span>
+          <div style="flex:1">
+            <div>${warning.length} exame${warning.length>1?"s":""} vencendo em breve</div>
+            <div style="font-size:.75rem;font-weight:400;margin-top:2px">Agende a renovação com antecedência</div>
+          </div>
+        </div>
+        <div class="exame-alerta-body">
+          ${warning.map(a=>`<div class="exame-alerta-item">
+            <div>
+              <strong>${a.nome}</strong> — ${a.exame}
+              <span style="display:block;font-size:.73rem;color:#92400e">${a.funcao} · ${a.label}</span>
+            </div>
+            <button onclick="App.rhAbrirProcesso('${a.processoId}')" class="btn btn-outline sm" style="font-size:.72rem">Ver</button>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    }
+
+    el.innerHTML = html;
+  }
+
+  function _rhRenderAlertasRH(warning, danger) {
+    const el = $("rhAlertasExames"); if(!el) return;
+    if(!warning.length && !danger.length) { el.innerHTML=""; return; }
+
+    let html = "";
+    if(danger.length) {
+      html += `<div class="exame-alerta-wrap alerta-danger" style="margin:0 0 12px">
+        <div class="exame-alerta-header">
+          <span style="font-size:1.4rem">🚨</span>
+          <div>
+            <div>${danger.length} EXAME${danger.length>1?"S":""} VENCIDO${danger.length>1?"S":""}!</div>
+            <div style="font-size:.75rem;font-weight:400">Regularize imediatamente para evitar irregularidades trabalhistas.</div>
+          </div>
+        </div>
+        <div class="exame-alerta-body">
+          ${danger.map(a=>`<div class="exame-alerta-item">
+            <div><strong>${a.nome}</strong> — <em>${a.exame}</em>
+              <span style="display:block;font-size:.73rem;color:#991b1b">Venceu ${a.vencimento?.toLocaleDateString("pt-BR")||"—"}</span>
+            </div>
+            <button onclick="App.rhAbrirProcesso('${a.processoId}')" class="btn sm" style="background:#ef4444;color:#fff;border:none;font-size:.72rem">Corrigir</button>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    }
+    if(warning.length) {
+      html += `<div class="exame-alerta-wrap alerta-warning" style="margin:0 0 12px">
+        <div class="exame-alerta-header">
+          <span style="font-size:1.3rem">⚠️</span>
+          <div>
+            <div>${warning.length} exame${warning.length>1?"s":""} vencendo em ≤5 dias</div>
+            <div style="font-size:.75rem;font-weight:400">Renove antes do vencimento.</div>
+          </div>
+        </div>
+        <div class="exame-alerta-body">
+          ${warning.map(a=>`<div class="exame-alerta-item">
+            <div><strong>${a.nome}</strong> — <em>${a.exame}</em>
+              <span style="display:block;font-size:.73rem;color:#92400e">${a.label}</span>
+            </div>
+            <button onclick="App.rhAbrirProcesso('${a.processoId}')" class="btn btn-outline sm" style="font-size:.72rem">Renovar</button>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  // Inicia ciclo: verifica agora e a cada 2 horas
+  function _rhIniciarMonitoramentoExames() {
+    if(_exameAlertaTimer) clearInterval(_exameAlertaTimer);
+    _rhVerificarExamesVencimento();
+    _exameAlertaTimer = setInterval(_rhVerificarExamesVencimento, 2 * 60 * 60 * 1000); // 2h
   }
 
   // ─────────────────────────────────────────
@@ -4516,6 +4678,47 @@
     return txt.charAt(0).toUpperCase()+txt.slice(1);
   }
 
+  // ── MATRIZ DE EXAMES POR FUNÇÃO (baseada no PCMSO JCS) ──────────────────
+  // Validade padrão: 12 meses (anual). Espirometria e RX Tórax: 24 meses (bienal)
+  const RH_PCMSO_EXAMES = {
+    "Pedreiro":                  ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Ajudante":                  ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Engenheiro":                ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Técnico de Segurança do Trabalho": ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Soldador":                  ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Montador de Estrutura Metálica": ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Eletricista":               ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Auxiliar de Engenharia":    ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Operador de Roçadeiras":    ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Mantenedor":                ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    // Funções existentes no CBO_MAP — exames padrão construção civil
+    "Bombeiro Hidráulico":       ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Pintor":                    ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Serralheiro":               ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Carpinteiro":               ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Operador de Retroescavadeira": ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Mestre de Obras":           ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Encanador":                 ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+    "Armador":                   ["Clínico","Audiometria","Acuidade Visual","Eletroencefalograma","Eletrocardiograma","Espirometria","Glicemia de Jejum","Hemograma Completo","RX Tórax","Questionário Psicossocial","Teste Romberg"],
+  };
+  // Exames com validade de 24 meses (bienal)
+  const RH_EXAMES_BIENAL = new Set(["Espirometria","RX Tórax"]);
+
+  // Calcula validade e status de um exame
+  function rhExameStatus(dataISO, nomeExame) {
+    if(!dataISO) return { status:"pendente", label:"Pendente", diasRestantes:null, vencimento:null };
+    const meses = RH_EXAMES_BIENAL.has(nomeExame) ? 24 : 12;
+    const data = new Date(dataISO+"T12:00:00");
+    const venc = new Date(data);
+    venc.setMonth(venc.getMonth() + meses);
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const diffMs = venc - hoje;
+    const dias = Math.ceil(diffMs / 86400000);
+    if(dias < 0)   return { status:"vencido",   label:"VENCIDO",  diasRestantes:dias, vencimento:venc };
+    if(dias <= 5)  return { status:"alerta",     label:`Vence em ${dias}d`, diasRestantes:dias, vencimento:venc };
+    return           { status:"ok",       label:`Válido até ${venc.toLocaleDateString("pt-BR")}`, diasRestantes:dias, vencimento:venc };
+  }
+
   const RH_MATRIZ_NR = {
     "Pedreiro":                ["NR01","NR06","NR18","NR35"],
     "Ajudante":                ["NR01","NR06","NR18","NR35"],
@@ -5162,31 +5365,133 @@
 
   // ── ETAPA 3: EXAMES ──
   function rhHtmlExames() {
-    const tipo = rhFluxo.tipo;
-    const tipoExame = tipo === "contratacao" ? "Admissional" : "Demissional";
-    const arq = rhFluxo.arquivos["exame"];
-    return `<div class="card">
-      <p style="font-size:.9rem;margin-bottom:16px">Anexe o ASO (<strong>Atestado de Saúde Ocupacional</strong>) ${tipoExame} devidamente assinado pelo médico do trabalho.</p>
-      <div class="rh-doc-item ${arq?"ok":"pending"}">
-        <div class="rh-doc-icon">${arq?"✅":"🩺"}</div>
-        <div class="rh-doc-info">
-          <div class="rh-doc-title">ASO — ${tipoExame}</div>
-          <div class="rh-doc-sub">${arq?`<a href="${arq.url}" target="_blank" style="color:var(--primary)">📎 ${arq.nome}</a>`:"O documento deve estar assinado e carimbado pelo médico"}</div>
+    const tipo      = rhFluxo.tipo;
+    const tipoLabel = tipo === "contratacao" ? "Admissional" : "Demissional";
+    const funcao    = rhFluxo.dados.funcaoOutro || rhFluxo.dados.funcao || "";
+    const exames    = RH_PCMSO_EXAMES[funcao] || ["Clínico","Audiometria","Acuidade Visual","Hemograma Completo","Glicemia de Jejum","RX Tórax","Espirometria","Eletrocardiograma","Eletroencefalograma","Questionário Psicossocial","Teste Romberg"];
+    const arqExames = rhFluxo.arquivos["exames"] || {};
+    const histExames= rhFluxo.arquivos["examesHist"] || {};
+    const asoArq    = rhFluxo.arquivos["aso"];
+
+    const cards = exames.map(ex => {
+      const atual  = arqExames[ex];
+      const hist   = histExames[ex] || [];
+      const st     = rhExameStatus(atual?.data, ex);
+      const valMes = RH_EXAMES_BIENAL.has(ex) ? "24 meses" : "12 meses";
+      const corSt  = st.status==="ok"?"#10b981":st.status==="alerta"?"#f59e0b":st.status==="vencido"?"#ef4444":"#9ca3af";
+      const iconSt = st.status==="ok"?"✅":st.status==="alerta"?"⚠️":st.status==="vencido"?"🚨":"⏳";
+      const exKey  = ex.replace(/\s/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+
+      const histHtml = hist.length ? `
+        <details style="margin-top:6px">
+          <summary style="font-size:.73rem;color:var(--muted);cursor:pointer">📂 Histórico (${hist.length})</summary>
+          <div style="margin-top:4px;display:flex;flex-direction:column;gap:3px">
+            ${hist.map(h=>`<div style="font-size:.72rem;color:var(--muted);display:flex;gap:8px;padding:3px 8px;background:#f8f9fc;border-radius:5px">
+              <span>📅 ${h.data?new Date(h.data+"T12:00:00").toLocaleDateString("pt-BR"):"s/data"}</span>
+              ${h.url?`<a href="${h.url}" target="_blank" style="color:var(--primary)">Ver</a>`:""}
+            </div>`).join("")}
+          </div>
+        </details>` : "";
+
+      return `<div class="rh-exame-card" id="exCard_${exKey}" style="background:#fff;border:1.5px solid ${atual?corSt+"55":"var(--border)"};border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="font-size:1.25rem;margin-top:1px">${iconSt}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:.88rem">${ex}</div>
+            <div style="font-size:.73rem;color:var(--muted)">Validade: ${valMes}</div>
+            ${atual?`<div style="font-size:.77rem;margin-top:3px">📅 <strong>${new Date(atual.data+"T12:00:00").toLocaleDateString("pt-BR")}</strong> · <span style="color:${corSt};font-weight:600">${st.label}</span></div>
+              ${atual.url?`<div style="margin-top:3px"><a href="${atual.url}" target="_blank" style="font-size:.73rem;color:var(--primary)">📎 ${atual.nome||"Ver arquivo"}</a></div>`:""}`:
+             `<div style="font-size:.77rem;color:var(--muted);margin-top:3px">Não registrado</div>`}
+            ${histHtml}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
+            <div>
+              <div style="font-size:.7rem;color:var(--muted);margin-bottom:2px">Data realização</div>
+              <input type="date" id="exData_${exKey}" value="${atual?.data||""}"
+                style="font-size:.75rem;padding:3px 7px;border:1px solid var(--border);border-radius:6px;width:100%"
+                onchange="App._rhSalvarDataExame('${ex}',this.value)">
+            </div>
+            <label style="cursor:pointer">
+              <input type="file" accept=".pdf,image/*" style="display:none" onchange="App._rhUploadExame('${ex}',this)">
+              <span class="btn btn-outline sm" style="pointer-events:none;font-size:.73rem;padding:4px 8px">${atual?"🔄 Atualizar":"📎 Anexar"}</span>
+            </label>
+          </div>
         </div>
-        <label style="cursor:pointer;margin:0">
-          <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('exame','ASO ${tipoExame}',this)">
-          <span class="btn btn-outline sm" style="pointer-events:none">${arq?"🔄 Substituir":"📎 Anexar ASO"}</span>
-        </label>
+      </div>`;
+    }).join("");
+
+    return `<div>
+      <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #7dd3fc;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#0369a1">
+        <strong>📋 Exames PCMSO</strong> — Função: <strong>${funcao||"não informada"}</strong><br>
+        ✅ Em dia &nbsp;·&nbsp; ⚠️ Vence em ≤5 dias &nbsp;·&nbsp; 🚨 Vencido &nbsp;·&nbsp; ⏳ Pendente
       </div>
-      <div class="rh-section-title" style="margin-top:20px">Tipos de exame realizados</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        ${["Clínico Geral","Audiometria","Acuidade Visual","Hemograma","Glicemia","Raio-X Tórax","EEG","ECG"].map(ex=>{
-          const checked = (rhFluxo.dados.tiposExame||[]).includes(ex);
-          return `<label class="nr-chip ${checked?"selected":""}" onclick="App.rhToggleExame('${ex}',this)">
-            <input type="checkbox" ${checked?"checked":""}> ${ex}</label>`;
-        }).join("")}
+      <div style="margin-bottom:16px">
+        <div class="rh-section-title">ASO — Atestado de Saúde Ocupacional (${tipoLabel})</div>
+        <div class="rh-doc-item ${asoArq?"ok":"pending"}" style="margin-top:8px">
+          <div class="rh-doc-icon">${asoArq?"✅":"🩺"}</div>
+          <div class="rh-doc-info">
+            <div class="rh-doc-title">ASO ${tipoLabel}</div>
+            <div class="rh-doc-sub">${asoArq?`<a href="${asoArq.url}" target="_blank" style="color:var(--primary)">📎 ${asoArq.nome}</a>`:"Assinado e carimbado pelo médico do trabalho"}</div>
+          </div>
+          <label style="cursor:pointer;margin:0">
+            <input type="file" accept=".pdf,image/*" style="display:none" onchange="App.rhUploadDoc('aso','ASO ${tipoLabel}',this)">
+            <span class="btn btn-outline sm" style="pointer-events:none">${asoArq?"🔄 Substituir":"📎 Anexar ASO"}</span>
+          </label>
+        </div>
       </div>
+      <div class="rh-section-title" style="margin-bottom:8px">Exames Complementares</div>
+      ${cards}
     </div>`;
+  }
+
+  function _rhSalvarDataExame(nomeExame, dataVal) {
+    if(!rhFluxo.arquivos["exames"]) rhFluxo.arquivos["exames"] = {};
+    if(!rhFluxo.arquivos["exames"][nomeExame]) rhFluxo.arquivos["exames"][nomeExame] = {};
+    rhFluxo.arquivos["exames"][nomeExame].data = dataVal;
+    const exKey = nomeExame.replace(/\s/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+    const card  = document.getElementById("exCard_"+exKey);
+    if(card && dataVal) {
+      const st = rhExameStatus(dataVal, nomeExame);
+      const corSt = st.status==="ok"?"#10b981":st.status==="alerta"?"#f59e0b":st.status==="vencido"?"#ef4444":"#9ca3af";
+      card.style.borderColor = corSt+"55";
+    }
+    _rhAutoSalvarExames();
+  }
+
+  async function _rhUploadExame(nomeExame, input) {
+    const file = input.files[0]; if(!file) return;
+    const exKey = nomeExame.replace(/\s/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+    const dataInput = document.getElementById("exData_"+exKey);
+    const dataVal   = dataInput?.value || new Date().toISOString().slice(0,10);
+    toast("⏳ Enviando "+nomeExame+"...");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", CLOUDINARY_PRESET);
+      fd.append("folder","rh_exames");
+      const r    = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,{method:"POST",body:fd});
+      const data = await r.json();
+      if(!data.secure_url) throw new Error(data.error?.message||"Falha upload");
+      if(!rhFluxo.arquivos["exames"])     rhFluxo.arquivos["exames"]     = {};
+      if(!rhFluxo.arquivos["examesHist"]) rhFluxo.arquivos["examesHist"] = {};
+      const anterior = rhFluxo.arquivos["exames"][nomeExame];
+      if(anterior?.url) {
+        if(!rhFluxo.arquivos["examesHist"][nomeExame]) rhFluxo.arquivos["examesHist"][nomeExame] = [];
+        rhFluxo.arquivos["examesHist"][nomeExame].unshift(anterior);
+      }
+      rhFluxo.arquivos["exames"][nomeExame] = { url:data.secure_url, nome:file.name, data:dataVal };
+      toast("✅ "+nomeExame+" anexado!");
+      await _rhAutoSalvarExames();
+      $("rhEtapaConteudo").innerHTML = rhHtmlExames();
+    } catch(e) { toast("❌ Erro: "+e.message); }
+    input.value="";
+  }
+
+  async function _rhAutoSalvarExames() {
+    if(!rhFluxo.processoId) return;
+    try {
+      await setDoc(doc(db,"rh_processos",rhFluxo.processoId),{arquivos:rhFluxo.arquivos,atualizadoEm:serverTimestamp()},{merge:true});
+    } catch(e){ console.warn("Auto-save exames:",e); }
   }
 
   function rhToggleExame(ex, el) {
@@ -6507,6 +6812,9 @@
     salvarEmpresa, carregarEmpresa, empresaEditar, empresaCancelar,
     // RH — autocomplete
     rhBuscarColabPorNome, rhSelecionarColab,
+    // Exames PCMSO — upload individual e alertas
+    _rhSalvarDataExame, _rhUploadExame,
+    _rhVerificarExamesVencimento, _rhIniciarMonitoramentoExames,
   };
 </script>
 
