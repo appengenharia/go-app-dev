@@ -783,6 +783,7 @@
         <button class="admin-tab-btn active" onclick="App.adminTab('obras')">🏗️ Obras</button>
         <button class="admin-tab-btn" onclick="App.adminTab('usuarios')">👥 Colaboradores</button>
         <button class="admin-tab-btn" onclick="App.adminTab('empresa')">🏢 Empresa</button>
+        <button class="admin-tab-btn" onclick="App.adminTab('epi')">🦺 EPIs</button>
       </div>
 
       <div class="admin-panel active" id="adm-obras">
@@ -966,6 +967,58 @@
           </div>
 
           <div class="msg" id="empMsg" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- ── Painel EPIs ── -->
+      <div class="admin-panel" id="adm-epi">
+        <!-- Cadastro de novo EPI -->
+        <div class="card">
+          <div class="card-header">
+            <div><h3>🦺 Cadastro de EPI</h3><p>Gerencie os equipamentos de proteção individual e seus Certificados de Aprovação (CA).</p></div>
+          </div>
+          <div class="info-box">
+            ℹ️ O <strong>Nº CA</strong> é preenchido automaticamente quando o equipamento é reconhecido. Caso não seja encontrado, preencha manualmente.
+          </div>
+
+          <!-- Formulário inline de novo EPI -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">
+            <div style="flex:2;min-width:200px">
+              <label style="margin-top:0">Descrição do Equipamento</label>
+              <input id="epiNovoDesc" type="text" placeholder="Ex: Capacete ABA Frontal Silicone"
+                oninput="App.epiAutoCA()" autocomplete="off">
+            </div>
+            <div style="width:110px">
+              <label style="margin-top:0">Nº CA</label>
+              <input id="epiNovoCA" type="text" placeholder="Ex: 31469" maxlength="10">
+            </div>
+            <div style="width:90px">
+              <label style="margin-top:0">Qtd. padrão</label>
+              <input id="epiNovoQtd" type="number" min="1" max="99" value="1" style="text-align:center">
+            </div>
+            <div style="padding-bottom:2px">
+              <button class="btn btn-primary sm" onclick="App.epiSalvarNovo()" id="btnEpiSalvar">
+                ➕ Adicionar
+              </button>
+            </div>
+          </div>
+          <div id="epiCaHint" style="font-size:.75rem;color:var(--success);min-height:16px;margin-bottom:4px"></div>
+          <div class="msg" id="epiMsg"></div>
+        </div>
+
+        <!-- Lista de EPIs cadastrados -->
+        <div class="card">
+          <div class="card-header">
+            <div><h3>Lista de EPIs Cadastrados</h3></div>
+            <div style="display:flex;gap:8px">
+              <input id="epiBusca" type="text" placeholder="🔍 Buscar…" oninput="App.epiFiltrar()"
+                style="max-width:200px;margin:0;font-size:.83rem;padding:7px 12px">
+              <button class="btn btn-outline sm" onclick="App.epiCarregar()">🔄</button>
+            </div>
+          </div>
+          <div id="epiLista">
+            <div class="empty"><div class="empty-icon">🦺</div><p>Nenhum EPI cadastrado ainda.</p></div>
+          </div>
         </div>
       </div>
 
@@ -1364,6 +1417,7 @@
     if(tab==="obras")   { btns[0].classList.add("active"); loadObras(); }
     if(tab==="usuarios"){ btns[1].classList.add("active"); loadUsers(); fillObraSelect(); }
     if(tab==="empresa") { btns[2].classList.add("active"); carregarEmpresa(); }
+    if(tab==="epi")     { btns[3].classList.add("active"); epiCarregar(); }
   }
 
   function togglePass(id) {
@@ -1927,6 +1981,260 @@
         </div>`;
       el.appendChild(div);
     });
+  }
+
+
+  // ═══════════════════════════════════════════════════════════
+  // CADASTRO DE EPIs — Firestore: configuracoes/epis
+  // ═══════════════════════════════════════════════════════════
+
+  // Banco local de CAs conhecidos para auto-preenchimento
+  const EPI_CA_BANCO = {
+    "balaclava":                        "42367",
+    "camisa uv":                        "",
+    "capacete":                         "31469",
+    "jugular":                          "31469",
+    "oculos":                           "9722",
+    "óculos":                           "9722",
+    "luva tricotada":                   "51463",
+    "luva de raspa":                    "44674",
+    "luva de borracha":                 "12345",
+    "luva nitrílica":                   "43289",
+    "bota":                             "49230",
+    "bota de segurança":                "49230",
+    "bota eletricista":                 "49230",
+    "camisa anti-chamas":               "50053",
+    "camisa botão anti-chamas":         "50053",
+    "calça anti-chamas":                "50052",
+    "protetor auditivo":                "19579",
+    "protetor auricular":               "19579",
+    "abafador":                         "19579",
+    "cinto paraquedista":               "35520",
+    "cinto de segurança":               "35520",
+    "trava-queda":                      "28877",
+    "talabarte":                        "31715",
+    "capacete aba":                     "31469",
+    "óculos de solda":                  "11533",
+    "mascara de solda":                 "11533",
+    "máscara de solda":                 "11533",
+    "respirador":                       "14014",
+    "mascara pff2":                     "38592",
+    "máscara pff2":                     "38592",
+    "mascara n95":                      "38592",
+    "máscara n95":                      "38592",
+    "avental de raspa":                 "27406",
+    "avental":                          "27406",
+    "mangote":                          "34701",
+    "perneira":                         "40182",
+    "botina":                           "49230",
+    "sapato de segurança":              "49230",
+    "colete refletivo":                 "42145",
+    "colete sinalizador":               "42145",
+    "luva isolante":                    "30267",
+    "viseira":                          "12078",
+    "protetor facial":                  "12078",
+  };
+
+  // Retorna CA provável com base em palavras-chave na descrição
+  function epiBuscarCAAutomatico(desc) {
+    const d = desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    for(const [chave, ca] of Object.entries(EPI_CA_BANCO)) {
+      const c = chave.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      if(d.includes(c)) return ca;
+    }
+    return "";
+  }
+
+  // Chamado ao digitar a descrição — auto-preenche CA
+  function epiAutoCA() {
+    const desc = ($("epiNovoDesc")?.value || "").trim();
+    const ca   = epiBuscarCAAutomatico(desc);
+    const hint = $("epiCaHint");
+    const inp  = $("epiNovoCA");
+    if(ca && inp && !inp.value) {
+      inp.value = ca;
+      if(hint) { hint.textContent = `✅ CA ${ca} encontrado automaticamente`; hint.style.color = "var(--success)"; }
+    } else if(!ca && desc.length > 3) {
+      if(hint) { hint.textContent = "⚠️ CA não encontrado — preencha manualmente se necessário"; hint.style.color = "var(--accent2)"; }
+    } else {
+      if(hint) hint.textContent = "";
+    }
+  }
+
+  // Cache local dos EPIs carregados
+  let _epiCache = [];
+
+  // Carrega EPIs do Firestore
+  async function epiCarregar() {
+    const lista = $("epiLista");
+    if(lista) lista.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><p>Carregando…</p></div>`;
+    try {
+      const snap = await getDoc(doc(db, "configuracoes", "epis"));
+      _epiCache = snap.exists() ? (snap.data().lista || []) : [];
+      epiFiltrar();
+    } catch(e) {
+      if(lista) lista.innerHTML = `<div class="empty"><p>❌ Erro ao carregar: ${e.message}</p></div>`;
+    }
+  }
+
+  // Filtra a lista exibida
+  function epiFiltrar() {
+    const q = ($("epiBusca")?.value || "").toLowerCase();
+    const filtrados = q ? _epiCache.filter(e => e.desc.toLowerCase().includes(q) || (e.ca||"").includes(q)) : _epiCache;
+    _epiRenderizar(filtrados);
+  }
+
+  // Renderiza a lista de EPIs
+  function _epiRenderizar(lista) {
+    const el = $("epiLista");
+    if(!el) return;
+    if(!lista.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">🦺</div><p>Nenhum EPI encontrado.</p></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+        <thead>
+          <tr style="background:var(--bg)">
+            <th style="text-align:left;padding:9px 12px;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border)">Descrição do Equipamento</th>
+            <th style="text-align:center;padding:9px 12px;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);width:90px">Nº CA</th>
+            <th style="text-align:center;padding:9px 12px;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);width:70px">Qtd.</th>
+            <th style="text-align:center;padding:9px 12px;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);width:120px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="epiTbody">
+          ${lista.map((epi, i) => {
+            const idx = _epiCache.indexOf(epi);
+            const caBadge = epi.ca
+              ? `<span style="background:#ecfdf5;color:var(--success);border-radius:6px;padding:2px 8px;font-weight:600;font-size:.82rem">${epi.ca}</span>`
+              : `<span style="background:#fef2f2;color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.78rem">—</span>`;
+            return `
+            <tr style="${i%2===0?'background:#fff':'background:var(--bg)'}">
+              <td style="padding:9px 12px;border-bottom:1px solid var(--border)">
+                <span id="epiDescTxt_${idx}">${epi.desc}</span>
+                <input id="epiDescEdit_${idx}" type="text" value="${epi.desc.replace(/"/g,'&quot;')}"
+                  style="display:none;margin:0;padding:5px 8px;font-size:.85rem;border-radius:6px">
+              </td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--border);text-align:center">
+                <span id="epiCaTxt_${idx}">${caBadge}</span>
+                <input id="epiCaEdit_${idx}" type="text" value="${epi.ca||''}"
+                  style="display:none;margin:0;padding:5px 8px;font-size:.85rem;text-align:center;border-radius:6px;width:80px">
+              </td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--border);text-align:center">
+                <span id="epiQtdTxt_${idx}">${epi.qtd||1}</span>
+                <input id="epiQtdEdit_${idx}" type="number" min="1" max="99" value="${epi.qtd||1}"
+                  style="display:none;margin:0;padding:5px 8px;font-size:.85rem;text-align:center;border-radius:6px;width:60px">
+              </td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--border);text-align:center">
+                <span id="epiAcoes_${idx}">
+                  <button class="btn btn-outline sm" onclick="App.epiIniciarEdicao(${idx})" title="Editar" style="padding:5px 10px">✏️</button>
+                  <button class="btn btn-danger sm" onclick="App.epiExcluir(${idx})" title="Excluir" style="padding:5px 10px">🗑️</button>
+                </span>
+                <span id="epiAcoesEdit_${idx}" style="display:none">
+                  <button class="btn btn-success sm" onclick="App.epiSalvarEdicao(${idx})" style="padding:5px 10px">✅</button>
+                  <button class="btn btn-outline sm" onclick="App.epiCancelarEdicao(${idx})" style="padding:5px 10px">✖️</button>
+                </span>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+      <div style="margin-top:12px;font-size:.78rem;color:var(--muted);text-align:right">${lista.length} equipamento(s) cadastrado(s)</div>`;
+  }
+
+  // Adicionar novo EPI
+  async function epiSalvarNovo() {
+    const desc = ($("epiNovoDesc")?.value || "").trim();
+    const ca   = ($("epiNovoCA")?.value  || "").trim();
+    const qtd  = parseInt($("epiNovoQtd")?.value) || 1;
+    if(!desc) { setMsg("epiMsg","⚠️ Informe a descrição do equipamento.","err"); return; }
+
+    const btn = $("btnEpiSalvar");
+    if(btn) { btn.disabled=true; btn.textContent="⏳ Salvando…"; }
+    try {
+      // Verifica duplicata
+      const duplicata = _epiCache.find(e => e.desc.toLowerCase() === desc.toLowerCase());
+      if(duplicata) { setMsg("epiMsg","⚠️ Já existe um EPI com essa descrição.","err"); return; }
+
+      _epiCache.push({ desc, ca, qtd });
+      await setDoc(doc(db,"configuracoes","epis"), { lista: _epiCache }, { merge: false });
+      setMsg("epiMsg","✅ EPI adicionado com sucesso!","ok");
+      if($("epiNovoDesc")) $("epiNovoDesc").value = "";
+      if($("epiNovoCA"))   $("epiNovoCA").value   = "";
+      if($("epiNovoQtd"))  $("epiNovoQtd").value  = "1";
+      if($("epiCaHint"))   $("epiCaHint").textContent = "";
+      epiFiltrar();
+      setTimeout(()=>setMsg("epiMsg","",""), 3000);
+    } catch(e) { setMsg("epiMsg","❌ Erro: "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="➕ Adicionar"; } }
+  }
+
+  // Iniciar edição inline de um EPI
+  function epiIniciarEdicao(idx) {
+    // Auto-CA ao editar
+    const descEl = $(`epiDescEdit_${idx}`);
+    if(descEl) descEl.oninput = () => {
+      const caEl = $(`epiCaEdit_${idx}`);
+      if(caEl && !caEl.value) {
+        const ca = epiBuscarCAAutomatico(descEl.value);
+        if(ca) caEl.value = ca;
+      }
+    };
+    [$(`epiDescTxt_${idx}`), $(`epiCaTxt_${idx}`), $(`epiQtdTxt_${idx}`), $(`epiAcoes_${idx}`)].forEach(el => { if(el) el.style.display="none"; });
+    [$(`epiDescEdit_${idx}`), $(`epiCaEdit_${idx}`), $(`epiQtdEdit_${idx}`), $(`epiAcoesEdit_${idx}`)].forEach(el => { if(el) el.style.display=""; });
+  }
+
+  // Cancelar edição
+  function epiCancelarEdicao(idx) {
+    [$(`epiDescEdit_${idx}`), $(`epiCaEdit_${idx}`), $(`epiQtdEdit_${idx}`), $(`epiAcoesEdit_${idx}`)].forEach(el => { if(el) el.style.display="none"; });
+    [$(`epiDescTxt_${idx}`), $(`epiCaTxt_${idx}`), $(`epiQtdTxt_${idx}`), $(`epiAcoes_${idx}`)].forEach(el => { if(el) el.style.display=""; });
+  }
+
+  // Salvar edição inline
+  async function epiSalvarEdicao(idx) {
+    const desc = ($(`epiDescEdit_${idx}`)?.value || "").trim();
+    const ca   = ($(`epiCaEdit_${idx}`)?.value  || "").trim();
+    const qtd  = parseInt($(`epiQtdEdit_${idx}`)?.value) || 1;
+    if(!desc) { toast("⚠️ Descrição não pode ser vazia."); return; }
+    _epiCache[idx] = { desc, ca, qtd };
+    try {
+      await setDoc(doc(db,"configuracoes","epis"), { lista: _epiCache }, { merge: false });
+      toast("✅ EPI atualizado!");
+      epiFiltrar();
+    } catch(e) { toast("❌ Erro: "+e.message); }
+  }
+
+  // Excluir EPI
+  async function epiExcluir(idx) {
+    const epi = _epiCache[idx];
+    if(!epi) return;
+    showModal("Excluir EPI", `Remover "<strong>${epi.desc}</strong>" da lista?`, async () => {
+      _epiCache.splice(idx, 1);
+      try {
+        await setDoc(doc(db,"configuracoes","epis"), { lista: _epiCache }, { merge: false });
+        toast("✅ EPI removido.");
+        epiFiltrar();
+      } catch(e) { toast("❌ Erro: "+e.message); }
+    }, "Excluir", true);
+  }
+
+  // Carrega EPIs do Firestore para uso no PDF — retorna array [{desc,ca,qtd}]
+  async function _epiCarregarParaPDF() {
+    try {
+      const snap = await getDoc(doc(db,"configuracoes","epis"));
+      if(snap.exists() && snap.data().lista?.length) return snap.data().lista;
+    } catch(e){}
+    // Fallback: lista padrão embutida
+    return [
+      { desc:"Balaclava preta",                                      ca:"42367", qtd:1 },
+      { desc:"Camisa UV Fator 50+",                                   ca:"",      qtd:2 },
+      { desc:"Capacete ABA Frontal Silicone",                         ca:"31469", qtd:1 },
+      { desc:"Jugular para capacete silicone",                        ca:"31469", qtd:1 },
+      { desc:"Óculos fênix cinza c/ protetor lateral",               ca:"9722",  qtd:1 },
+      { desc:"Luva tricotada pigmentada",                             ca:"51463", qtd:1 },
+      { desc:"Bota de segurança bico composite e PAP",               ca:"49230", qtd:1 },
+      { desc:"Protetor auditivo",                                     ca:"19579", qtd:1 },
+    ];
   }
 
   // ── Edição de dados básicos do colaborador ──
@@ -6673,7 +6981,7 @@
     y += hCab * 2;
 
     // Linhas de EPIs
-    const epis = RH_EPI_POR_FUNCAO[funcao] || RH_EPI_POR_FUNCAO["default"];
+    const epis = await _epiCarregarParaPDF();
     const hRow = 6.2;
     pdf.setTextColor(...preto);
     pdf.setFont("helvetica","normal");
@@ -6703,7 +7011,7 @@
       const descStr = pdf.splitTextToSize(epi.desc, colX.descW - 3)[0] || epi.desc;
       pdf.text(descStr, colX.desc + 2, rowY + 4);
       // CA
-      const ca = RH_EPI_CA[epi.desc] || "";
+      const ca = V(epi.ca) || epiBuscarCAAutomatico(epi.desc);
       pdf.text(V(ca), colX.ca + colX.caW/2, rowY + 4, {align:"center"});
       // Assinatura — linha vazia
     });
@@ -7166,6 +7474,9 @@
     _rhVerificarExamesVencimento, _rhIniciarMonitoramentoExames,
     // Helpers
     _getProcessoId,
+    // Cadastro de EPIs
+    epiCarregar, epiFiltrar, epiAutoCA,
+    epiSalvarNovo, epiIniciarEdicao, epiCancelarEdicao, epiSalvarEdicao, epiExcluir,
     // EPI
     rhGerarFichaEPIPDF,
   };
