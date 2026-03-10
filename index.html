@@ -1104,7 +1104,8 @@
         <div id="modalRhConteudo" style="max-height:60vh;overflow-y:auto"></div>
         <div class="modal-footer" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="App.rhReabrirProcesso()">✏️ Continuar Edição</button>
-          <button class="btn btn-outline" onclick="App.rhGerarPDFs()" id="btnRhGerarPDF">📄 Gerar PDFs</button>
+          <button class="btn btn-outline" onclick="App.rhGerarPDFs()" id="btnRhGerarPDF">📄 Gerar Ficha + EPI</button>
+          <button class="btn btn-outline" onclick="App.rhGerarFichaEPIPDF(App._getProcessoId()).then(p=>p.save('FichaEPI.pdf'))">🦺 Só EPI</button>
           <button class="btn btn-outline" onclick="App.closeModal('modalRhProcesso')">Fechar</button>
         </div>
       </div>
@@ -2869,6 +2870,9 @@
     }
     el.innerHTML = html;
   }
+
+  // Helper — retorna o processoId do fluxo ativo (para uso inline no HTML)
+  function _getProcessoId() { return rhFluxo.processoId || null; }
 
   // Inicia ciclo: verifica agora e a cada 2 horas
   function _rhIniciarMonitoramentoExames() {
@@ -5810,9 +5814,21 @@
         const ref = await addDoc(collection(db,"rh_processos"), payload);
         rhFluxo.processoId = ref.id;
       }
-      toast("✅ Processo salvo! Você pode gerar os documentos PDF.");
+      toast("✅ Processo salvo! Gerando documentos PDF...");
       $("rhBtnFinalizar").textContent = "✅ Finalizar e Gerar Documentos";
       $("rhBtnFinalizar").disabled = false;
+      // Gera automaticamente os dois PDFs ao finalizar
+      setTimeout(async () => {
+        try {
+          const nomeArq = (rhFluxo.dados.nomeCompleto||"colaborador").replace(/\s+/g,"_");
+          const pdfReg = await rhGerarFichaRegistroPDF(rhFluxo.processoId);
+          pdfReg.save(`FichaRegistro_${nomeArq}.pdf`);
+          await new Promise(r => setTimeout(r, 400));
+          const pdfEpi = await rhGerarFichaEPIPDF(rhFluxo.processoId);
+          pdfEpi.save(`FichaEPI_${nomeArq}.pdf`);
+          toast("✅ Ficha de Registro e Ficha de EPI baixadas!");
+        } catch(e){ toast("⚠️ Processo salvo, mas houve erro ao gerar PDF: "+e.message); }
+      }, 600);
       rhVoltarHome();
     } catch(e){
       toast("❌ Erro ao salvar: "+e.message);
@@ -6449,6 +6465,280 @@
     return pdf;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // FICHA DE EPI — Paisagem A4, fiel ao modelo JCS
+  // ═══════════════════════════════════════════════════════════
+  // Mapa CA por equipamento (da aba "Equipamenos" do Excel)
+  const RH_EPI_CA = {
+    "Balaclava preta":                                                      "42367",
+    "Camisa UV Fator 50+ Preta Tamanho \"m\"":                             "",
+    "Capacete ABA Frontal Silicone":                                        "31469",
+    "Jugular para capacete silicone":                                       "31469",
+    "Óculos fênix cinza c/ protetor lateral":                              "9722",
+    "Luva tricotada pigmentada":                                            "51463",
+    "Bota Brasilia micro fibra preta eletricista bico composite e PAP":    "49230",
+    "Camisa de botão anti-chamas azul royal com faixa reflexiva":          "50053",
+    "Calça anti-chamas azul royal com faixa reflexiva":                    "50052",
+    "Protetor auditivo":                                                    "19579",
+    "Cinto de segurança tipo paraquedista":                                 "35520",
+  };
+
+  // EPIs padrão por função — mesmos do Excel de referência
+  const RH_EPI_POR_FUNCAO = {
+    "default": [
+      { desc: "Balaclava preta",                                                     qtd: 1 },
+      { desc: "Camisa UV Fator 50+",                                                 qtd: 2 },
+      { desc: "Capacete ABA Frontal Silicone",                                       qtd: 1 },
+      { desc: "Jugular para capacete silicone",                                      qtd: 1 },
+      { desc: "Óculos fênix cinza c/ protetor lateral",                             qtd: 1 },
+      { desc: "Luva tricotada pigmentada",                                            qtd: 1 },
+      { desc: "Bota de segurança bico composite e PAP",                              qtd: 1 },
+      { desc: "Protetor auditivo",                                                   qtd: 1 },
+    ],
+    "Eletricista": [
+      { desc: "Balaclava preta",                                                     qtd: 1 },
+      { desc: "Camisa UV Fator 50+",                                                 qtd: 2 },
+      { desc: "Capacete ABA Frontal Silicone",                                       qtd: 1 },
+      { desc: "Jugular para capacete silicone",                                      qtd: 1 },
+      { desc: "Óculos fênix cinza c/ protetor lateral",                             qtd: 1 },
+      { desc: "Luva tricotada pigmentada",                                            qtd: 1 },
+      { desc: "Bota Brasilia micro fibra preta eletricista bico composite e PAP",   qtd: 1 },
+      { desc: "Camisa de botão anti-chamas azul royal com faixa reflexiva",         qtd: 2 },
+      { desc: "Calça anti-chamas azul royal com faixa reflexiva",                   qtd: 2 },
+      { desc: "Protetor auditivo",                                                   qtd: 1 },
+      { desc: "Cinto de segurança tipo paraquedista",                                qtd: 1 },
+    ],
+  };
+
+  async function rhGerarFichaEPIPDF(processoId) {
+    // Carrega dados do processo
+    let d = rhFluxo.dados || {};
+    if(processoId) {
+      try {
+        const snap = await getDoc(doc(db,"rh_processos",processoId));
+        if(snap.exists()) d = snap.data().dados || d;
+      } catch(e){}
+    }
+
+    const empresa = await getEmpresa();
+    const { jsPDF } = window.jspdf;
+
+    // A4 Paisagem: 297 x 210 mm
+    const pdf = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
+    const PW = 297, PH = 210;
+    const ml = 8, mr = PW - 8;  // margens esq/dir
+    const pw = mr - ml;          // largura útil: 281mm
+
+    const V = v => (v === null || v === undefined || v === "" || v === "None") ? "" : String(v);
+
+    // ── Cores ──────────────────────────────────────────────────
+    const azul   = [15, 52, 96];   // #0f3460
+    const cinzaL = [220, 220, 220];
+    const cinzaH = [245, 245, 245];
+    const preto  = [0, 0, 0];
+
+    // ── Linha 1: Cabeçalho ─────────────────────────────────────
+    // Título centralizado
+    pdf.setFillColor(...azul);
+    pdf.rect(ml, 6, pw, 10, "F");
+    pdf.setTextColor(255,255,255);
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(13);
+    pdf.text("FICHA DE CONTROLE E ENTREGA DE EPI", PW/2, 12.5, {align:"center"});
+
+    // ── Linha 2: Nome + Nº Registro + Data Admissão ───────────
+    pdf.setTextColor(...preto);
+    let y = 21;
+
+    // Caixa de dados do colaborador
+    pdf.setFillColor(...cinzaH);
+    pdf.setDrawColor(...cinzaL);
+    pdf.rect(ml, y-4, pw, 8, "FD");
+
+    pdf.setFontSize(8.5);
+
+    const admissao = d.admissao
+      ? new Date(d.admissao+"T12:00:00").toLocaleDateString("pt-BR") : "";
+    const demissao = d.demissao
+      ? new Date(d.demissao+"T12:00:00").toLocaleDateString("pt-BR") : "";
+
+    // NOME
+    pdf.setFont("helvetica","bold"); pdf.text("NOME:", ml+2, y);
+    pdf.setFont("helvetica","normal"); pdf.text(V(d.nomeCompleto), ml+16, y);
+
+    // Nº REGISTRO
+    pdf.setFont("helvetica","bold"); pdf.text("Nº Registro:", ml+130, y);
+    pdf.setFont("helvetica","normal"); pdf.text(V(d.numRegistro)||"", ml+157, y);
+
+    // DATA ADMISSÃO
+    pdf.setFont("helvetica","bold"); pdf.text("Data admissão:", ml+190, y);
+    pdf.setFont("helvetica","normal"); pdf.text(admissao, ml+222, y);
+
+    // ── Linha 3: Função + Setor + Data Demissão ───────────────
+    y += 9;
+    pdf.setFillColor(...cinzaH);
+    pdf.setDrawColor(...cinzaL);
+    pdf.rect(ml, y-4, pw, 8, "FD");
+
+    const funcao = V(d.funcaoOutro || d.funcao);
+    const obra   = V(d.obraNome || "");
+
+    pdf.setFont("helvetica","bold"); pdf.text("Função:", ml+2, y);
+    pdf.setFont("helvetica","normal"); pdf.text(funcao, ml+18, y);
+
+    pdf.setFont("helvetica","bold"); pdf.text("Setor de trabalho:", ml+90, y);
+    pdf.setFont("helvetica","normal"); pdf.text(obra, ml+123, y);
+
+    pdf.setFont("helvetica","bold"); pdf.text("Data demissão:", ml+190, y);
+    pdf.setFont("helvetica","normal"); pdf.text(demissao, ml+222, y);
+
+    // ── Declaração ────────────────────────────────────────────
+    y += 7;
+    const declaracao =
+      "DECLARAÇÃO: Declaro para os devidos fins, e a quem possa interessar que a JCS Construções e Serviços LTDA, fornece EPI (Equipamento de Proteção " +
+      "Individual), conforme exigências da NR-06 da Portaria 3.214/78 do MTb, adequado ao risco de cada atividade. " +
+      "Cabendo a mim empregado quanto ao EPI:\n" +
+      "A) usar, utilizando-o apenas para a finalidade a que se destina;  " +
+      "B) responsabilizar-se pela guarda e conservação;  " +
+      "C) comunicar ao empregador qualquer alteração que o torne impróprio para uso;\n" +
+      "D) cumprir as determinações do empregador sobre o uso adequado. " +
+      "Estou ciente que o não uso ou extravio dos mesmos, poderá ocasionar em minha demissão por justa causa.";
+
+    pdf.setFontSize(7.8);
+    pdf.setFont("helvetica","normal");
+    // Caixa da declaração
+    pdf.setFillColor(255,255,255);
+    pdf.setDrawColor(...cinzaL);
+    const linhas = pdf.splitTextToSize(declaracao, pw-4);
+    const hDecl = linhas.length * 3.6 + 4;
+    pdf.rect(ml, y, pw, hDecl, "FD");
+    pdf.setTextColor(...preto);
+    pdf.text(linhas, ml+2, y+3.5, {lineHeightFactor:1.35});
+
+    // ── Linha assinatura ─────────────────────────────────────
+    y += hDecl + 2;
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica","bold");
+    const dataHoje = new Date().toLocaleDateString("pt-BR");
+    pdf.text(`ASSINATURA DO FUNCIONÁRIO :`, ml+2, y+3);
+    // Linha de assinatura
+    pdf.setDrawColor(0,0,0);
+    pdf.setLineWidth(0.3);
+    pdf.line(ml+66, y+3.5, ml+190, y+3.5);
+    pdf.setFont("helvetica","bold");
+    pdf.text(`DATA :`, ml+195, y+3);
+    pdf.line(ml+208, y+3.5, mr-2, y+3.5);
+    pdf.setLineWidth(0.2);
+
+    // ── Tabela de EPIs ────────────────────────────────────────
+    y += 8;
+
+    // Cabeçalho da tabela
+    const colX = {
+      retData: ml,     retW: 22,   // Data Retirada
+      devData: ml+22,  devW: 22,   // Data Devolução
+      qtd:     ml+44,  qtdW: 12,   // Quant.
+      desc:    ml+56,  descW: 130, // Descrição
+      ca:      ml+186, caW: 28,    // Nº CA
+      assin:   ml+214, assinW: mr-ml-214, // Assinatura
+    };
+
+    // Linha cabeçalho 1 (títulos agrupados)
+    const hCab = 6;
+    pdf.setFillColor(...azul);
+    pdf.rect(ml, y, pw, hCab*2, "F");
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(7.5);
+    pdf.setFont("helvetica","bold");
+
+    // Cabeçalho linha 1 — "Data" span 2 colunas
+    pdf.text("Data", colX.retData + 11, y + 3.5, {align:"center"});
+    pdf.text("Quant.", colX.qtd + colX.qtdW/2, y + 3.5, {align:"center"});
+    pdf.text("Descrição do equipamento", colX.desc + colX.descW/2, y + 3.5, {align:"center"});
+    pdf.text("Nº Do CA", colX.ca + colX.caW/2, y + 3.5, {align:"center"});
+    pdf.text("Assinatura", colX.assin + colX.assinW/2, y + 3.5, {align:"center"});
+
+    // Cabeçalho linha 2
+    pdf.text("Retirada",   colX.retData + colX.retW/2, y + hCab + 3.5, {align:"center"});
+    pdf.text("Devolução",  colX.devData + colX.devW/2, y + hCab + 3.5, {align:"center"});
+
+    // Linhas de separação verticais no cabeçalho
+    pdf.setDrawColor(255,255,255);
+    pdf.setLineWidth(0.3);
+    [colX.devData, colX.qtd, colX.desc, colX.ca, colX.assin, mr].forEach(x => {
+      pdf.line(x, y, x, y + hCab*2);
+    });
+    pdf.line(ml, y+hCab, colX.qtd, y+hCab); // linha entre ret/dev
+
+    y += hCab * 2;
+
+    // Linhas de EPIs
+    const epis = RH_EPI_POR_FUNCAO[funcao] || RH_EPI_POR_FUNCAO["default"];
+    const hRow = 6.2;
+    pdf.setTextColor(...preto);
+    pdf.setFont("helvetica","normal");
+    pdf.setFontSize(7.3);
+
+    epis.forEach((epi, i) => {
+      const rowY = y + i * hRow;
+      const bg = i % 2 === 0 ? [255,255,255] : cinzaH;
+      pdf.setFillColor(...bg);
+      pdf.rect(ml, rowY, pw, hRow, "F");
+
+      // bordas
+      pdf.setDrawColor(...cinzaL);
+      pdf.setLineWidth(0.2);
+      pdf.rect(ml, rowY, pw, hRow, "D");
+      [colX.devData, colX.qtd, colX.desc, colX.ca, colX.assin].forEach(x => {
+        pdf.line(x, rowY, x, rowY + hRow);
+      });
+
+      // Data retirada = admissão
+      pdf.text(admissao, colX.retData + colX.retW/2, rowY + 4, {align:"center"});
+      // Data devolução = vazio
+      pdf.text("", colX.devData + colX.devW/2, rowY + 4, {align:"center"});
+      // Qtd
+      pdf.text(String(epi.qtd), colX.qtd + colX.qtdW/2, rowY + 4, {align:"center"});
+      // Descrição — trunca se necessário
+      const descStr = pdf.splitTextToSize(epi.desc, colX.descW - 3)[0] || epi.desc;
+      pdf.text(descStr, colX.desc + 2, rowY + 4);
+      // CA
+      const ca = RH_EPI_CA[epi.desc] || "";
+      pdf.text(V(ca), colX.ca + colX.caW/2, rowY + 4, {align:"center"});
+      // Assinatura — linha vazia
+    });
+
+    // Linhas extras vazias (completar até ter pelo menos 14 linhas no total)
+    const totalLinhas = Math.max(14, epis.length + 3);
+    for(let i = epis.length; i < totalLinhas; i++) {
+      const rowY = y + i * hRow;
+      if(rowY + hRow > PH - 12) break;
+      const bg = i % 2 === 0 ? [255,255,255] : cinzaH;
+      pdf.setFillColor(...bg);
+      pdf.rect(ml, rowY, pw, hRow, "F");
+      pdf.setDrawColor(...cinzaL);
+      pdf.setLineWidth(0.2);
+      pdf.rect(ml, rowY, pw, hRow, "D");
+      [colX.devData, colX.qtd, colX.desc, colX.ca, colX.assin].forEach(x => {
+        pdf.line(x, rowY, x, rowY + hRow);
+      });
+    }
+
+    // ── Rodapé azul ───────────────────────────────────────────
+    const rfY = PH - 7;
+    pdf.setFillColor(...azul);
+    pdf.rect(0, rfY, PW, 8, "F");
+    pdf.setTextColor(255,255,255);
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(6.5);
+    pdf.text("GO — Gestão de Obras  |  Sistema JCS Construções e Serviços LTDA", ml+2, rfY+3.5);
+    const emp = `${V(empresa.nome)}  |  CNPJ: ${V(empresa.cnpj)}  |  ${V(empresa.email)}  |  Tel: ${V(empresa.tel)}`;
+    pdf.setFont("helvetica","normal");
+    pdf.text(emp, mr-2, rfY+3.5, {align:"right"});
+
+    return pdf;
+  }
+
   // Botão da tela RH para gerar ficha
   async function rhGerarPDFs() {
     if(!rhFluxo.processoId && !rhFluxo.dados.nomeCompleto) {
@@ -6456,12 +6746,17 @@
       closeModal("modalRhProcesso");
       return;
     }
-    toast("⏳ Gerando ficha de registro...");
+    const nomeArq = (rhFluxo.dados.nomeCompleto||"colaborador").replace(/\s+/g,"_");
+    toast("⏳ Gerando documentos...");
     try {
-      const pdf = await rhGerarFichaRegistroPDF(rhFluxo.processoId);
-      const nome = `FichaRegistro_${(rhFluxo.dados.nomeCompleto||"colaborador").replace(/\s+/g,"_")}.pdf`;
-      pdf.save(nome);
-      toast("✅ Ficha de registro gerada!");
+      // Ficha de Registro
+      const pdfReg = await rhGerarFichaRegistroPDF(rhFluxo.processoId);
+      pdfReg.save(`FichaRegistro_${nomeArq}.pdf`);
+      // Ficha de EPI
+      await new Promise(r => setTimeout(r, 400));
+      const pdfEpi = await rhGerarFichaEPIPDF(rhFluxo.processoId);
+      pdfEpi.save(`FichaEPI_${nomeArq}.pdf`);
+      toast("✅ Ficha de Registro e Ficha de EPI geradas!");
     } catch(e){ toast("❌ Erro: "+e.message); console.error(e); }
   }
 
@@ -6855,7 +7150,7 @@
     rhToggleExame, rhToggleNR,
     rhFiltrarLista, rhAbrirProcesso,
     rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
-    rhGerarFichaRegistroPDF,
+    rhGerarFichaRegistroPDF, rhGerarFichaEPIPDF,
     rhIrParaEtapa,
     // Preview ao vivo
     rhPreviewTab, rhPreviewTrigger,
@@ -6869,6 +7164,10 @@
     // Exames PCMSO — upload individual e alertas
     _rhSalvarDataExame, _rhUploadExame,
     _rhVerificarExamesVencimento, _rhIniciarMonitoramentoExames,
+    // Helpers
+    _getProcessoId,
+    // EPI
+    rhGerarFichaEPIPDF,
   };
 </script>
 
