@@ -16,6 +16,7 @@
   <title>GO – Gestão de Obras [DEV]</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -249,7 +250,19 @@
   @keyframes pulseDanger { 0%,100%{box-shadow:0 2px 8px rgba(239,68,68,.15)} 50%{box-shadow:0 6px 24px rgba(239,68,68,.4)} }
   .nr-chip { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);font-size:.78rem;margin:3px;cursor:pointer;transition:.15s;background:var(--surface) }
   .nr-chip.selected { background:var(--primary);color:#fff;border-color:var(--primary) }
-  .nr-chip input[type=checkbox] { display:none }</style>
+  .nr-chip input[type=checkbox] { display:none }
+  /* Evolução de Obras */
+  .evol-ativ-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:all .18s;cursor:pointer}
+  .evol-ativ-card:hover{border-color:var(--brand);box-shadow:0 4px 16px rgba(15,52,96,.1);transform:translateY(-1px)}
+  .evol-ativ-card.concluida{border-color:var(--success);background:#f0fdf4}
+  .evol-ativ-card.pendente{border-left:4px solid var(--border)}
+  .evol-ativ-card.em-andamento{border-left:4px solid var(--accent2)}
+  .evol-ativ-card.concluida-card{border-left:4px solid var(--success)}
+  .evol-prog-bar{background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;margin-top:6px}
+  .evol-prog-fill{height:100%;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+  .evol-frente-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:600;background:#eff6ff;color:var(--brand);margin-bottom:4px}
+  .evol-peso-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:600;background:var(--bg);color:var(--muted)}
+  @media(max-width:600px){.evolGrafGrid{grid-template-columns:1fr!important}}</style>
 </head>
 <body>
 
@@ -423,8 +436,45 @@
       <p id="pontoOkMsg" style="color:#666;font-size:14px;margin-bottom:4px">—</p>
       <p id="pontoOkFase" style="color:#0f3460;font-size:13px;font-weight:600">—</p>
       <div id="pontoOkDetalhe" style="margin-top:12px;background:#f0f7ff;border-radius:8px;padding:10px 16px;font-size:12px;color:#555;text-align:left"></div>
-      <button class="btn btn-primary full" onclick="App.voltarLogin()" style="margin-top:20px;padding:13px">
+      <!-- Botão para ir ao Registro de Evolução -->
+      <button class="btn btn-primary full" onclick="App.evolAbrirParaColab()" style="margin-top:16px;padding:13px;background:linear-gradient(135deg,#0f3460,#1a4a8a)">
+        📈 Registrar Evolução da Obra
+      </button>
+      <button class="btn btn-outline full" onclick="App.voltarLogin()" style="margin-top:8px">
         Fechar
+      </button>
+    </div>
+
+    <!-- STEP 5: Registro de Evolução (Colaborador) -->
+    <div id="pontoStepEvolucao" class="hidden">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="App.voltarLogin()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">←</button>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:#0f3460">📈 Registro de Evolução</div>
+          <div id="pontoStepEvolucaoNomeObra" style="font-size:.78rem;color:#6b7280"></div>
+        </div>
+      </div>
+
+      <!-- Progresso global mini -->
+      <div id="evolColabKpi" style="background:linear-gradient(135deg,#0f3460,#1a4a8a);border-radius:12px;padding:14px 16px;color:#fff;margin-bottom:14px">
+        <div style="font-size:.72rem;opacity:.75;text-transform:uppercase;letter-spacing:.5px">Progresso da obra</div>
+        <div id="evolColabPct" style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin:4px 0">—</div>
+        <div style="background:rgba(255,255,255,.2);border-radius:999px;height:6px;overflow:hidden">
+          <div id="evolColabBar" style="height:100%;background:#10b981;border-radius:999px;width:0%;transition:width .6s"></div>
+        </div>
+      </div>
+
+      <div style="font-size:.8rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Atividades</div>
+      <div id="evolColabLista"></div>
+
+      <div id="evolColabBtnNova" style="display:none;margin-top:8px">
+        <button class="btn btn-outline full sm" onclick="App.evolAbrirModalAtividade()">
+          ＋ Sugerir nova atividade
+        </button>
+      </div>
+
+      <button class="btn btn-outline full" onclick="App.voltarLogin()" style="margin-top:16px">
+        Concluir e Fechar
       </button>
     </div>
 
@@ -484,6 +534,7 @@
     <button class="nav-item hidden" id="sidePonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span> Cartão de Ponto</button>
     <button class="nav-item hidden" id="sideRH" onclick="App.goTab('rh')" data-tab="rh"><span class="nav-icon">👔</span> RH</button>
     <button class="nav-item hidden" id="sideAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span> Administração</button>
+    <button class="nav-item hidden" id="sideEvolucao" onclick="App.goTab('evolucao')" data-tab="evolucao"><span class="nav-icon">📈</span> Evolução de Obras</button>
   </nav>
 
   <main class="app-content">
@@ -1166,6 +1217,207 @@
 
   </div><!-- fim tab-rh -->
 
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: EVOLUÇÃO DE OBRAS
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-evolucao" style="padding:0">
+    <div style="padding:24px 16px 100px" id="evolucaoConteudo">
+
+      <!-- HEADER -->
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem">📈 Evolução de Obras</h1>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:2px">Progresso físico ponderado — acompanhe o avanço em tempo real</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="evolFiltroObra" onchange="App.evolCarregarObra()" style="max-width:220px;margin:0;font-size:.84rem;padding:8px 12px">
+            <option value="">— Selecione a obra —</option>
+          </select>
+          <button class="btn btn-primary sm" id="btnEvolNovaAtiv" onclick="App.evolAbrirModalAtividade()" style="display:none">
+            ＋ Nova Atividade
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs globais da obra -->
+      <div id="evolKpis" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+          <div class="stat-card c-success" style="text-align:center">
+            <div class="stat-label">Progresso Global</div>
+            <div class="stat-value" id="evolKpiGlobal" style="font-size:1.6rem;color:var(--success)">0%</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Atividades</div>
+            <div class="stat-value" id="evolKpiTotal">0</div>
+          </div>
+          <div class="stat-card c-accent" style="text-align:center">
+            <div class="stat-label">Concluídas</div>
+            <div class="stat-value" id="evolKpiConc" style="color:var(--success)">0</div>
+          </div>
+          <div class="stat-card c-warning" style="text-align:center">
+            <div class="stat-label">Em andamento</div>
+            <div class="stat-value" id="evolKpiAnd" style="color:var(--accent2)">0</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Peso total</div>
+            <div class="stat-value" id="evolKpiPeso">0 pts</div>
+          </div>
+        </div>
+
+        <!-- Barra de progresso global visual -->
+        <div class="card" style="padding:16px 20px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Progresso Físico Ponderado</span>
+            <span id="evolBarLabel" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--brand)">0%</span>
+          </div>
+          <div style="background:var(--bg);border-radius:999px;height:14px;overflow:hidden">
+            <div id="evolBarFill" style="height:100%;border-radius:999px;background:linear-gradient(90deg,#10b981,#0f3460);width:0%;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="evolGrafGrid">
+          <div class="card" style="padding:16px">
+            <div style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Evolução no Tempo</div>
+            <canvas id="chartEvolLinha" height="180"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Distribuição de Peso</div>
+            <canvas id="chartEvolPizza" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de atividades / frentes -->
+      <div id="evolListaWrap" style="display:none">
+        <div class="card">
+          <div class="card-header" style="margin-bottom:12px">
+            <div>
+              <h3>Atividades Cadastradas</h3>
+              <p style="font-size:.8rem;color:var(--muted);margin-top:2px">Clique em uma atividade para registrar o progresso do dia</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="evolFiltroFrente" onchange="App.evolFiltrarFrente()" style="margin:0;font-size:.8rem;padding:6px 10px;width:auto">
+                <option value="">Todas as frentes</option>
+              </select>
+            </div>
+          </div>
+          <div id="evolListaAtividades"></div>
+        </div>
+      </div>
+
+      <!-- Estado vazio -->
+      <div id="evolVazio" class="card" style="text-align:center;padding:48px 24px">
+        <div style="font-size:3rem;margin-bottom:12px">📊</div>
+        <h3 style="font-family:'Syne',sans-serif;color:var(--brand);margin-bottom:8px">Selecione uma obra</h3>
+        <p style="color:var(--muted);font-size:.88rem">Escolha a obra acima para ver ou registrar o progresso físico</p>
+      </div>
+
+    </div>
+  </div><!-- fim tab-evolucao -->
+
+  <!-- Modal: Nova / Editar Atividade (ADMIN) -->
+  <div class="modal-overlay hidden" id="modalEvolAtiv">
+    <div class="modal" style="max-width:520px">
+      <h3 id="modalEvolAtivTitulo">➕ Nova Atividade</h3>
+      <input type="hidden" id="evolAtivId">
+      <div class="row">
+        <div style="flex:2">
+          <label>Descrição da Atividade</label>
+          <input id="evolAtivDesc" type="text" placeholder="Ex: Recuperar estrutura de concreto armado">
+        </div>
+        <div style="flex:1">
+          <label>Frente / Setor</label>
+          <input id="evolAtivFrente" type="text" placeholder="Ex: Fachada Norte">
+        </div>
+      </div>
+      <div class="row" style="margin-top:0">
+        <div>
+          <label>Peso (pontos)</label>
+          <input id="evolAtivPeso" type="number" min="1" max="999" value="10" style="text-align:center">
+          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Representa a importância relativa da atividade</div>
+        </div>
+        <div>
+          <label>Unidade de medida</label>
+          <select id="evolAtivUnidade" style="margin:0">
+            <option value="un">un (unidade)</option>
+            <option value="m²">m² (área)</option>
+            <option value="m">m (linear)</option>
+            <option value="m³">m³ (volume)</option>
+            <option value="%">% (percentual)</option>
+            <option value="vb">vb (verba)</option>
+          </select>
+        </div>
+        <div>
+          <label>Qtd. total prevista</label>
+          <input id="evolAtivQtdTotal" type="number" min="1" value="1" style="text-align:center">
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label>Observação (opcional)</label>
+        <textarea id="evolAtivObs" rows="2" placeholder="Detalhes, referências de projeto, etc."></textarea>
+      </div>
+      <!-- Permissão para colaborador cadastrar atividades -->
+      <div id="evolPermColabWrap" style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:.82rem;color:var(--muted)">Permitir que colaboradores adicionem atividades nesta obra</span>
+        <label style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="evolPermColab" style="width:18px;height:18px;accent-color:var(--brand)">
+          <span style="font-size:.82rem;font-weight:600" id="evolPermColabLabel">Não</span>
+        </label>
+      </div>
+      <div class="msg" id="evolAtivMsg"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modalEvolAtiv')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.evolSalvarAtividade()" id="btnEvolSalvarAtiv">Salvar Atividade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Registrar Progresso (Colaborador) -->
+  <div class="modal-overlay hidden" id="modalEvolRegistro">
+    <div class="modal" style="max-width:460px">
+      <h3>📝 Registrar Evolução</h3>
+      <input type="hidden" id="evolRegAtivId">
+      <div id="evolRegAtivInfo" style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px">
+        <div id="evolRegAtivNome" style="font-weight:700;color:var(--brand);font-size:.95rem"></div>
+        <div id="evolRegAtivFrente" style="font-size:.78rem;color:var(--muted);margin-top:2px"></div>
+        <div style="margin-top:10px">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">Progresso atual</div>
+          <div style="background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden">
+            <div id="evolRegBarAtual" style="height:100%;background:linear-gradient(90deg,#10b981,#0f3460);border-radius:999px;transition:width .4s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px">
+            <span id="evolRegPctAtual">0%</span>
+            <span id="evolRegQtdAtual"></span>
+          </div>
+        </div>
+      </div>
+
+      <label>Quantidade executada hoje</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="evolRegQtdHoje" type="number" min="0" step="0.01" placeholder="0" style="text-align:center;font-size:1.1rem;font-weight:700">
+        <span id="evolRegUnidade" style="font-size:.9rem;color:var(--muted);white-space:nowrap;font-weight:600"></span>
+      </div>
+      <div id="evolRegPreview" style="margin-top:8px;font-size:.82rem;color:var(--brand);font-weight:500;min-height:20px"></div>
+
+      <label style="margin-top:12px">Foto do avanço <span style="color:var(--muted);font-weight:400">(recomendada)</span></label>
+      <div id="evolRegFotoArea" style="border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:var(--bg);transition:all .18s" onclick="document.getElementById('evolRegFotoInput').click()">
+        <div id="evolRegFotoPreview" style="display:none"><img id="evolRegFotoImg" style="max-height:140px;border-radius:8px;max-width:100%" alt=""></div>
+        <div id="evolRegFotoPlaceholder">📷 Toque para adicionar foto</div>
+      </div>
+      <input type="file" id="evolRegFotoInput" accept="image/*" capture="environment" style="display:none" onchange="App.evolFotoSelecionada()">
+
+      <label style="margin-top:12px">Observação do dia <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+      <textarea id="evolRegObs" rows="2" placeholder="Ex: Janelas 3 e 4 finalizadas, aguardando cura da argamassa..."></textarea>
+
+      <div class="msg" id="evolRegMsg"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modalEvolRegistro')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.evolSalvarRegistro()" id="btnEvolSalvarReg">✅ Registrar</button>
+      </div>
+    </div>
+  </div>
+
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="App.goTab('dashboard')" data-tab="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
     <button class="nav-item" onclick="App.goTab('lancamentos')" data-tab="lancamentos"><span class="nav-icon">➕</span><span>Lançar</span></button>
@@ -1173,6 +1425,7 @@
     <button class="nav-item hidden" id="bottomPonto" onclick="App.goTab('ponto')" data-tab="ponto"><span class="nav-icon">🕐</span><span>Ponto</span></button>
     <button class="nav-item hidden" id="bottomRH" onclick="App.goTab('rh')" data-tab="rh"><span class="nav-icon">👔</span><span>RH</span></button>
     <button class="nav-item hidden" id="bottomAdmin" onclick="App.goTab('admin')" data-tab="admin"><span class="nav-icon">⚙️</span><span>Admin</span></button>
+    <button class="nav-item hidden" id="bottomEvolucao" onclick="App.goTab('evolucao')" data-tab="evolucao"><span class="nav-icon">📈</span><span>Evolução</span></button>
   </nav>
 </div>
 
@@ -1394,9 +1647,10 @@
   // NAVEGAÇÃO POR ABAS
   // ─────────────────────────────────────────
   function goTab(tab) {
-    if(tab==="admin" && currentRole!=="ADMIN") return;
-    if(tab==="ponto" && currentRole!=="ADMIN") return;
-    if(tab==="rh"    && currentRole!=="ADMIN") return;
+    if(tab==="admin"    && currentRole!=="ADMIN") return;
+    if(tab==="ponto"    && currentRole!=="ADMIN") return;
+    if(tab==="rh"       && currentRole!=="ADMIN") return;
+    if(tab==="evolucao" && currentRole!=="ADMIN") return; // ADMIN vê tudo; colab só via pontoPage
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
     document.querySelectorAll(".nav-item[data-tab]").forEach(b=>b.classList.remove("active"));
     $(`tab-${tab}`)?.classList.add("active");
@@ -1407,6 +1661,7 @@
     if(tab==="relatorios")  { fillRelatorioFiltros(); }
     if(tab==="ponto")       { fillPontoFiltros(); }
     if(tab==="rh")          { rhCarregarLista(); _rhVerificarExamesVencimento(); }
+    if(tab==="evolucao")    { evolInicializar(); }
   }
 
   function adminTab(tab) {
@@ -1545,6 +1800,8 @@
       $("bottomPonto")?.classList.remove("hidden");
       $("sideRH")?.classList.remove("hidden");
       $("bottomRH")?.classList.remove("hidden");
+      $("sideEvolucao")?.classList.remove("hidden");
+      $("bottomEvolucao")?.classList.remove("hidden");
     }
 
     try {
@@ -2059,6 +2316,615 @@
     } else {
       if(hint) hint.textContent = "";
     }
+  }
+
+
+  // ═══════════════════════════════════════════════════════════
+  // MÓDULO: EVOLUÇÃO DE OBRAS — Progresso Físico Ponderado
+  // Firestore: obras/{obraId}/atividades/{ativId}
+  //            obras/{obraId}/evolucao_historico/{dataISO}
+  //            obras/{obraId}/evolucao_registros/{registroId}
+  // ═══════════════════════════════════════════════════════════
+
+  let _evolObraId        = null;   // obra selecionada atualmente
+  let _evolAtividades    = [];     // cache das atividades da obra
+  let _evolPermColab     = false;  // obra permite que colab cadastre ativs
+  let _evolChartLinha    = null;   // instância Chart.js linha
+  let _evolChartPizza    = null;   // instância Chart.js pizza
+  let _evolFrentesFiltro = "";     // filtro de frente ativo
+  let _evolRegFotoB64    = null;   // foto base64 do registro atual
+
+  // Paleta de cores para gráficos
+  const EVOL_CORES = [
+    "#0f3460","#e94560","#10b981","#f5a623","#6366f1",
+    "#ec4899","#14b8a6","#f97316","#8b5cf6","#06b6d4",
+    "#84cc16","#ef4444"
+  ];
+
+  // ── Inicializar filtro de obras ──────────────────────────
+  async function evolInicializar() {
+    const sel = $("evolFiltroObra");
+    if(!sel) return;
+    try {
+      const snap = await getDocs(query(collection(db,"obras"), orderBy("nome")));
+      sel.innerHTML = `<option value="">— Selecione a obra —</option>`;
+      snap.forEach(d => {
+        if(d.data().ativa !== false) {
+          const opt = document.createElement("option");
+          opt.value = d.id; opt.textContent = d.data().nome;
+          sel.appendChild(opt);
+        }
+      });
+    } catch(e) { console.error("evolInicializar:", e); }
+  }
+
+  // ── Carregar obra selecionada ────────────────────────────
+  async function evolCarregarObra() {
+    const obraId = $("evolFiltroObra")?.value;
+    _evolObraId = obraId || null;
+
+    if(!obraId) {
+      $("evolKpis").style.display        = "none";
+      $("evolListaWrap").style.display   = "none";
+      $("evolVazio").style.display       = "";
+      $("btnEvolNovaAtiv").style.display = "none";
+      return;
+    }
+
+    $("evolVazio").style.display = "none";
+    $("evolKpis").style.display  = "";
+    $("evolListaWrap").style.display = "";
+
+    // Botão de nova atividade: ADMIN sempre; colab só se obra permite
+    const podeAdicionar = currentRole === "ADMIN" || _evolPermColab;
+    $("btnEvolNovaAtiv").style.display = podeAdicionar ? "" : "none";
+
+    await evolCarregarAtividades(obraId);
+    await evolCarregarHistorico(obraId);
+  }
+
+  // ── Carregar atividades da obra ──────────────────────────
+  async function evolCarregarAtividades(obraId) {
+    try {
+      const snap = await getDocs(
+        query(collection(db,"obras",obraId,"atividades"), orderBy("criadoEm","asc"))
+      );
+      _evolAtividades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Verificar permissão colab
+      const obraSnap = await getDoc(doc(db,"obras",obraId));
+      _evolPermColab = obraSnap.data()?.evolPermColab === true;
+
+      evolCalcularEAtualizar();
+    } catch(e) {
+      console.error("evolCarregarAtividades:", e);
+    }
+  }
+
+  // ── Calcular progresso e atualizar UI ───────────────────
+  function evolCalcularEAtualizar() {
+    const ativs = _evolAtividades;
+    if(!ativs.length) {
+      $("evolListaAtividades").innerHTML = `
+        <div class="empty"><div class="empty-icon">📋</div>
+        <p>Nenhuma atividade cadastrada ainda.<br>
+        ${currentRole==="ADMIN"?'Clique em "＋ Nova Atividade" para começar.':'Aguardando o administrador cadastrar as atividades.'}</p></div>`;
+      evolAtualizarKpis(0, 0, 0, 0, 0);
+      evolAtualizarBarra(0);
+      return;
+    }
+
+    let pesoTotal = 0, pesoConcluido = 0;
+    let totalAtivs = ativs.length, concluidas = 0, emAndamento = 0;
+    const frentesSet = new Set();
+
+    ativs.forEach(a => {
+      const peso  = Number(a.peso) || 1;
+      const pct   = Number(a.pctAtual) || 0;
+      pesoTotal     += peso;
+      pesoConcluido += peso * (pct / 100);
+      if(pct >= 100)       concluidas++;
+      else if(pct > 0)     emAndamento++;
+      if(a.frente) frentesSet.add(a.frente);
+    });
+
+    const progresso = pesoTotal > 0 ? (pesoConcluido / pesoTotal) * 100 : 0;
+
+    evolAtualizarKpis(progresso, totalAtivs, concluidas, emAndamento, pesoTotal);
+    evolAtualizarBarra(progresso);
+    evolRenderizarLista(ativs);
+    evolAtualizarFiltroFrentes(frentesSet);
+    evolAtualizarPizza(ativs);
+
+    // Salva snapshot no histórico (a cada carga se progresso mudou)
+    if(_evolObraId) evolRegistrarSnapshotHistorico(_evolObraId, progresso);
+  }
+
+  // ── KPIs ────────────────────────────────────────────────
+  function evolAtualizarKpis(prog, total, conc, and, peso) {
+    const p = prog.toFixed(1);
+    $("evolKpiGlobal").textContent = p + "%";
+    $("evolKpiTotal").textContent  = total;
+    $("evolKpiConc").textContent   = conc;
+    $("evolKpiAnd").textContent    = and;
+    $("evolKpiPeso").textContent   = peso + " pts";
+
+    // Cor dinâmica do KPI global
+    const c = prog >= 100 ? "var(--success)" : prog >= 60 ? "var(--accent2)" : prog >= 30 ? "var(--brand)" : "var(--accent)";
+    $("evolKpiGlobal").style.color = c;
+  }
+
+  // ── Barra de progresso principal ────────────────────────
+  function evolAtualizarBarra(pct) {
+    const p = Math.min(100, Math.max(0, pct));
+    const fill = $("evolBarFill");
+    const lbl  = $("evolBarLabel");
+    if(fill) fill.style.width = p.toFixed(1) + "%";
+    if(lbl)  lbl.textContent  = p.toFixed(1) + "%";
+    // Cor gradiente progressiva
+    if(fill) {
+      if(p >= 100)     fill.style.background = "linear-gradient(90deg,#10b981,#059669)";
+      else if(p >= 60) fill.style.background = "linear-gradient(90deg,#f5a623,#10b981)";
+      else if(p >= 30) fill.style.background = "linear-gradient(90deg,#e94560,#f5a623)";
+      else             fill.style.background = "linear-gradient(90deg,#e94560,#0f3460)";
+    }
+  }
+
+  // ── Renderizar lista de atividades ───────────────────────
+  function evolRenderizarLista(ativs) {
+    const filtro = _evolFrentesFiltro;
+    const filtradas = filtro ? ativs.filter(a => a.frente === filtro) : ativs;
+
+    if(!filtradas.length) {
+      $("evolListaAtividades").innerHTML = `<div class="empty"><p>Nenhuma atividade nesta frente.</p></div>`;
+      return;
+    }
+
+    $("evolListaAtividades").innerHTML = filtradas.map(a => {
+      const pct       = Number(a.pctAtual) || 0;
+      const qtdExec   = Number(a.qtdExecutada) || 0;
+      const qtdTotal  = Number(a.qtdTotal) || 1;
+      const peso      = Number(a.peso) || 1;
+      const statusCls = pct >= 100 ? "concluida-card" : pct > 0 ? "em-andamento" : "pendente";
+      const progCor   = pct >= 100 ? "#10b981" : pct >= 60 ? "#f5a623" : "#0f3460";
+      const statusLabel = pct >= 100
+        ? `<span style="font-size:.72rem;font-weight:700;color:var(--success);background:#dcfce7;padding:2px 8px;border-radius:6px">✅ Concluída</span>`
+        : pct > 0
+        ? `<span style="font-size:.72rem;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:6px">⚙️ Em andamento</span>`
+        : `<span style="font-size:.72rem;font-weight:700;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:6px">⏳ Não iniciada</span>`;
+
+      const adminAcoes = currentRole === "ADMIN" ? `
+        <button class="btn btn-outline sm" onclick="event.stopPropagation();App.evolEditarAtividade('${a.id}')" title="Editar" style="padding:5px 8px;font-size:.75rem">✏️</button>
+        <button class="btn btn-danger sm" onclick="event.stopPropagation();App.evolExcluirAtividade('${a.id}')" title="Excluir" style="padding:5px 8px;font-size:.75rem">🗑️</button>
+      ` : "";
+
+      return `
+      <div class="evol-ativ-card ${statusCls}" onclick="App.evolAbrirRegistro('${a.id}')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            ${a.frente ? `<div class="evol-frente-badge">${a.frente}</div>` : ""}
+            <div style="font-weight:700;font-size:.92rem;color:var(--text);margin-top:2px">${a.desc}</div>
+            ${a.obs ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px">${a.obs}</div>` : ""}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+            ${statusLabel}
+            <span class="evol-peso-badge">⚖️ ${peso} pts</span>
+            <div style="display:flex;gap:4px">${adminAcoes}</div>
+          </div>
+        </div>
+        <div class="evol-prog-bar" style="margin-top:10px">
+          <div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${progCor}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+          <span style="font-size:.75rem;color:var(--muted)">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</span>
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${progCor}">${pct.toFixed(1)}%</span>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  // ── Filtro de frentes ────────────────────────────────────
+  function evolAtualizarFiltroFrentes(frentesSet) {
+    const sel = $("evolFiltroFrente");
+    if(!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = `<option value="">Todas as frentes</option>`;
+    frentesSet.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f; opt.textContent = f;
+      if(f === atual) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function evolFiltrarFrente() {
+    _evolFrentesFiltro = $("evolFiltroFrente")?.value || "";
+    evolRenderizarLista(_evolAtividades);
+  }
+
+  // ── Gráfico Pizza ────────────────────────────────────────
+  function evolAtualizarPizza(ativs) {
+    const canvas = $("chartEvolPizza");
+    if(!canvas) return;
+
+    // Agrupa por frente
+    const grupos = {};
+    ativs.forEach(a => {
+      const k = a.frente || "Geral";
+      if(!grupos[k]) grupos[k] = 0;
+      grupos[k] += Number(a.peso) || 1;
+    });
+
+    if(_evolChartPizza) _evolChartPizza.destroy();
+    _evolChartPizza = new Chart(canvas, {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(grupos),
+        datasets: [{
+          data: Object.values(grupos),
+          backgroundColor: EVOL_CORES.slice(0, Object.keys(grupos).length),
+          borderWidth: 2, borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { position: "bottom", labels: { font: { family: "'DM Sans'", size: 11 }, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} pts` } }
+        },
+        cutout: "60%"
+      }
+    });
+  }
+
+  // ── Gráfico de Linha (histórico) ─────────────────────────
+  async function evolCarregarHistorico(obraId) {
+    try {
+      const snap = await getDocs(
+        query(collection(db,"obras",obraId,"evolucao_historico"), orderBy("data","asc"))
+      );
+      const labels = [], dados = [];
+      snap.forEach(d => {
+        const dt = new Date(d.data().data+"T12:00:00");
+        labels.push(dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
+        dados.push(parseFloat(d.data().progresso.toFixed(1)));
+      });
+
+      const canvas = $("chartEvolLinha");
+      if(!canvas) return;
+      if(_evolChartLinha) _evolChartLinha.destroy();
+
+      if(labels.length < 2) {
+        // Sem histórico suficiente
+        canvas.parentElement.innerHTML += `<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px 0">Dados insuficientes — o gráfico aparecerá após mais registros</div>`;
+        return;
+      }
+
+      _evolChartLinha = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "% Progresso",
+            data: dados,
+            borderColor: "#0f3460",
+            backgroundColor: "rgba(15,52,96,.08)",
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: "#e94560",
+            pointRadius: 4,
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          scales: {
+            y: { min:0, max:100, ticks: { callback: v => v+"%" }, grid: { color: "#f0f2f7" } },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+          },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
+        }
+      });
+    } catch(e) { console.error("evolCarregarHistorico:", e); }
+  }
+
+  // ── Registrar snapshot de progresso no histórico (por data) ──
+  async function evolRegistrarSnapshotHistorico(obraId, progresso) {
+    try {
+      const hoje = new Date().toISOString().split("T")[0];
+      await setDoc(
+        doc(db,"obras",obraId,"evolucao_historico",hoje),
+        { data: hoje, progresso: parseFloat(progresso.toFixed(2)), atualizadoEm: serverTimestamp() },
+        { merge: true }
+      );
+    } catch(e) {} // silencioso
+  }
+
+  // ── MODAL: Nova / Editar Atividade ───────────────────────
+  function evolAbrirModalAtividade(ativId = null) {
+    $("evolAtivId").value   = ativId || "";
+    $("evolAtivDesc").value = "";
+    $("evolAtivFrente").value = "";
+    $("evolAtivPeso").value = "10";
+    $("evolAtivUnidade").value = "un";
+    $("evolAtivQtdTotal").value = "1";
+    $("evolAtivObs").value  = "";
+    $("evolPermColab").checked = _evolPermColab;
+    $("evolPermColabLabel").textContent = _evolPermColab ? "Sim" : "Não";
+    setMsg("evolAtivMsg", "");
+
+    if(ativId) {
+      const a = _evolAtividades.find(x => x.id === ativId);
+      if(a) {
+        $("evolAtivDesc").value    = a.desc || "";
+        $("evolAtivFrente").value  = a.frente || "";
+        $("evolAtivPeso").value    = a.peso || 10;
+        $("evolAtivUnidade").value = a.unidade || "un";
+        $("evolAtivQtdTotal").value = a.qtdTotal || 1;
+        $("evolAtivObs").value     = a.obs || "";
+      }
+      $("modalEvolAtivTitulo").textContent = "✏️ Editar Atividade";
+    } else {
+      $("modalEvolAtivTitulo").textContent = "➕ Nova Atividade";
+    }
+    // Permissão de colaborador só visível para ADMIN
+    $("evolPermColabWrap").style.display = currentRole === "ADMIN" ? "" : "none";
+    $("modalEvolAtiv").classList.remove("hidden");
+  }
+
+  function evolEditarAtividade(ativId) { evolAbrirModalAtividade(ativId); }
+
+  async function evolSalvarAtividade() {
+    const ativId   = $("evolAtivId").value;
+    const desc     = ($("evolAtivDesc")?.value || "").trim();
+    const frente   = ($("evolAtivFrente")?.value || "").trim();
+    const peso     = parseInt($("evolAtivPeso")?.value) || 10;
+    const unidade  = $("evolAtivUnidade")?.value || "un";
+    const qtdTotal = parseFloat($("evolAtivQtdTotal")?.value) || 1;
+    const obs      = ($("evolAtivObs")?.value || "").trim();
+    const permColab = $("evolPermColab")?.checked || false;
+
+    if(!desc) { setMsg("evolAtivMsg","⚠️ Informe a descrição da atividade.","err"); return; }
+    if(!_evolObraId) return;
+
+    const btn = $("btnEvolSalvarAtiv");
+    if(btn) { btn.disabled=true; btn.textContent="⏳ Salvando…"; }
+
+    try {
+      const payload = {
+        desc, frente, peso, unidade, qtdTotal, obs,
+        pctAtual: 0, qtdExecutada: 0,
+        atualizadoEm: serverTimestamp()
+      };
+      if(ativId) {
+        // Editar — preservar progresso atual
+        const existente = _evolAtividades.find(x => x.id === ativId);
+        payload.pctAtual     = existente?.pctAtual || 0;
+        payload.qtdExecutada = existente?.qtdExecutada || 0;
+        await setDoc(doc(db,"obras",_evolObraId,"atividades",ativId), payload, {merge:true});
+      } else {
+        payload.criadoEm  = serverTimestamp();
+        payload.criadoPor = currentUser?.uid || "";
+        await addDoc(collection(db,"obras",_evolObraId,"atividades"), payload);
+      }
+      // Atualizar permissão da obra
+      if(currentRole === "ADMIN") {
+        await setDoc(doc(db,"obras",_evolObraId), { evolPermColab: permColab }, {merge:true});
+        _evolPermColab = permColab;
+      }
+      closeModal("modalEvolAtiv");
+      toast("✅ Atividade salva!");
+      await evolCarregarAtividades(_evolObraId);
+    } catch(e) { setMsg("evolAtivMsg","❌ Erro: "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="Salvar Atividade"; } }
+  }
+
+  async function evolExcluirAtividade(ativId) {
+    const a = _evolAtividades.find(x => x.id === ativId);
+    if(!a) return;
+    showModal("Excluir Atividade", `Remover "<strong>${a.desc}</strong>"? O progresso registrado será perdido.`, async () => {
+      try {
+        await deleteDoc(doc(db,"obras",_evolObraId,"atividades",ativId));
+        toast("✅ Atividade removida.");
+        await evolCarregarAtividades(_evolObraId);
+      } catch(e) { toast("❌ Erro: "+e.message); }
+    }, "Excluir", true);
+  }
+
+  // ── MODAL: Registrar Progresso ───────────────────────────
+  function evolAbrirRegistro(ativId) {
+    const a = _evolAtividades.find(x => x.id === ativId);
+    if(!a) return;
+
+    $("evolRegAtivId").value = ativId;
+    $("evolRegAtivNome").textContent   = a.desc;
+    $("evolRegAtivFrente").textContent = a.frente ? `📍 ${a.frente}` : "";
+    $("evolRegUnidade").textContent    = a.unidade || "un";
+    $("evolRegQtdHoje").value = "";
+    $("evolRegObs").value     = "";
+    $("evolRegPreview").textContent = "";
+    setMsg("evolRegMsg","");
+    _evolRegFotoB64 = null;
+    $("evolRegFotoImg").src = "";
+    $("evolRegFotoPreview").style.display    = "none";
+    $("evolRegFotoPlaceholder").style.display = "";
+
+    const pct      = Number(a.pctAtual) || 0;
+    const qtdExec  = Number(a.qtdExecutada) || 0;
+    const qtdTotal = Number(a.qtdTotal) || 1;
+
+    $("evolRegBarAtual").style.width  = pct.toFixed(1)+"%";
+    $("evolRegPctAtual").textContent  = pct.toFixed(1)+"%";
+    $("evolRegQtdAtual").textContent  = `${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"} executados`;
+
+    // Listener para preview em tempo real
+    $("evolRegQtdHoje").oninput = () => {
+      const qtdHoje   = parseFloat($("evolRegQtdHoje").value) || 0;
+      const novaQtd   = Math.min(qtdTotal, qtdExec + qtdHoje);
+      const novoPct   = (novaQtd / qtdTotal) * 100;
+      const delta     = novoPct - pct;
+      $("evolRegPreview").textContent = qtdHoje > 0
+        ? `→ Progresso: ${novoPct.toFixed(1)}% (${delta > 0 ? "+" : ""}${delta.toFixed(1)}%)`
+        : "";
+    };
+
+    $("modalEvolRegistro").classList.remove("hidden");
+  }
+
+  function evolFotoSelecionada() {
+    const file = $("evolRegFotoInput")?.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      _evolRegFotoB64 = e.target.result;
+      $("evolRegFotoImg").src = e.target.result;
+      $("evolRegFotoPreview").style.display    = "";
+      $("evolRegFotoPlaceholder").style.display = "none";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function evolSalvarRegistro() {
+    const ativId   = $("evolRegAtivId").value;
+    const qtdHoje  = parseFloat($("evolRegQtdHoje")?.value);
+    const obs      = ($("evolRegObs")?.value || "").trim();
+    const a        = _evolAtividades.find(x => x.id === ativId);
+    if(!a || !_evolObraId) return;
+
+    if(isNaN(qtdHoje) || qtdHoje < 0) {
+      setMsg("evolRegMsg","⚠️ Informe a quantidade executada hoje.","err"); return;
+    }
+
+    const btn = $("btnEvolSalvarReg");
+    if(btn) { btn.disabled=true; btn.textContent="⏳ Salvando…"; }
+
+    try {
+      const qtdTotal  = Number(a.qtdTotal) || 1;
+      const qtdExec   = Number(a.qtdExecutada) || 0;
+      const novaQtd   = Math.min(qtdTotal, qtdExec + qtdHoje);
+      const novoPct   = (novaQtd / qtdTotal) * 100;
+      const hoje      = new Date().toISOString().split("T")[0];
+
+      // Upload da foto para Cloudinary (se houver)
+      let fotoUrl = "";
+      if(_evolRegFotoB64) {
+        try {
+          const fd = new FormData();
+          fd.append("file", _evolRegFotoB64);
+          fd.append("upload_preset", CLOUDINARY_PRESET);
+          fd.append("folder", "evolucao_obras");
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:"POST", body: fd });
+          const data = await res.json();
+          fotoUrl = data.secure_url || "";
+        } catch(e) { console.warn("Upload foto evolução falhou:", e); }
+      }
+
+      // Atualizar atividade
+      await setDoc(
+        doc(db,"obras",_evolObraId,"atividades",ativId),
+        { pctAtual: parseFloat(novoPct.toFixed(2)), qtdExecutada: novaQtd, atualizadoEm: serverTimestamp() },
+        { merge: true }
+      );
+
+      // Registrar log do evento
+      await addDoc(collection(db,"obras",_evolObraId,"evolucao_registros"), {
+        ativId, ativDesc: a.desc, frente: a.frente || "",
+        data: hoje, qtdHoje, qtdExecutada: novaQtd, qtdTotal,
+        pctAntes: Number(a.pctAtual) || 0, pctDepois: parseFloat(novoPct.toFixed(2)),
+        obs, fotoUrl,
+        colaboradorUid:  currentUser?.uid || pontoUser?.uid || "",
+        colaboradorNome: currentUser?.displayName || pontoProfile?.nome || "",
+        criadoEm: serverTimestamp()
+      });
+
+      closeModal("modalEvolRegistro");
+      toast(`✅ Progresso registrado! Atividade agora em ${novoPct.toFixed(1)}%`);
+      await evolCarregarAtividades(_evolObraId);
+      await evolCarregarHistorico(_evolObraId);
+    } catch(e) { setMsg("evolRegMsg","❌ Erro: "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="✅ Registrar"; } }
+  }
+
+  // ── Acesso do colaborador pela pontoPage ─────────────────
+  // Abre a tela de Evolução dentro da pontoPage após o ponto
+  async function evolAbrirParaColab() {
+    if(!pontoUser?.uid || !pontoObraData?.id) return;
+    _evolObraId = pontoObraData.id;
+
+    // Simula goTab mas na pontoPage — mostramos o step de evolução
+    const step = $("pontoStepEvolucao");
+    if(!step) return;
+
+    $("pontoStepOk").classList.add("hidden");
+    $("pontoStepEvolucaoNomeObra").textContent = pontoObraData.nome || "Obra";
+
+    // Carrega atividades usando authAux (colab)
+    try {
+      const obraSnap = await getDoc(doc(dbAux,"obras",pontoObraData.id));
+      _evolPermColab = obraSnap.data()?.evolPermColab === true;
+
+      const snap = await getDocs(
+        query(collection(dbAux,"obras",pontoObraData.id,"atividades"), orderBy("criadoEm","asc"))
+      );
+      _evolAtividades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // KPI global para o colaborador
+      let pesoTotal = 0, pesoConcluido = 0;
+      _evolAtividades.forEach(a => {
+        const p = Number(a.peso)||1;
+        pesoTotal += p;
+        pesoConcluido += p * ((Number(a.pctAtual)||0) / 100);
+      });
+      const pctGlobal = pesoTotal > 0 ? (pesoConcluido/pesoTotal)*100 : 0;
+      const el = $("evolColabPct"); if(el) el.textContent = pctGlobal.toFixed(1)+"%";
+      const bar = $("evolColabBar"); if(bar) bar.style.width = pctGlobal.toFixed(1)+"%";
+
+      evolRenderizarListaColab(_evolAtividades);
+    } catch(e) {
+      $("evolColabLista").innerHTML = `<div class="empty"><p>Erro ao carregar atividades.</p></div>`;
+    }
+    step.classList.remove("hidden");
+  }
+
+  function evolRenderizarListaColab(ativs) {
+    const el = $("evolColabLista");
+    if(!el) return;
+    if(!ativs.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma atividade cadastrada para esta obra.</p></div>`;
+      return;
+    }
+    el.innerHTML = ativs.map(a => {
+      const pct     = Number(a.pctAtual) || 0;
+      const qtdExec = Number(a.qtdExecutada) || 0;
+      const qtdTotal = Number(a.qtdTotal) || 1;
+      const cor = pct >= 100 ? "#10b981" : pct > 0 ? "#f5a623" : "#6b7280";
+      return `
+      <div class="evol-ativ-card ${pct>=100?"concluida-card":pct>0?"em-andamento":"pendente"}"
+           onclick="App.evolAbrirRegistroColab('${a.id}')"
+           style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            ${a.frente ? `<div class="evol-frente-badge">${a.frente}</div>` : ""}
+            <div style="font-weight:700;font-size:.9rem;margin-top:2px">${a.desc}</div>
+          </div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:${cor}">${pct.toFixed(1)}%</div>
+        </div>
+        <div class="evol-prog-bar" style="margin-top:8px">
+          <div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${cor}"></div>
+        </div>
+        <div style="font-size:.73rem;color:var(--muted);margin-top:4px">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</div>
+      </div>`;
+    }).join("");
+
+    // Botão nova atividade (se obra permitir)
+    const btnWrap = $("evolColabBtnNova");
+    if(btnWrap) btnWrap.style.display = _evolPermColab ? "" : "none";
+  }
+
+  // Abre modal de registro de progresso no contexto do colaborador (usa dbAux)
+  function evolAbrirRegistroColab(ativId) {
+    // Reutiliza o mesmo modal mas salva via dbAux
+    evolAbrirRegistro(ativId);
   }
 
   // Cache local dos EPIs carregados
@@ -3679,6 +4545,8 @@
     $("pontoEmail").value=""; $("pontoSenha").value="";
     setMsg("pontoLoginMsg","");
     $("pontoGeoAviso")?.classList.add("hidden");
+    $("pontoStepEvolucao")?.classList.add("hidden");
+    _evolAtividades = []; _evolRegFotoB64 = null;
     $("pontoSemFotoAviso")?.classList.add("hidden");
     $("pontoStepLogin").classList.remove("hidden");
     $("pontoStepCamera").classList.add("hidden");
@@ -7474,6 +8342,11 @@
     _rhVerificarExamesVencimento, _rhIniciarMonitoramentoExames,
     // Helpers
     _getProcessoId,
+    // Evolução de Obras
+    evolInicializar, evolCarregarObra, evolFiltrarFrente,
+    evolAbrirModalAtividade, evolEditarAtividade, evolSalvarAtividade, evolExcluirAtividade,
+    evolAbrirRegistro, evolAbrirRegistroColab, evolFotoSelecionada, evolSalvarRegistro,
+    evolAbrirParaColab,
     // Cadastro de EPIs
     epiCarregar, epiFiltrar, epiAutoCA,
     epiSalvarNovo, epiIniciarEdicao, epiCancelarEdicao, epiSalvarEdicao, epiExcluir,
