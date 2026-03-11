@@ -1224,82 +1224,123 @@
     <div style="padding:24px 16px 100px" id="evolucaoConteudo">
 
       <!-- HEADER -->
-      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         <div>
           <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem">📈 Evolução de Obras</h1>
-          <p style="font-size:.85rem;color:var(--muted);margin-top:2px">Progresso físico ponderado — acompanhe o avanço em tempo real</p>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:2px">Progresso físico ponderado por atividade</p>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="evolFiltroObra" onchange="App.evolCarregarObra()" style="max-width:220px;margin:0;font-size:.84rem;padding:8px 12px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="evolFiltroObra" onchange="App.evolCarregarObra()" style="max-width:240px;margin:0;font-size:.84rem;padding:8px 12px">
             <option value="">— Selecione a obra —</option>
           </select>
           <button class="btn btn-primary sm" id="btnEvolNovaAtiv" onclick="App.evolAbrirModalAtividade()" style="display:none">
-            ＋ Nova Atividade
+            ＋ Atividade
           </button>
+          <button class="btn sm" id="btnEvolConfig" onclick="App.evolAbrirContrato()" style="display:none;background:#f0f7ff;color:var(--brand);border:1.5px solid #bfdbfe">
+            📄 Contrato
+          </button>
+        </div>
+      </div>
+
+      <!-- PAINEL DO CONTRATO (expansível) -->
+      <div id="evolPainelContrato" style="display:none;margin-bottom:16px">
+        <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #bfdbfe">
+          <div style="background:linear-gradient(135deg,#0f3460,#1a4a8a);padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+            <div style="color:#fff">
+              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem" id="evolContNome">—</div>
+              <div style="font-size:.75rem;opacity:.75;margin-top:2px" id="evolContCliente">—</div>
+            </div>
+            <div style="text-align:right;color:#fff">
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem" id="evolContValor">—</div>
+              <div style="font-size:.72rem;opacity:.7">Valor Global</div>
+            </div>
+          </div>
+          <!-- Marcos de Pagamento -->
+          <div style="padding:16px 20px">
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Marcos de Pagamento</div>
+            <div id="evolMarcosWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+          <!-- Prazo -->
+          <div style="padding:0 20px 16px;display:flex;gap:20px;flex-wrap:wrap">
+            <div style="font-size:.8rem;color:var(--muted)">⏱ Prazo: <strong id="evolContPrazo">—</strong></div>
+            <div style="font-size:.8rem;color:var(--muted)">📅 Início: <strong id="evolContInicio">—</strong></div>
+            <div style="font-size:.8rem;color:var(--muted)">🏁 Previsão: <strong id="evolContPrevisao">—</strong></div>
+          </div>
         </div>
       </div>
 
       <!-- KPIs globais da obra -->
       <div id="evolKpis" style="display:none">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
-          <div class="stat-card c-success" style="text-align:center">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+          <div class="stat-card c-success" style="text-align:center;padding:12px">
             <div class="stat-label">Progresso Global</div>
-            <div class="stat-value" id="evolKpiGlobal" style="font-size:1.6rem;color:var(--success)">0%</div>
+            <div class="stat-value" id="evolKpiGlobal" style="font-size:1.5rem;color:var(--success)">0%</div>
           </div>
-          <div class="stat-card" style="text-align:center">
+          <div class="stat-card" style="text-align:center;padding:12px">
             <div class="stat-label">Atividades</div>
             <div class="stat-value" id="evolKpiTotal">0</div>
           </div>
-          <div class="stat-card c-accent" style="text-align:center">
+          <div class="stat-card c-accent" style="text-align:center;padding:12px">
             <div class="stat-label">Concluídas</div>
             <div class="stat-value" id="evolKpiConc" style="color:var(--success)">0</div>
           </div>
-          <div class="stat-card c-warning" style="text-align:center">
+          <div class="stat-card c-warning" style="text-align:center;padding:12px">
             <div class="stat-label">Em andamento</div>
             <div class="stat-value" id="evolKpiAnd" style="color:var(--accent2)">0</div>
           </div>
-          <div class="stat-card" style="text-align:center">
-            <div class="stat-label">Peso total</div>
-            <div class="stat-value" id="evolKpiPeso">0 pts</div>
+          <div class="stat-card" style="text-align:center;padding:12px">
+            <div class="stat-label">Dias decorridos</div>
+            <div class="stat-value" id="evolKpiDias">—</div>
           </div>
         </div>
 
-        <!-- Barra de progresso global visual -->
+        <!-- Barra de progresso global + próximo marco -->
         <div class="card" style="padding:16px 20px;margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <span style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Progresso Físico Ponderado</span>
-            <span id="evolBarLabel" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--brand)">0%</span>
+            <span id="evolBarLabel" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:var(--brand)">0%</span>
           </div>
-          <div style="background:var(--bg);border-radius:999px;height:14px;overflow:hidden">
+          <!-- Barra principal -->
+          <div style="background:var(--bg);border-radius:999px;height:16px;overflow:hidden;position:relative">
             <div id="evolBarFill" style="height:100%;border-radius:999px;background:linear-gradient(90deg,#10b981,#0f3460);width:0%;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>
+            <!-- Marcadores de marco -->
+            <div id="evolMarcadores" style="position:absolute;inset:0;pointer-events:none"></div>
           </div>
+          <!-- Legenda dos marcos na barra -->
+          <div id="evolLegendaMarcos" style="display:flex;justify-content:space-between;margin-top:6px;font-size:.7rem;color:var(--muted)"></div>
+          <!-- Próximo marco -->
+          <div id="evolProximoMarco" style="margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:.8rem;display:none"></div>
         </div>
 
         <!-- Gráficos -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="evolGrafGrid">
           <div class="card" style="padding:16px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Evolução no Tempo</div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Evolução no Tempo</div>
             <canvas id="chartEvolLinha" height="180"></canvas>
           </div>
           <div class="card" style="padding:16px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Distribuição de Peso</div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Peso por Frente</div>
             <canvas id="chartEvolPizza" height="180"></canvas>
           </div>
         </div>
       </div>
 
-      <!-- Lista de atividades / frentes -->
+      <!-- Lista de atividades -->
       <div id="evolListaWrap" style="display:none">
         <div class="card">
-          <div class="card-header" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
             <div>
-              <h3>Atividades Cadastradas</h3>
-              <p style="font-size:.8rem;color:var(--muted);margin-top:2px">Clique em uma atividade para registrar o progresso do dia</p>
+              <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem">Atividades</h3>
+              <p style="font-size:.78rem;color:var(--muted);margin-top:2px">Toque para registrar progresso do dia</p>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
               <select id="evolFiltroFrente" onchange="App.evolFiltrarFrente()" style="margin:0;font-size:.8rem;padding:6px 10px;width:auto">
                 <option value="">Todas as frentes</option>
               </select>
+              <div style="display:flex;gap:4px">
+                <button onclick="App.evolSetView('lista')" id="btnEvolViewLista" class="btn sm" style="padding:5px 8px;background:var(--brand);color:#fff;font-size:.75rem">☰</button>
+                <button onclick="App.evolSetView('frente')" id="btnEvolViewFrente" class="btn sm btn-outline" style="padding:5px 8px;font-size:.75rem">⊞</button>
+              </div>
             </div>
           </div>
           <div id="evolListaAtividades"></div>
@@ -1308,13 +1349,65 @@
 
       <!-- Estado vazio -->
       <div id="evolVazio" class="card" style="text-align:center;padding:48px 24px">
-        <div style="font-size:3rem;margin-bottom:12px">📊</div>
+        <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
         <h3 style="font-family:'Syne',sans-serif;color:var(--brand);margin-bottom:8px">Selecione uma obra</h3>
-        <p style="color:var(--muted);font-size:.88rem">Escolha a obra acima para ver ou registrar o progresso físico</p>
+        <p style="color:var(--muted);font-size:.88rem">Escolha a obra acima para ver o progresso físico</p>
       </div>
 
     </div>
   </div><!-- fim tab-evolucao -->
+
+  <!-- Modal: Contrato / Config da Obra -->
+  <div class="modal-overlay hidden" id="modalEvolContrato">
+    <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+      <h3>📄 Dados do Contrato</h3>
+      <div class="row">
+        <div>
+          <label>Cliente / Contratante</label>
+          <input id="evolCfgCliente" type="text" placeholder="Ex: Ibitu Energia / Complexo Taíba e Icaraí">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Valor Global (R$)</label>
+          <input id="evolCfgValor" type="number" step="0.01" placeholder="368600.00">
+        </div>
+        <div>
+          <label>Data de mobilização</label>
+          <input id="evolCfgInicio" type="date">
+        </div>
+        <div>
+          <label>Prazo (dias trabalhados)</label>
+          <input id="evolCfgPrazo" type="number" placeholder="50" style="text-align:center">
+        </div>
+      </div>
+
+      <!-- Marcos de pagamento -->
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="margin:0;font-size:.85rem;font-weight:600;color:var(--text)">Marcos de Pagamento</label>
+          <button class="btn sm btn-outline" onclick="App.evolAddMarco()" style="font-size:.75rem;padding:4px 10px">+ Marco</button>
+        </div>
+        <div id="evolCfgMarcosLista"></div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Os marcos definem os pontos de medição para faturamento</div>
+      </div>
+
+      <!-- Permissão colaborador -->
+      <div style="margin-top:16px;padding:10px 14px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:.82rem;color:var(--muted)">Colaboradores podem cadastrar atividades</span>
+        <label style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="evolCfgPermColab" style="width:18px;height:18px;accent-color:var(--brand)">
+          <span style="font-size:.82rem;font-weight:600" id="evolCfgPermColabLabel">Não</span>
+        </label>
+      </div>
+
+      <div class="msg" id="evolCfgMsg"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modalEvolContrato')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.evolSalvarContrato()">💾 Salvar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Nova / Editar Atividade (ADMIN) -->
   <div class="modal-overlay hidden" id="modalEvolAtiv">
@@ -1324,23 +1417,25 @@
       <div class="row">
         <div style="flex:2">
           <label>Descrição da Atividade</label>
-          <input id="evolAtivDesc" type="text" placeholder="Ex: Recuperar estrutura de concreto armado">
+          <input id="evolAtivDesc" type="text" placeholder="Ex: Tratamento estrutural — armaduras">
         </div>
         <div style="flex:1">
-          <label>Frente / Setor</label>
-          <input id="evolAtivFrente" type="text" placeholder="Ex: Fachada Norte">
+          <label>Frente / Complexo</label>
+          <input id="evolAtivFrente" type="text" list="evolFrentesDatalist" placeholder="Ex: Complexo Taíba">
+          <datalist id="evolFrentesDatalist"></datalist>
         </div>
       </div>
       <div class="row" style="margin-top:0">
         <div>
           <label>Peso (pontos)</label>
           <input id="evolAtivPeso" type="number" min="1" max="999" value="10" style="text-align:center">
-          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Representa a importância relativa da atividade</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Importância relativa</div>
         </div>
         <div>
-          <label>Unidade de medida</label>
+          <label>Unidade</label>
           <select id="evolAtivUnidade" style="margin:0">
             <option value="un">un (unidade)</option>
+            <option value="SU">SU (subestação)</option>
             <option value="m²">m² (área)</option>
             <option value="m">m (linear)</option>
             <option value="m³">m³ (volume)</option>
@@ -1349,71 +1444,72 @@
           </select>
         </div>
         <div>
-          <label>Qtd. total prevista</label>
-          <input id="evolAtivQtdTotal" type="number" min="1" value="1" style="text-align:center">
+          <label>Qtd. total</label>
+          <input id="evolAtivQtdTotal" type="number" min="1" step="0.01" value="1" style="text-align:center">
         </div>
       </div>
-      <div style="margin-top:12px">
-        <label>Observação (opcional)</label>
-        <textarea id="evolAtivObs" rows="2" placeholder="Detalhes, referências de projeto, etc."></textarea>
-      </div>
-      <!-- Permissão para colaborador cadastrar atividades -->
-      <div id="evolPermColabWrap" style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:.82rem;color:var(--muted)">Permitir que colaboradores adicionem atividades nesta obra</span>
-        <label style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
-          <input type="checkbox" id="evolPermColab" style="width:18px;height:18px;accent-color:var(--brand)">
-          <span style="font-size:.82rem;font-weight:600" id="evolPermColabLabel">Não</span>
-        </label>
+      <div style="margin-top:10px">
+        <label>Observação técnica (opcional)</label>
+        <textarea id="evolAtivObs" rows="2" placeholder="Norma, método, referência de projeto..."></textarea>
       </div>
       <div class="msg" id="evolAtivMsg"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="App.closeModal('modalEvolAtiv')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.evolSalvarAtividade()" id="btnEvolSalvarAtiv">Salvar Atividade</button>
+        <button class="btn btn-primary" onclick="App.evolSalvarAtividade()" id="btnEvolSalvarAtiv">Salvar</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Registrar Progresso (Colaborador) -->
+  <!-- Modal: Registrar Progresso -->
   <div class="modal-overlay hidden" id="modalEvolRegistro">
     <div class="modal" style="max-width:460px">
-      <h3>📝 Registrar Evolução</h3>
+      <h3>📝 Registrar Progresso</h3>
       <input type="hidden" id="evolRegAtivId">
-      <div id="evolRegAtivInfo" style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px">
+      <!-- Info da atividade -->
+      <div id="evolRegAtivInfo" style="background:linear-gradient(135deg,#f0f7ff,#e8f4fd);border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:14px">
         <div id="evolRegAtivNome" style="font-weight:700;color:var(--brand);font-size:.95rem"></div>
-        <div id="evolRegAtivFrente" style="font-size:.78rem;color:var(--muted);margin-top:2px"></div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span id="evolRegAtivFrente" style="font-size:.75rem;color:var(--muted)"></span>
+          <span id="evolRegAtivUnidBadge" style="font-size:.72rem;font-weight:600;background:#eff6ff;color:var(--brand);padding:1px 7px;border-radius:5px"></span>
+        </div>
         <div style="margin-top:10px">
-          <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">Progresso atual</div>
-          <div style="background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden">
-            <div id="evolRegBarAtual" style="height:100%;background:linear-gradient(90deg,#10b981,#0f3460);border-radius:999px;transition:width .4s"></div>
+          <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px">
+            <span style="color:var(--muted)">Progresso acumulado</span>
+            <span id="evolRegPctAtual" style="font-weight:700;color:var(--brand)">0%</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px">
-            <span id="evolRegPctAtual">0%</span>
-            <span id="evolRegQtdAtual"></span>
+          <div style="background:#dbeafe;border-radius:999px;height:8px;overflow:hidden">
+            <div id="evolRegBarAtual" style="height:100%;background:var(--brand);border-radius:999px;transition:width .4s"></div>
           </div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:3px" id="evolRegQtdAtual"></div>
         </div>
       </div>
 
-      <label>Quantidade executada hoje</label>
+      <!-- Quantidade hoje -->
+      <label>Quantidade executada <strong>hoje</strong></label>
       <div style="display:flex;gap:10px;align-items:center">
-        <input id="evolRegQtdHoje" type="number" min="0" step="0.01" placeholder="0" style="text-align:center;font-size:1.1rem;font-weight:700">
-        <span id="evolRegUnidade" style="font-size:.9rem;color:var(--muted);white-space:nowrap;font-weight:600"></span>
+        <input id="evolRegQtdHoje" type="number" min="0" step="0.01" placeholder="0"
+               style="text-align:center;font-size:1.2rem;font-weight:800;color:var(--brand)">
+        <span id="evolRegUnidade" style="font-size:.95rem;color:var(--muted);white-space:nowrap;font-weight:700;min-width:32px"></span>
       </div>
-      <div id="evolRegPreview" style="margin-top:8px;font-size:.82rem;color:var(--brand);font-weight:500;min-height:20px"></div>
+      <!-- Preview em tempo real -->
+      <div id="evolRegPreview" style="margin-top:8px;min-height:22px;font-size:.82rem;font-weight:600;padding:6px 10px;border-radius:8px;background:transparent"></div>
 
-      <label style="margin-top:12px">Foto do avanço <span style="color:var(--muted);font-weight:400">(recomendada)</span></label>
-      <div id="evolRegFotoArea" style="border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:var(--bg);transition:all .18s" onclick="document.getElementById('evolRegFotoInput').click()">
-        <div id="evolRegFotoPreview" style="display:none"><img id="evolRegFotoImg" style="max-height:140px;border-radius:8px;max-width:100%" alt=""></div>
-        <div id="evolRegFotoPlaceholder">📷 Toque para adicionar foto</div>
+      <!-- Foto -->
+      <label style="margin-top:12px">📷 Foto do avanço <span style="color:var(--muted);font-weight:400">(recomendada)</span></label>
+      <div id="evolRegFotoArea" style="border:2px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);transition:all .18s" onclick="document.getElementById('evolRegFotoInput').click()">
+        <div id="evolRegFotoPreview" style="display:none"><img id="evolRegFotoImg" style="max-height:130px;border-radius:8px;max-width:100%" alt=""></div>
+        <div id="evolRegFotoPlaceholder" style="color:var(--muted);font-size:.85rem">Toque para adicionar foto do serviço</div>
       </div>
       <input type="file" id="evolRegFotoInput" accept="image/*" capture="environment" style="display:none" onchange="App.evolFotoSelecionada()">
 
-      <label style="margin-top:12px">Observação do dia <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
-      <textarea id="evolRegObs" rows="2" placeholder="Ex: Janelas 3 e 4 finalizadas, aguardando cura da argamassa..."></textarea>
+      <!-- Obs -->
+      <label style="margin-top:10px">Observação <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+      <textarea id="evolRegObs" rows="2" placeholder="Ex: SU-03 concluída, aguardando cura da argamassa..."></textarea>
 
       <div class="msg" id="evolRegMsg"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="App.closeModal('modalEvolRegistro')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.evolSalvarRegistro()" id="btnEvolSalvarReg">✅ Registrar</button>
+        <button class="btn btn-primary" onclick="App.evolSalvarRegistro()" id="btnEvolSalvarReg">✅ Confirmar</button>
       </div>
     </div>
   </div>
@@ -2321,27 +2417,45 @@
 
   // ═══════════════════════════════════════════════════════════
   // MÓDULO: EVOLUÇÃO DE OBRAS — Progresso Físico Ponderado
-  // Firestore: obras/{obraId}/atividades/{ativId}
-  //            obras/{obraId}/evolucao_historico/{dataISO}
-  //            obras/{obraId}/evolucao_registros/{registroId}
+  // Firestore:
+  //   obras/{obraId}/atividades/{ativId}
+  //   obras/{obraId}/evolucao_historico/{dataISO}
+  //   obras/{obraId}/evolucao_registros/{id}
+  //   obras/{obraId}/contrato  (documento único)
   // ═══════════════════════════════════════════════════════════
 
-  let _evolObraId        = null;   // obra selecionada atualmente
-  let _evolAtividades    = [];     // cache das atividades da obra
-  let _evolPermColab     = false;  // obra permite que colab cadastre ativs
-  let _evolChartLinha    = null;   // instância Chart.js linha
-  let _evolChartPizza    = null;   // instância Chart.js pizza
-  let _evolFrentesFiltro = "";     // filtro de frente ativo
-  let _evolRegFotoB64    = null;   // foto base64 do registro atual
+  let _evolObraId        = null;
+  let _evolAtividades    = [];
+  let _evolPermColab     = false;
+  let _evolChartLinha    = null;
+  let _evolChartPizza    = null;
+  let _evolFrentesFiltro = "";
+  let _evolRegFotoB64    = null;
+  let _evolContrato      = null;   // dados do contrato/configuração da obra
+  let _evolViewMode      = "lista"; // "lista" | "frente"
 
-  // Paleta de cores para gráficos
-  const EVOL_CORES = [
-    "#0f3460","#e94560","#10b981","#f5a623","#6366f1",
-    "#ec4899","#14b8a6","#f97316","#8b5cf6","#06b6d4",
-    "#84cc16","#ef4444"
+  const EVOL_CORES = ["#0f3460","#e94560","#10b981","#f5a623","#6366f1","#ec4899","#14b8a6","#f97316","#8b5cf6","#06b6d4","#84cc16","#ef4444"];
+
+  // Pesos sugeridos para os serviços do contrato Ibitu (base)
+  const EVOL_PESOS_IBITU = {
+    "Inspeção e diagnóstico": 5,
+    "Tratamento estrutural": 30,
+    "Reparo em paredes": 20,
+    "Reparo em tampas de concreto": 15,
+    "Recuperação de portas e janelas": 15,
+    "Limpeza e organização": 10,
+    "Entregáveis finais (relatório + ART)": 5
+  };
+
+  // Marcos padrão do contrato Ibitu (% progresso → % pagamento)
+  const EVOL_MARCOS_IBITU = [
+    { label:"Mobilização", pct:0,  pagPct:20, diasMob:0 },
+    { label:"21 dias",     pct:40, pagPct:30, diasMob:21 },
+    { label:"42 dias",     pct:80, pagPct:30, diasMob:42 },
+    { label:"Conclusão",   pct:100,pagPct:20, diasMob:50 }
   ];
 
-  // ── Inicializar filtro de obras ──────────────────────────
+  // ── Inicializar select de obras ──────────────────────────
   async function evolInicializar() {
     const sel = $("evolFiltroObra");
     if(!sel) return;
@@ -2351,14 +2465,17 @@
       snap.forEach(d => {
         if(d.data().ativa !== false) {
           const opt = document.createElement("option");
-          opt.value = d.id; opt.textContent = d.data().nome;
+          opt.value = d.id;
+          opt.textContent = d.data().nome;
+          if(d.id === _evolObraId) opt.selected = true;
           sel.appendChild(opt);
         }
       });
+      if(_evolObraId) evolCarregarObra();
     } catch(e) { console.error("evolInicializar:", e); }
   }
 
-  // ── Carregar obra selecionada ────────────────────────────
+  // ── Carregar obra ────────────────────────────────────────
   async function evolCarregarObra() {
     const obraId = $("evolFiltroObra")?.value;
     _evolObraId = obraId || null;
@@ -2367,23 +2484,80 @@
       $("evolKpis").style.display        = "none";
       $("evolListaWrap").style.display   = "none";
       $("evolVazio").style.display       = "";
+      $("evolPainelContrato").style.display = "none";
       $("btnEvolNovaAtiv").style.display = "none";
+      $("btnEvolConfig").style.display   = "none";
       return;
     }
 
     $("evolVazio").style.display = "none";
     $("evolKpis").style.display  = "";
     $("evolListaWrap").style.display = "";
+    if(currentRole === "ADMIN") {
+      $("btnEvolNovaAtiv").style.display = "";
+      $("btnEvolConfig").style.display   = "";
+    }
 
-    // Botão de nova atividade: ADMIN sempre; colab só se obra permite
-    const podeAdicionar = currentRole === "ADMIN" || _evolPermColab;
-    $("btnEvolNovaAtiv").style.display = podeAdicionar ? "" : "none";
-
+    // Carregar contrato/config da obra
+    await evolCarregarContrato(obraId);
     await evolCarregarAtividades(obraId);
     await evolCarregarHistorico(obraId);
   }
 
-  // ── Carregar atividades da obra ──────────────────────────
+  // ── Carregar contrato/configuração ──────────────────────
+  async function evolCarregarContrato(obraId) {
+    try {
+      const snap = await getDoc(doc(db,"obras",obraId,"config","contrato"));
+      _evolContrato = snap.exists() ? snap.data() : null;
+    } catch(e) { _evolContrato = null; }
+    evolRenderizarPainelContrato();
+  }
+
+  function evolRenderizarPainelContrato() {
+    const c = _evolContrato;
+    const painel = $("evolPainelContrato");
+    if(!c) { if(painel) painel.style.display = "none"; return; }
+
+    if(painel) painel.style.display = "";
+    $("evolContNome").textContent    = c.nome || "Contrato";
+    $("evolContCliente").textContent = c.cliente || "";
+    $("evolContValor").textContent   = c.valor ? "R$ " + Number(c.valor).toLocaleString("pt-BR",{minimumFractionDigits:2}) : "—";
+    $("evolContPrazo").textContent   = c.prazo ? c.prazo + " dias trabalhados" : "—";
+
+    // Datas
+    if(c.inicio) {
+      const ini = new Date(c.inicio+"T12:00:00");
+      $("evolContInicio").textContent = ini.toLocaleDateString("pt-BR");
+      // Previsão (aproximada: dias úteis ≈ dias corridos × 1.4)
+      const prev = new Date(ini);
+      prev.setDate(prev.getDate() + Math.round((Number(c.prazo)||50) * 1.4));
+      $("evolContPrevisao").textContent = prev.toLocaleDateString("pt-BR");
+    } else {
+      $("evolContInicio").textContent   = "A definir";
+      $("evolContPrevisao").textContent = "A definir";
+    }
+
+    // Marcos de pagamento
+    const marcos = c.marcos || EVOL_MARCOS_IBITU;
+    const valor  = Number(c.valor) || 0;
+    const wrap   = $("evolMarcosWrap");
+    if(wrap) {
+      wrap.innerHTML = marcos.map((m,i) => {
+        const pagVal = valor > 0 ? " = R$ " + (valor * m.pagPct/100).toLocaleString("pt-BR",{minimumFractionDigits:2}) : "";
+        return `
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;${i < marcos.length-1 ? "border-bottom:1px solid var(--border)" : ""}">
+          <div style="width:28px;height:28px;border-radius:50%;background:${EVOL_CORES[i]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">${m.pagPct}%</div>
+          <div style="flex:1">
+            <div style="font-size:.82rem;font-weight:600;color:var(--text)">${m.label}</div>
+            <div style="font-size:.73rem;color:var(--muted)">${m.pct > 0 ? m.pct+"% do progresso" : "Início dos serviços"}${pagVal}</div>
+          </div>
+          <div style="font-size:.78rem;font-weight:700;color:${EVOL_CORES[i]}">${m.pagPct}% pago</div>
+        </div>`;
+      }).join("");
+    }
+  }
+
+  // ── Carregar atividades ──────────────────────────────────
   async function evolCarregarAtividades(obraId) {
     try {
       const snap = await getDocs(
@@ -2391,541 +2565,691 @@
       );
       _evolAtividades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Verificar permissão colab
       const obraSnap = await getDoc(doc(db,"obras",obraId));
       _evolPermColab = obraSnap.data()?.evolPermColab === true;
+      if(currentRole !== "ADMIN") {
+        $("btnEvolNovaAtiv").style.display = _evolPermColab ? "" : "none";
+      }
 
       evolCalcularEAtualizar();
-    } catch(e) {
-      console.error("evolCarregarAtividades:", e);
-    }
+    } catch(e) { console.error("evolCarregarAtividades:", e); }
   }
 
-  // ── Calcular progresso e atualizar UI ───────────────────
+  // ── Calcular e atualizar UI ──────────────────────────────
   function evolCalcularEAtualizar() {
     const ativs = _evolAtividades;
+
     if(!ativs.length) {
       $("evolListaAtividades").innerHTML = `
         <div class="empty"><div class="empty-icon">📋</div>
-        <p>Nenhuma atividade cadastrada ainda.<br>
-        ${currentRole==="ADMIN"?'Clique em "＋ Nova Atividade" para começar.':'Aguardando o administrador cadastrar as atividades.'}</p></div>`;
-      evolAtualizarKpis(0, 0, 0, 0, 0);
+        <p>${currentRole==="ADMIN"
+          ? 'Nenhuma atividade. Clique em "＋ Atividade" para começar.<br><button class="btn btn-primary sm" style="margin-top:10px" onclick="App.evolPreencherIbitu()">🚀 Pré-preencher com contrato Ibitu</button>'
+          : "Aguardando o administrador cadastrar as atividades."}</p></div>`;
+      evolAtualizarKpis(0,0,0,0);
       evolAtualizarBarra(0);
       return;
     }
 
-    let pesoTotal = 0, pesoConcluido = 0;
-    let totalAtivs = ativs.length, concluidas = 0, emAndamento = 0;
+    let pesoTotal=0, pesoConcluido=0, totalAtivs=ativs.length, concluidas=0, emAndamento=0;
     const frentesSet = new Set();
 
     ativs.forEach(a => {
-      const peso  = Number(a.peso) || 1;
-      const pct   = Number(a.pctAtual) || 0;
+      const peso = Number(a.peso)||1;
+      const pct  = Number(a.pctAtual)||0;
       pesoTotal     += peso;
-      pesoConcluido += peso * (pct / 100);
-      if(pct >= 100)       concluidas++;
-      else if(pct > 0)     emAndamento++;
+      pesoConcluido += peso * (pct/100);
+      if(pct >= 100) concluidas++;
+      else if(pct > 0) emAndamento++;
       if(a.frente) frentesSet.add(a.frente);
     });
 
-    const progresso = pesoTotal > 0 ? (pesoConcluido / pesoTotal) * 100 : 0;
+    const progresso = pesoTotal > 0 ? (pesoConcluido/pesoTotal)*100 : 0;
 
-    evolAtualizarKpis(progresso, totalAtivs, concluidas, emAndamento, pesoTotal);
+    evolAtualizarKpis(progresso, totalAtivs, concluidas, emAndamento);
     evolAtualizarBarra(progresso);
     evolRenderizarLista(ativs);
     evolAtualizarFiltroFrentes(frentesSet);
     evolAtualizarPizza(ativs);
-
-    // Salva snapshot no histórico (a cada carga se progresso mudou)
+    evolRenderizarMarcadoresBarra();
+    evolRenderizarProximoMarco(progresso);
     if(_evolObraId) evolRegistrarSnapshotHistorico(_evolObraId, progresso);
   }
 
   // ── KPIs ────────────────────────────────────────────────
-  function evolAtualizarKpis(prog, total, conc, and, peso) {
-    const p = prog.toFixed(1);
-    $("evolKpiGlobal").textContent = p + "%";
+  function evolAtualizarKpis(prog, total, conc, and) {
+    $("evolKpiGlobal").textContent = prog.toFixed(1)+"%";
     $("evolKpiTotal").textContent  = total;
     $("evolKpiConc").textContent   = conc;
     $("evolKpiAnd").textContent    = and;
-    $("evolKpiPeso").textContent   = peso + " pts";
 
-    // Cor dinâmica do KPI global
-    const c = prog >= 100 ? "var(--success)" : prog >= 60 ? "var(--accent2)" : prog >= 30 ? "var(--brand)" : "var(--accent)";
-    $("evolKpiGlobal").style.color = c;
+    // Dias decorridos desde mobilização
+    const c = _evolContrato;
+    if(c?.inicio) {
+      const ini  = new Date(c.inicio+"T12:00:00");
+      const hoje = new Date();
+      const dias = Math.floor((hoje-ini)/(1000*60*60*24));
+      $("evolKpiDias").textContent = dias >= 0 ? dias+"d" : "—";
+      // Cor: verde=no prazo, laranja=atenção, vermelho=atrasado
+      const prazo  = Number(c.prazo)||50;
+      const diasUt = Math.round(dias/1.4); // aproximação dias úteis
+      $("evolKpiDias").style.color = diasUt > prazo ? "var(--danger)" : diasUt > prazo*0.8 ? "var(--accent2)" : "var(--success)";
+    } else {
+      $("evolKpiDias").textContent = "—";
+    }
+
+    const cor = prog>=100?"var(--success)":prog>=60?"var(--accent2)":prog>=30?"var(--brand)":"var(--accent)";
+    $("evolKpiGlobal").style.color = cor;
   }
 
-  // ── Barra de progresso principal ────────────────────────
+  // ── Barra de progresso ───────────────────────────────────
   function evolAtualizarBarra(pct) {
     const p = Math.min(100, Math.max(0, pct));
     const fill = $("evolBarFill");
     const lbl  = $("evolBarLabel");
-    if(fill) fill.style.width = p.toFixed(1) + "%";
-    if(lbl)  lbl.textContent  = p.toFixed(1) + "%";
-    // Cor gradiente progressiva
+    if(fill) fill.style.width = p.toFixed(1)+"%";
+    if(lbl)  lbl.textContent  = p.toFixed(1)+"%";
     if(fill) {
-      if(p >= 100)     fill.style.background = "linear-gradient(90deg,#10b981,#059669)";
-      else if(p >= 60) fill.style.background = "linear-gradient(90deg,#f5a623,#10b981)";
-      else if(p >= 30) fill.style.background = "linear-gradient(90deg,#e94560,#f5a623)";
-      else             fill.style.background = "linear-gradient(90deg,#e94560,#0f3460)";
+      if(p>=100)     fill.style.background="linear-gradient(90deg,#10b981,#059669)";
+      else if(p>=60) fill.style.background="linear-gradient(90deg,#f5a623,#10b981)";
+      else if(p>=30) fill.style.background="linear-gradient(90deg,#e94560,#f5a623)";
+      else           fill.style.background="linear-gradient(90deg,#e94560,#0f3460)";
     }
+  }
+
+  // ── Marcadores de marcos na barra ───────────────────────
+  function evolRenderizarMarcadoresBarra() {
+    const wrap   = $("evolMarcadores");
+    const legenda= $("evolLegendaMarcos");
+    if(!wrap || !legenda) return;
+
+    const marcos = _evolContrato?.marcos || EVOL_MARCOS_IBITU;
+    wrap.innerHTML = "";
+    legenda.innerHTML = "";
+
+    marcos.forEach((m, i) => {
+      if(m.pct <= 0 || m.pct >= 100) { legenda.innerHTML += `<span></span>`; return; }
+      // Linha vertical na barra
+      const linha = document.createElement("div");
+      linha.style.cssText = `position:absolute;left:${m.pct}%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.7);`;
+      wrap.appendChild(linha);
+      legenda.innerHTML += `<span style="position:absolute;left:${m.pct}%;transform:translateX(-50%)">${m.label}</span>`;
+    });
+
+    // Legenda relativa
+    legenda.style.position="relative";
+    legenda.style.height="16px";
+  }
+
+  // ── Próximo marco ────────────────────────────────────────
+  function evolRenderizarProximoMarco(pctAtual) {
+    const el     = $("evolProximoMarco");
+    if(!el) return;
+    const marcos = _evolContrato?.marcos || EVOL_MARCOS_IBITU;
+    const valor  = Number(_evolContrato?.valor)||0;
+
+    const proximo = marcos.find(m => m.pct > pctAtual);
+    if(!proximo) {
+      el.style.display="none"; return;
+    }
+    el.style.display="";
+    const pagVal = valor > 0 ? " (R$ "+( valor*proximo.pagPct/100).toLocaleString("pt-BR",{minimumFractionDigits:2})+")" : "";
+    const falta  = (proximo.pct - pctAtual).toFixed(1);
+    el.innerHTML = `🎯 Próximo marco: <strong>${proximo.label}</strong> em <strong>${proximo.pct}%</strong> — faltam <strong>${falta}%</strong> para liberar o pagamento de <strong>${proximo.pagPct}%${pagVal}</strong>`;
+    el.style.color = "var(--brand)";
   }
 
   // ── Renderizar lista de atividades ───────────────────────
   function evolRenderizarLista(ativs) {
-    const filtro = _evolFrentesFiltro;
-    const filtradas = filtro ? ativs.filter(a => a.frente === filtro) : ativs;
+    const filtro   = _evolFrentesFiltro;
+    const filtradas= filtro ? ativs.filter(a=>a.frente===filtro) : ativs;
 
     if(!filtradas.length) {
-      $("evolListaAtividades").innerHTML = `<div class="empty"><p>Nenhuma atividade nesta frente.</p></div>`;
+      $("evolListaAtividades").innerHTML=`<div class="empty"><p>Nenhuma atividade nesta frente.</p></div>`;
       return;
     }
 
-    $("evolListaAtividades").innerHTML = filtradas.map(a => {
-      const pct       = Number(a.pctAtual) || 0;
-      const qtdExec   = Number(a.qtdExecutada) || 0;
-      const qtdTotal  = Number(a.qtdTotal) || 1;
-      const peso      = Number(a.peso) || 1;
-      const statusCls = pct >= 100 ? "concluida-card" : pct > 0 ? "em-andamento" : "pendente";
-      const progCor   = pct >= 100 ? "#10b981" : pct >= 60 ? "#f5a623" : "#0f3460";
-      const statusLabel = pct >= 100
-        ? `<span style="font-size:.72rem;font-weight:700;color:var(--success);background:#dcfce7;padding:2px 8px;border-radius:6px">✅ Concluída</span>`
-        : pct > 0
-        ? `<span style="font-size:.72rem;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:6px">⚙️ Em andamento</span>`
-        : `<span style="font-size:.72rem;font-weight:700;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:6px">⏳ Não iniciada</span>`;
-
-      const adminAcoes = currentRole === "ADMIN" ? `
-        <button class="btn btn-outline sm" onclick="event.stopPropagation();App.evolEditarAtividade('${a.id}')" title="Editar" style="padding:5px 8px;font-size:.75rem">✏️</button>
-        <button class="btn btn-danger sm" onclick="event.stopPropagation();App.evolExcluirAtividade('${a.id}')" title="Excluir" style="padding:5px 8px;font-size:.75rem">🗑️</button>
-      ` : "";
-
-      return `
-      <div class="evol-ativ-card ${statusCls}" onclick="App.evolAbrirRegistro('${a.id}')">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div style="flex:1;min-width:0">
-            ${a.frente ? `<div class="evol-frente-badge">${a.frente}</div>` : ""}
-            <div style="font-weight:700;font-size:.92rem;color:var(--text);margin-top:2px">${a.desc}</div>
-            ${a.obs ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px">${a.obs}</div>` : ""}
+    if(_evolViewMode === "frente") {
+      // Agrupar por frente
+      const grupos = {};
+      filtradas.forEach(a => {
+        const k = a.frente || "Sem frente";
+        if(!grupos[k]) grupos[k]=[];
+        grupos[k].push(a);
+      });
+      $("evolListaAtividades").innerHTML = Object.entries(grupos).map(([frente, ats]) => {
+        const progFrente = evolCalcularProgrespoFrente(ats);
+        return `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;color:var(--brand)">${frente}</span>
+            <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;color:${progFrente>=100?"var(--success)":"var(--brand)"};margin-left:auto">${progFrente.toFixed(1)}%</span>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-            ${statusLabel}
-            <span class="evol-peso-badge">⚖️ ${peso} pts</span>
-            <div style="display:flex;gap:4px">${adminAcoes}</div>
-          </div>
-        </div>
-        <div class="evol-prog-bar" style="margin-top:10px">
-          <div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${progCor}"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
-          <span style="font-size:.75rem;color:var(--muted)">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</span>
-          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${progCor}">${pct.toFixed(1)}%</span>
-        </div>
-      </div>`;
-    }).join("");
+          ${ats.map(a => evolCardAtividade(a)).join("")}
+        </div>`;
+      }).join("");
+    } else {
+      $("evolListaAtividades").innerHTML = filtradas.map(a => evolCardAtividade(a)).join("");
+    }
   }
 
-  // ── Filtro de frentes ────────────────────────────────────
+  function evolCalcularProgrespoFrente(ativs) {
+    let pesoTotal=0, pesoConcluido=0;
+    ativs.forEach(a => {
+      const p=Number(a.peso)||1; pesoTotal+=p;
+      pesoConcluido+=p*(( Number(a.pctAtual)||0)/100);
+    });
+    return pesoTotal>0?(pesoConcluido/pesoTotal)*100:0;
+  }
+
+  function evolCardAtividade(a) {
+    const pct       = Number(a.pctAtual)||0;
+    const qtdExec   = Number(a.qtdExecutada)||0;
+    const qtdTotal  = Number(a.qtdTotal)||1;
+    const peso      = Number(a.peso)||1;
+    const progCor   = pct>=100?"#10b981":pct>=60?"#f5a623":"#0f3460";
+    const statusCls = pct>=100?"concluida-card":pct>0?"em-andamento":"pendente";
+
+    const statusBadge = pct>=100
+      ? `<span style="font-size:.7rem;font-weight:700;color:var(--success);background:#dcfce7;padding:2px 8px;border-radius:6px">✅ Concluída</span>`
+      : pct>0
+      ? `<span style="font-size:.7rem;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:6px">⚙️ Em andamento</span>`
+      : `<span style="font-size:.7rem;font-weight:700;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:6px">⏳ Não iniciada</span>`;
+
+    const adminAcoes = currentRole==="ADMIN" ? `
+      <button class="btn btn-outline sm" onclick="event.stopPropagation();App.evolEditarAtividade('${a.id}')" style="padding:4px 7px;font-size:.72rem">✏️</button>
+      <button class="btn btn-danger sm" onclick="event.stopPropagation();App.evolExcluirAtividade('${a.id}')" style="padding:4px 7px;font-size:.72rem">🗑️</button>` : "";
+
+    return `
+    <div class="evol-ativ-card ${statusCls}" onclick="App.evolAbrirRegistro('${a.id}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          ${a.frente && _evolViewMode!=="frente" ? `<div class="evol-frente-badge">${a.frente}</div>` : ""}
+          <div style="font-weight:700;font-size:.9rem;color:var(--text);margin-top:${a.frente&&_evolViewMode!=="frente"?"2px":"0"}">${a.desc}</div>
+          ${a.obs ? `<div style="font-size:.73rem;color:var(--muted);margin-top:1px">${a.obs}</div>` : ""}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+          ${statusBadge}
+          <span class="evol-peso-badge">⚖️ ${peso} pts</span>
+          <div style="display:flex;gap:3px;margin-top:2px">${adminAcoes}</div>
+        </div>
+      </div>
+      <div class="evol-prog-bar" style="margin-top:8px">
+        <div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${progCor}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <span style="font-size:.72rem;color:var(--muted)">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</span>
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;color:${progCor}">${pct.toFixed(1)}%</span>
+      </div>
+    </div>`;
+  }
+
+  // ── Filtros ──────────────────────────────────────────────
   function evolAtualizarFiltroFrentes(frentesSet) {
-    const sel = $("evolFiltroFrente");
+    const sel    = $("evolFiltroFrente");
+    const dl     = $("evolFrentesDatalist");
     if(!sel) return;
-    const atual = sel.value;
-    sel.innerHTML = `<option value="">Todas as frentes</option>`;
+    const atual  = sel.value;
+    sel.innerHTML= `<option value="">Todas as frentes</option>`;
+    if(dl) dl.innerHTML = "";
     frentesSet.forEach(f => {
-      const opt = document.createElement("option");
-      opt.value = f; opt.textContent = f;
-      if(f === atual) opt.selected = true;
+      const opt=document.createElement("option"); opt.value=f; opt.textContent=f;
+      if(f===atual) opt.selected=true;
       sel.appendChild(opt);
+      if(dl) { const o2=document.createElement("option"); o2.value=f; dl.appendChild(o2); }
     });
   }
 
   function evolFiltrarFrente() {
-    _evolFrentesFiltro = $("evolFiltroFrente")?.value || "";
+    _evolFrentesFiltro = $("evolFiltroFrente")?.value||"";
+    evolRenderizarLista(_evolAtividades);
+  }
+
+  function evolSetView(mode) {
+    _evolViewMode=mode;
+    $("btnEvolViewLista").style.background  = mode==="lista"?"var(--brand)":"#fff";
+    $("btnEvolViewLista").style.color       = mode==="lista"?"#fff":"var(--brand)";
+    $("btnEvolViewFrente").style.background = mode==="frente"?"var(--brand)":"#fff";
+    $("btnEvolViewFrente").style.color      = mode==="frente"?"#fff":"var(--brand)";
     evolRenderizarLista(_evolAtividades);
   }
 
   // ── Gráfico Pizza ────────────────────────────────────────
   function evolAtualizarPizza(ativs) {
-    const canvas = $("chartEvolPizza");
-    if(!canvas) return;
-
-    // Agrupa por frente
-    const grupos = {};
+    const canvas=$("chartEvolPizza"); if(!canvas) return;
+    const grupos={};
     ativs.forEach(a => {
-      const k = a.frente || "Geral";
-      if(!grupos[k]) grupos[k] = 0;
-      grupos[k] += Number(a.peso) || 1;
+      const k=a.frente||"Geral";
+      if(!grupos[k]) grupos[k]=0;
+      grupos[k]+=Number(a.peso)||1;
     });
-
     if(_evolChartPizza) _evolChartPizza.destroy();
-    _evolChartPizza = new Chart(canvas, {
-      type: "doughnut",
-      data: {
-        labels: Object.keys(grupos),
-        datasets: [{
-          data: Object.values(grupos),
-          backgroundColor: EVOL_CORES.slice(0, Object.keys(grupos).length),
-          borderWidth: 2, borderColor: "#fff"
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: {
-          legend: { position: "bottom", labels: { font: { family: "'DM Sans'", size: 11 }, padding: 8 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} pts` } }
-        },
-        cutout: "60%"
-      }
+    _evolChartPizza=new Chart(canvas,{
+      type:"doughnut",
+      data:{ labels:Object.keys(grupos), datasets:[{ data:Object.values(grupos), backgroundColor:EVOL_CORES.slice(0,Object.keys(grupos).length), borderWidth:2, borderColor:"#fff" }] },
+      options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:"bottom",labels:{font:{family:"'DM Sans'",size:10},padding:6}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw} pts`}} }, cutout:"60%" }
     });
   }
 
-  // ── Gráfico de Linha (histórico) ─────────────────────────
+  // ── Gráfico Linha ────────────────────────────────────────
   async function evolCarregarHistorico(obraId) {
     try {
-      const snap = await getDocs(
-        query(collection(db,"obras",obraId,"evolucao_historico"), orderBy("data","asc"))
-      );
-      const labels = [], dados = [];
+      const snap=await getDocs(query(collection(db,"obras",obraId,"evolucao_historico"),orderBy("data","asc")));
+      const labels=[],dados=[];
       snap.forEach(d => {
-        const dt = new Date(d.data().data+"T12:00:00");
+        const dt=new Date(d.data().data+"T12:00:00");
         labels.push(dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
         dados.push(parseFloat(d.data().progresso.toFixed(1)));
       });
 
-      const canvas = $("chartEvolLinha");
-      if(!canvas) return;
+      // Adicionar linha de meta (linear de 0→100 no prazo)
+      const canvas=$("chartEvolLinha"); if(!canvas) return;
       if(_evolChartLinha) _evolChartLinha.destroy();
 
-      if(labels.length < 2) {
-        // Sem histórico suficiente
-        canvas.parentElement.innerHTML += `<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px 0">Dados insuficientes — o gráfico aparecerá após mais registros</div>`;
+      if(labels.length<2) {
+        const existente = canvas.parentElement.querySelector(".evol-no-data");
+        if(!existente) {
+          const msg=document.createElement("div");
+          msg.className="evol-no-data";
+          msg.style.cssText="text-align:center;color:var(--muted);font-size:.78rem;padding:16px 0";
+          msg.textContent="Histórico aparecerá após mais registros";
+          canvas.parentElement.appendChild(msg);
+        }
         return;
       }
 
-      _evolChartLinha = new Chart(canvas, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "% Progresso",
-            data: dados,
-            borderColor: "#0f3460",
-            backgroundColor: "rgba(15,52,96,.08)",
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: "#e94560",
-            pointRadius: 4,
-            borderWidth: 2.5
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: true,
-          scales: {
-            y: { min:0, max:100, ticks: { callback: v => v+"%" }, grid: { color: "#f0f2f7" } },
-            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      _evolChartLinha=new Chart(canvas,{
+        type:"line",
+        data:{ labels, datasets:[{
+          label:"% Progresso",
+          data:dados,
+          borderColor:"#0f3460", backgroundColor:"rgba(15,52,96,.08)",
+          fill:true, tension:0.4, pointBackgroundColor:"#e94560",
+          pointRadius:4, borderWidth:2.5
+        }]},
+        options:{
+          responsive:true, maintainAspectRatio:true,
+          scales:{
+            y:{min:0,max:100,ticks:{callback:v=>v+"%"},grid:{color:"#f0f2f7"}},
+            x:{grid:{display:false},ticks:{font:{size:10}}}
           },
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y}%`}}}
         }
       });
-    } catch(e) { console.error("evolCarregarHistorico:", e); }
+    } catch(e) { console.error("evolCarregarHistorico:",e); }
   }
 
-  // ── Registrar snapshot de progresso no histórico (por data) ──
+  // ── Snapshot de progresso diário ─────────────────────────
   async function evolRegistrarSnapshotHistorico(obraId, progresso) {
     try {
-      const hoje = new Date().toISOString().split("T")[0];
-      await setDoc(
-        doc(db,"obras",obraId,"evolucao_historico",hoje),
-        { data: hoje, progresso: parseFloat(progresso.toFixed(2)), atualizadoEm: serverTimestamp() },
-        { merge: true }
+      const hoje=new Date().toISOString().split("T")[0];
+      await setDoc(doc(db,"obras",obraId,"evolucao_historico",hoje),
+        {data:hoje, progresso:parseFloat(progresso.toFixed(2)), atualizadoEm:serverTimestamp()},
+        {merge:true}
       );
-    } catch(e) {} // silencioso
+    } catch(e) {}
+  }
+
+  // ── Pré-preencher com atividades do contrato Ibitu ───────
+  async function evolPreencherIbitu() {
+    if(!_evolObraId) return;
+    const atividades = [
+      { desc:"Inspeção e diagnóstico", frente:"Complexo Taíba", peso:3, unidade:"SU", qtdTotal:6, obs:"Relatório técnico + mapeamento fotográfico" },
+      { desc:"Inspeção e diagnóstico", frente:"Complexo Icaraí", peso:2, unidade:"SU", qtdTotal:4, obs:"Relatório técnico + mapeamento fotográfico" },
+      { desc:"Tratamento estrutural", frente:"Complexo Taíba", peso:18, unidade:"SU", qtdTotal:6, obs:"Remoções controladas, anticorrosivo de armaduras, argamassa/graute (ABNT), correção de fissuras" },
+      { desc:"Tratamento estrutural", frente:"Complexo Icaraí", peso:12, unidade:"SU", qtdTotal:4, obs:"Remoções controladas, anticorrosivo de armaduras, argamassa/graute (ABNT), correção de fissuras" },
+      { desc:"Reparo em paredes", frente:"Complexo Taíba", peso:10, unidade:"SU", qtdTotal:6, obs:"Recuperação estrutural das paredes" },
+      { desc:"Reparo em paredes", frente:"Complexo Icaraí", peso:8, unidade:"SU", qtdTotal:4, obs:"Recuperação estrutural das paredes" },
+      { desc:"Reparo em tampas superiores de concreto", frente:"Complexo Taíba", peso:8, unidade:"un", qtdTotal:1, obs:"1 tampa por complexo — aditivo para unidades adicionais" },
+      { desc:"Reparo em tampas superiores de concreto", frente:"Complexo Icaraí", peso:7, unidade:"un", qtdTotal:1, obs:"1 tampa por complexo — aditivo para unidades adicionais" },
+      { desc:"Recuperação de portas e janelas metálicas", frente:"Complexo Taíba", peso:9, unidade:"SU", qtdTotal:6, obs:"Primer + pintura resistente à maresia" },
+      { desc:"Recuperação de portas e janelas metálicas", frente:"Complexo Icaraí", peso:6, unidade:"SU", qtdTotal:4, obs:"Primer + pintura resistente à maresia" },
+      { desc:"Limpeza e destinação de resíduos", frente:"Complexo Taíba", peso:5, unidade:"SU", qtdTotal:6, obs:"Organização e destinação ambientalmente adequada" },
+      { desc:"Limpeza e destinação de resíduos", frente:"Complexo Icaraí", peso:4, unidade:"SU", qtdTotal:4, obs:"Organização e destinação ambientalmente adequada" },
+      { desc:"Entregáveis finais", frente:"Complexo Taíba", peso:4, unidade:"vb", qtdTotal:1, obs:"Relatório técnico fotográfico antes/depois + ART no CREA" },
+      { desc:"Entregáveis finais", frente:"Complexo Icaraí", peso:4, unidade:"vb", qtdTotal:1, obs:"Relatório técnico fotográfico antes/depois + ART no CREA" },
+    ];
+
+    const btn = document.querySelector(".empty button");
+    if(btn) { btn.disabled=true; btn.textContent="⏳ Cadastrando..."; }
+    try {
+      for(const a of atividades) {
+        await addDoc(collection(db,"obras",_evolObraId,"atividades"), {
+          ...a, pctAtual:0, qtdExecutada:0, criadoEm:serverTimestamp(), criadoPor:currentUser?.uid||""
+        });
+      }
+      // Salvar contrato Ibitu automaticamente
+      await evolSalvarContratoIbitu();
+      toast("✅ 14 atividades pré-cadastradas com sucesso!");
+      await evolCarregarAtividades(_evolObraId);
+      await evolCarregarContrato(_evolObraId);
+    } catch(e) { toast("❌ Erro: "+e.message); }
+  }
+
+  async function evolSalvarContratoIbitu() {
+    if(!_evolObraId) return;
+    await setDoc(doc(db,"obras",_evolObraId,"config","contrato"), {
+      cliente: "Ibitu Energia — Complexo Taíba e Complexo Icaraí",
+      valor: 368600,
+      prazo: 50,
+      inicio: "",
+      marcos: EVOL_MARCOS_IBITU,
+      evolPermColab: false,
+      atualizadoEm: serverTimestamp()
+    }, {merge:true});
+  }
+
+  // ── MODAL: Contrato / Configuração ───────────────────────
+  function evolAbrirContrato() {
+    const c = _evolContrato || {};
+    $("evolCfgCliente").value      = c.cliente||"";
+    $("evolCfgValor").value        = c.valor||"";
+    $("evolCfgInicio").value       = c.inicio||"";
+    $("evolCfgPrazo").value        = c.prazo||"";
+    $("evolCfgPermColab").checked  = c.evolPermColab||false;
+    $("evolCfgPermColabLabel").textContent = c.evolPermColab?"Sim":"Não";
+    setMsg("evolCfgMsg","");
+
+    // Marcos
+    const marcos = c.marcos || JSON.parse(JSON.stringify(EVOL_MARCOS_IBITU));
+    evolRenderizarMarcosEditor(marcos);
+
+    $("evolCfgPermColab").onchange = () => {
+      $("evolCfgPermColabLabel").textContent = $("evolCfgPermColab").checked?"Sim":"Não";
+    };
+    $("modalEvolContrato").classList.remove("hidden");
+  }
+
+  function _getMarcosCfg() {
+    const rows = $("evolCfgMarcosLista").querySelectorAll("[data-marco]");
+    return Array.from(rows).map(row => ({
+      label:   row.querySelector(".mc-label").value,
+      pct:     parseFloat(row.querySelector(".mc-pct").value)||0,
+      pagPct:  parseFloat(row.querySelector(".mc-pag").value)||0,
+      diasMob: parseFloat(row.querySelector(".mc-dias").value)||0
+    }));
+  }
+
+  function evolRenderizarMarcosEditor(marcos) {
+    const el = $("evolCfgMarcosLista");
+    if(!el) return;
+    el.innerHTML = marcos.map((m, i) => `
+      <div data-marco="${i}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
+        <input class="mc-label" type="text" value="${m.label}" placeholder="Nome" style="margin:0;padding:7px 10px;font-size:.8rem">
+        <input class="mc-pct"   type="number" value="${m.pct}" placeholder="% prog" style="margin:0;padding:7px 8px;font-size:.8rem;text-align:center" title="Progresso mínimo necessário">
+        <input class="mc-pag"   type="number" value="${m.pagPct}" placeholder="% pag" style="margin:0;padding:7px 8px;font-size:.8rem;text-align:center" title="% do valor global a pagar">
+        <input class="mc-dias"  type="number" value="${m.diasMob}" placeholder="dias" style="margin:0;padding:7px 8px;font-size:.8rem;text-align:center" title="Dias desde mobilização">
+        <button onclick="event.stopPropagation();this.closest('[data-marco]').remove()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:4px">✕</button>
+      </div>`).join("")+
+      `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;font-size:.68rem;color:var(--muted);padding:0 2px">
+        <span>Nome</span><span style="text-align:center">% progresso</span><span style="text-align:center">% pagamento</span><span style="text-align:center">Dias mob.</span><span></span>
+      </div>`;
+  }
+
+  function evolAddMarco() {
+    const marcos = _getMarcosCfg();
+    marcos.push({label:"Novo marco",pct:50,pagPct:10,diasMob:30});
+    evolRenderizarMarcosEditor(marcos);
+  }
+
+  async function evolSalvarContrato() {
+    if(!_evolObraId) return;
+    const btn = $("modalEvolContrato").querySelector(".btn-primary");
+    if(btn){ btn.disabled=true; btn.textContent="⏳ Salvando..."; }
+    try {
+      await setDoc(doc(db,"obras",_evolObraId,"config","contrato"), {
+        cliente:   $("evolCfgCliente").value.trim(),
+        valor:     parseFloat($("evolCfgValor").value)||0,
+        inicio:    $("evolCfgInicio").value,
+        prazo:     parseInt($("evolCfgPrazo").value)||50,
+        marcos:    _getMarcosCfg(),
+        evolPermColab: $("evolCfgPermColab").checked,
+        atualizadoEm:  serverTimestamp()
+      }, {merge:true});
+      // Atualizar flag na obra
+      await setDoc(doc(db,"obras",_evolObraId),{evolPermColab:$("evolCfgPermColab").checked},{merge:true});
+      _evolPermColab = $("evolCfgPermColab").checked;
+      closeModal("modalEvolContrato");
+      toast("✅ Contrato salvo!");
+      await evolCarregarContrato(_evolObraId);
+      evolRenderizarMarcadoresBarra();
+      evolRenderizarProximoMarco(parseFloat($("evolBarLabel")?.textContent)||0);
+    } catch(e) { setMsg("evolCfgMsg","❌ "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="💾 Salvar"; } }
   }
 
   // ── MODAL: Nova / Editar Atividade ───────────────────────
-  function evolAbrirModalAtividade(ativId = null) {
-    $("evolAtivId").value   = ativId || "";
-    $("evolAtivDesc").value = "";
+  function evolAbrirModalAtividade(ativId=null) {
+    $("evolAtivId").value     = ativId||"";
+    $("evolAtivDesc").value   = "";
     $("evolAtivFrente").value = "";
-    $("evolAtivPeso").value = "10";
-    $("evolAtivUnidade").value = "un";
-    $("evolAtivQtdTotal").value = "1";
-    $("evolAtivObs").value  = "";
-    $("evolPermColab").checked = _evolPermColab;
-    $("evolPermColabLabel").textContent = _evolPermColab ? "Sim" : "Não";
-    setMsg("evolAtivMsg", "");
+    $("evolAtivPeso").value   = "10";
+    $("evolAtivUnidade").value= "SU";
+    $("evolAtivQtdTotal").value="1";
+    $("evolAtivObs").value    = "";
+    setMsg("evolAtivMsg","");
 
     if(ativId) {
-      const a = _evolAtividades.find(x => x.id === ativId);
+      const a=_evolAtividades.find(x=>x.id===ativId);
       if(a) {
-        $("evolAtivDesc").value    = a.desc || "";
-        $("evolAtivFrente").value  = a.frente || "";
-        $("evolAtivPeso").value    = a.peso || 10;
-        $("evolAtivUnidade").value = a.unidade || "un";
-        $("evolAtivQtdTotal").value = a.qtdTotal || 1;
-        $("evolAtivObs").value     = a.obs || "";
+        $("evolAtivDesc").value   = a.desc||"";
+        $("evolAtivFrente").value = a.frente||"";
+        $("evolAtivPeso").value   = a.peso||10;
+        $("evolAtivUnidade").value= a.unidade||"SU";
+        $("evolAtivQtdTotal").value=a.qtdTotal||1;
+        $("evolAtivObs").value    = a.obs||"";
       }
-      $("modalEvolAtivTitulo").textContent = "✏️ Editar Atividade";
+      $("modalEvolAtivTitulo").textContent="✏️ Editar Atividade";
     } else {
-      $("modalEvolAtivTitulo").textContent = "➕ Nova Atividade";
+      $("modalEvolAtivTitulo").textContent="➕ Nova Atividade";
     }
-    // Permissão de colaborador só visível para ADMIN
-    $("evolPermColabWrap").style.display = currentRole === "ADMIN" ? "" : "none";
     $("modalEvolAtiv").classList.remove("hidden");
   }
 
-  function evolEditarAtividade(ativId) { evolAbrirModalAtividade(ativId); }
+  function evolEditarAtividade(id) { evolAbrirModalAtividade(id); }
 
   async function evolSalvarAtividade() {
     const ativId   = $("evolAtivId").value;
-    const desc     = ($("evolAtivDesc")?.value || "").trim();
-    const frente   = ($("evolAtivFrente")?.value || "").trim();
-    const peso     = parseInt($("evolAtivPeso")?.value) || 10;
-    const unidade  = $("evolAtivUnidade")?.value || "un";
-    const qtdTotal = parseFloat($("evolAtivQtdTotal")?.value) || 1;
-    const obs      = ($("evolAtivObs")?.value || "").trim();
-    const permColab = $("evolPermColab")?.checked || false;
+    const desc     = ($("evolAtivDesc")?.value||"").trim();
+    const frente   = ($("evolAtivFrente")?.value||"").trim();
+    const peso     = parseInt($("evolAtivPeso")?.value)||10;
+    const unidade  = $("evolAtivUnidade")?.value||"SU";
+    const qtdTotal = parseFloat($("evolAtivQtdTotal")?.value)||1;
+    const obs      = ($("evolAtivObs")?.value||"").trim();
 
-    if(!desc) { setMsg("evolAtivMsg","⚠️ Informe a descrição da atividade.","err"); return; }
+    if(!desc){ setMsg("evolAtivMsg","⚠️ Informe a descrição.","err"); return; }
     if(!_evolObraId) return;
 
-    const btn = $("btnEvolSalvarAtiv");
-    if(btn) { btn.disabled=true; btn.textContent="⏳ Salvando…"; }
-
+    const btn=$("btnEvolSalvarAtiv");
+    if(btn){ btn.disabled=true; btn.textContent="⏳"; }
     try {
-      const payload = {
-        desc, frente, peso, unidade, qtdTotal, obs,
-        pctAtual: 0, qtdExecutada: 0,
-        atualizadoEm: serverTimestamp()
-      };
       if(ativId) {
-        // Editar — preservar progresso atual
-        const existente = _evolAtividades.find(x => x.id === ativId);
-        payload.pctAtual     = existente?.pctAtual || 0;
-        payload.qtdExecutada = existente?.qtdExecutada || 0;
-        await setDoc(doc(db,"obras",_evolObraId,"atividades",ativId), payload, {merge:true});
+        const ex=_evolAtividades.find(x=>x.id===ativId);
+        await setDoc(doc(db,"obras",_evolObraId,"atividades",ativId),
+          { desc,frente,peso,unidade,qtdTotal,obs, pctAtual:ex?.pctAtual||0, qtdExecutada:ex?.qtdExecutada||0, atualizadoEm:serverTimestamp() },
+          {merge:true});
       } else {
-        payload.criadoEm  = serverTimestamp();
-        payload.criadoPor = currentUser?.uid || "";
-        await addDoc(collection(db,"obras",_evolObraId,"atividades"), payload);
-      }
-      // Atualizar permissão da obra
-      if(currentRole === "ADMIN") {
-        await setDoc(doc(db,"obras",_evolObraId), { evolPermColab: permColab }, {merge:true});
-        _evolPermColab = permColab;
+        await addDoc(collection(db,"obras",_evolObraId,"atividades"),
+          { desc,frente,peso,unidade,qtdTotal,obs, pctAtual:0, qtdExecutada:0, criadoEm:serverTimestamp(), criadoPor:currentUser?.uid||"" });
       }
       closeModal("modalEvolAtiv");
       toast("✅ Atividade salva!");
       await evolCarregarAtividades(_evolObraId);
-    } catch(e) { setMsg("evolAtivMsg","❌ Erro: "+e.message,"err"); }
-    finally { if(btn){ btn.disabled=false; btn.textContent="Salvar Atividade"; } }
+    } catch(e){ setMsg("evolAtivMsg","❌ "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="Salvar"; } }
   }
 
   async function evolExcluirAtividade(ativId) {
-    const a = _evolAtividades.find(x => x.id === ativId);
+    const a=_evolAtividades.find(x=>x.id===ativId);
     if(!a) return;
-    showModal("Excluir Atividade", `Remover "<strong>${a.desc}</strong>"? O progresso registrado será perdido.`, async () => {
+    showModal("Excluir Atividade",`Remover "<strong>${a.desc}</strong>"?<br>O progresso registrado será perdido.`, async()=>{
       try {
         await deleteDoc(doc(db,"obras",_evolObraId,"atividades",ativId));
-        toast("✅ Atividade removida.");
-        await evolCarregarAtividades(_evolObraId);
-      } catch(e) { toast("❌ Erro: "+e.message); }
-    }, "Excluir", true);
+        toast("✅ Removida."); await evolCarregarAtividades(_evolObraId);
+      } catch(e){ toast("❌ Erro: "+e.message); }
+    },"Excluir",true);
   }
 
   // ── MODAL: Registrar Progresso ───────────────────────────
   function evolAbrirRegistro(ativId) {
-    const a = _evolAtividades.find(x => x.id === ativId);
+    const a=_evolAtividades.find(x=>x.id===ativId);
     if(!a) return;
 
-    $("evolRegAtivId").value = ativId;
+    $("evolRegAtivId").value       = ativId;
     $("evolRegAtivNome").textContent   = a.desc;
     $("evolRegAtivFrente").textContent = a.frente ? `📍 ${a.frente}` : "";
-    $("evolRegUnidade").textContent    = a.unidade || "un";
+    $("evolRegAtivUnidBadge").textContent = a.unidade||"un";
+    $("evolRegUnidade").textContent    = a.unidade||"un";
     $("evolRegQtdHoje").value = "";
     $("evolRegObs").value     = "";
-    $("evolRegPreview").textContent = "";
+    $("evolRegPreview").textContent="";
+    $("evolRegPreview").style.background="transparent";
     setMsg("evolRegMsg","");
-    _evolRegFotoB64 = null;
-    $("evolRegFotoImg").src = "";
-    $("evolRegFotoPreview").style.display    = "none";
-    $("evolRegFotoPlaceholder").style.display = "";
+    _evolRegFotoB64=null;
+    $("evolRegFotoImg").src="";
+    $("evolRegFotoPreview").style.display="none";
+    $("evolRegFotoPlaceholder").style.display="";
 
-    const pct      = Number(a.pctAtual) || 0;
-    const qtdExec  = Number(a.qtdExecutada) || 0;
-    const qtdTotal = Number(a.qtdTotal) || 1;
+    const pct     =Number(a.pctAtual)||0;
+    const qtdExec =Number(a.qtdExecutada)||0;
+    const qtdTotal=Number(a.qtdTotal)||1;
+    $("evolRegBarAtual").style.width=pct.toFixed(1)+"%";
+    $("evolRegPctAtual").textContent=pct.toFixed(1)+"%";
+    $("evolRegQtdAtual").textContent=`${qtdExec.toLocaleString("pt-BR")} de ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"} concluídos`;
 
-    $("evolRegBarAtual").style.width  = pct.toFixed(1)+"%";
-    $("evolRegPctAtual").textContent  = pct.toFixed(1)+"%";
-    $("evolRegQtdAtual").textContent  = `${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"} executados`;
-
-    // Listener para preview em tempo real
-    $("evolRegQtdHoje").oninput = () => {
-      const qtdHoje   = parseFloat($("evolRegQtdHoje").value) || 0;
-      const novaQtd   = Math.min(qtdTotal, qtdExec + qtdHoje);
-      const novoPct   = (novaQtd / qtdTotal) * 100;
-      const delta     = novoPct - pct;
-      $("evolRegPreview").textContent = qtdHoje > 0
-        ? `→ Progresso: ${novoPct.toFixed(1)}% (${delta > 0 ? "+" : ""}${delta.toFixed(1)}%)`
-        : "";
+    $("evolRegQtdHoje").oninput=()=>{
+      const qtdHoje=parseFloat($("evolRegQtdHoje").value)||0;
+      if(qtdHoje<=0){ $("evolRegPreview").textContent=""; $("evolRegPreview").style.background="transparent"; return; }
+      const novaQtd=Math.min(qtdTotal,qtdExec+qtdHoje);
+      const novoPct=(novaQtd/qtdTotal)*100;
+      const delta=novoPct-pct;
+      $("evolRegPreview").textContent=`→ Progresso: ${novoPct.toFixed(1)}%  (${delta>0?"+":""}${delta.toFixed(1)}%)`;
+      $("evolRegPreview").style.background=novoPct>=100?"#dcfce7":"#eff6ff";
+      $("evolRegPreview").style.color=novoPct>=100?"var(--success)":"var(--brand)";
     };
 
     $("modalEvolRegistro").classList.remove("hidden");
   }
 
   function evolFotoSelecionada() {
-    const file = $("evolRegFotoInput")?.files?.[0];
+    const file=$("evolRegFotoInput")?.files?.[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      _evolRegFotoB64 = e.target.result;
-      $("evolRegFotoImg").src = e.target.result;
-      $("evolRegFotoPreview").style.display    = "";
-      $("evolRegFotoPlaceholder").style.display = "none";
-    };
-    reader.readAsDataURL(file);
+    const r=new FileReader();
+    r.onload=e=>{ _evolRegFotoB64=e.target.result; $("evolRegFotoImg").src=e.target.result; $("evolRegFotoPreview").style.display=""; $("evolRegFotoPlaceholder").style.display="none"; };
+    r.readAsDataURL(file);
   }
 
   async function evolSalvarRegistro() {
-    const ativId   = $("evolRegAtivId").value;
-    const qtdHoje  = parseFloat($("evolRegQtdHoje")?.value);
-    const obs      = ($("evolRegObs")?.value || "").trim();
-    const a        = _evolAtividades.find(x => x.id === ativId);
-    if(!a || !_evolObraId) return;
+    const ativId  =$("evolRegAtivId").value;
+    const qtdHoje =parseFloat($("evolRegQtdHoje")?.value);
+    const obs     =($("evolRegObs")?.value||"").trim();
+    const a       =_evolAtividades.find(x=>x.id===ativId);
+    if(!a||!_evolObraId) return;
 
-    if(isNaN(qtdHoje) || qtdHoje < 0) {
-      setMsg("evolRegMsg","⚠️ Informe a quantidade executada hoje.","err"); return;
-    }
+    if(isNaN(qtdHoje)||qtdHoje<0){ setMsg("evolRegMsg","⚠️ Informe a quantidade.","err"); return; }
 
-    const btn = $("btnEvolSalvarReg");
-    if(btn) { btn.disabled=true; btn.textContent="⏳ Salvando…"; }
+    const btn=$("btnEvolSalvarReg");
+    if(btn){ btn.disabled=true; btn.textContent="⏳ Salvando..."; }
 
     try {
-      const qtdTotal  = Number(a.qtdTotal) || 1;
-      const qtdExec   = Number(a.qtdExecutada) || 0;
-      const novaQtd   = Math.min(qtdTotal, qtdExec + qtdHoje);
-      const novoPct   = (novaQtd / qtdTotal) * 100;
-      const hoje      = new Date().toISOString().split("T")[0];
+      const qtdTotal  =Number(a.qtdTotal)||1;
+      const qtdExec   =Number(a.qtdExecutada)||0;
+      const novaQtd   =Math.min(qtdTotal, qtdExec+qtdHoje);
+      const novoPct   =(novaQtd/qtdTotal)*100;
+      const hoje      =new Date().toISOString().split("T")[0];
 
-      // Upload da foto para Cloudinary (se houver)
-      let fotoUrl = "";
+      // Upload foto Cloudinary
+      let fotoUrl="";
       if(_evolRegFotoB64) {
         try {
-          const fd = new FormData();
-          fd.append("file", _evolRegFotoB64);
-          fd.append("upload_preset", CLOUDINARY_PRESET);
-          fd.append("folder", "evolucao_obras");
-          const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:"POST", body: fd });
-          const data = await res.json();
-          fotoUrl = data.secure_url || "";
-        } catch(e) { console.warn("Upload foto evolução falhou:", e); }
+          const fd=new FormData();
+          fd.append("file",_evolRegFotoB64);
+          fd.append("upload_preset",CLOUDINARY_PRESET);
+          fd.append("folder","evolucao_obras");
+          const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,{method:"POST",body:fd});
+          const data=await res.json();
+          fotoUrl=data.secure_url||"";
+        } catch(e){ console.warn("Upload foto:",e); }
       }
 
-      // Atualizar atividade
-      await setDoc(
-        doc(db,"obras",_evolObraId,"atividades",ativId),
-        { pctAtual: parseFloat(novoPct.toFixed(2)), qtdExecutada: novaQtd, atualizadoEm: serverTimestamp() },
-        { merge: true }
+      await setDoc(doc(db,"obras",_evolObraId,"atividades",ativId),
+        { pctAtual:parseFloat(novoPct.toFixed(2)), qtdExecutada:novaQtd, atualizadoEm:serverTimestamp() },
+        {merge:true}
       );
 
-      // Registrar log do evento
-      await addDoc(collection(db,"obras",_evolObraId,"evolucao_registros"), {
-        ativId, ativDesc: a.desc, frente: a.frente || "",
-        data: hoje, qtdHoje, qtdExecutada: novaQtd, qtdTotal,
-        pctAntes: Number(a.pctAtual) || 0, pctDepois: parseFloat(novoPct.toFixed(2)),
+      await addDoc(collection(db,"obras",_evolObraId,"evolucao_registros"),{
+        ativId, ativDesc:a.desc, frente:a.frente||"",
+        data:hoje, qtdHoje, qtdExecutada:novaQtd, qtdTotal,
+        pctAntes:Number(a.pctAtual)||0, pctDepois:parseFloat(novoPct.toFixed(2)),
         obs, fotoUrl,
-        colaboradorUid:  currentUser?.uid || pontoUser?.uid || "",
-        colaboradorNome: currentUser?.displayName || pontoProfile?.nome || "",
-        criadoEm: serverTimestamp()
+        colaboradorUid:  currentUser?.uid||pontoUser?.uid||"",
+        colaboradorNome: currentUser?.displayName||pontoProfile?.nome||"",
+        criadoEm:serverTimestamp()
       });
 
       closeModal("modalEvolRegistro");
-      toast(`✅ Progresso registrado! Atividade agora em ${novoPct.toFixed(1)}%`);
+      toast(`✅ ${a.desc}: ${novoPct.toFixed(1)}%`);
       await evolCarregarAtividades(_evolObraId);
       await evolCarregarHistorico(_evolObraId);
-    } catch(e) { setMsg("evolRegMsg","❌ Erro: "+e.message,"err"); }
-    finally { if(btn){ btn.disabled=false; btn.textContent="✅ Registrar"; } }
+    } catch(e){ setMsg("evolRegMsg","❌ "+e.message,"err"); }
+    finally { if(btn){ btn.disabled=false; btn.textContent="✅ Confirmar"; } }
   }
 
-  // ── Acesso do colaborador pela pontoPage ─────────────────
-  // Abre a tela de Evolução dentro da pontoPage após o ponto
+  // ── Colaborador via pontoPage ────────────────────────────
   async function evolAbrirParaColab() {
-    if(!pontoUser?.uid || !pontoObraData?.id) return;
-    _evolObraId = pontoObraData.id;
-
-    // Simula goTab mas na pontoPage — mostramos o step de evolução
-    const step = $("pontoStepEvolucao");
+    if(!pontoUser?.uid||!pontoObraData?.id) return;
+    _evolObraId=pontoObraData.id;
+    const step=$("pontoStepEvolucao");
     if(!step) return;
 
     $("pontoStepOk").classList.add("hidden");
-    $("pontoStepEvolucaoNomeObra").textContent = pontoObraData.nome || "Obra";
+    $("pontoStepEvolucaoNomeObra").textContent=pontoObraData.nome||"Obra";
 
-    // Carrega atividades usando authAux (colab)
     try {
-      const obraSnap = await getDoc(doc(dbAux,"obras",pontoObraData.id));
-      _evolPermColab = obraSnap.data()?.evolPermColab === true;
+      const obraSnap=await getDoc(doc(dbAux,"obras",pontoObraData.id));
+      _evolPermColab=obraSnap.data()?.evolPermColab===true;
+      const snap=await getDocs(query(collection(dbAux,"obras",pontoObraData.id,"atividades"),orderBy("criadoEm","asc")));
+      _evolAtividades=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-      const snap = await getDocs(
-        query(collection(dbAux,"obras",pontoObraData.id,"atividades"), orderBy("criadoEm","asc"))
-      );
-      _evolAtividades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      // KPI global para o colaborador
-      let pesoTotal = 0, pesoConcluido = 0;
-      _evolAtividades.forEach(a => {
-        const p = Number(a.peso)||1;
-        pesoTotal += p;
-        pesoConcluido += p * ((Number(a.pctAtual)||0) / 100);
+      let pesoTotal=0,pesoConcluido=0;
+      _evolAtividades.forEach(a=>{
+        const p=Number(a.peso)||1; pesoTotal+=p;
+        pesoConcluido+=p*((Number(a.pctAtual)||0)/100);
       });
-      const pctGlobal = pesoTotal > 0 ? (pesoConcluido/pesoTotal)*100 : 0;
-      const el = $("evolColabPct"); if(el) el.textContent = pctGlobal.toFixed(1)+"%";
-      const bar = $("evolColabBar"); if(bar) bar.style.width = pctGlobal.toFixed(1)+"%";
+      const pctGlobal=pesoTotal>0?(pesoConcluido/pesoTotal)*100:0;
+      const el=$("evolColabPct"); if(el) el.textContent=pctGlobal.toFixed(1)+"%";
+      const bar=$("evolColabBar"); if(bar) bar.style.width=pctGlobal.toFixed(1)+"%";
 
       evolRenderizarListaColab(_evolAtividades);
-    } catch(e) {
-      $("evolColabLista").innerHTML = `<div class="empty"><p>Erro ao carregar atividades.</p></div>`;
-    }
+    } catch(e){ $("evolColabLista").innerHTML=`<div class="empty"><p>Erro ao carregar.</p></div>`; }
     step.classList.remove("hidden");
   }
 
   function evolRenderizarListaColab(ativs) {
-    const el = $("evolColabLista");
-    if(!el) return;
-    if(!ativs.length) {
-      el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma atividade cadastrada para esta obra.</p></div>`;
-      return;
-    }
-    el.innerHTML = ativs.map(a => {
-      const pct     = Number(a.pctAtual) || 0;
-      const qtdExec = Number(a.qtdExecutada) || 0;
-      const qtdTotal = Number(a.qtdTotal) || 1;
-      const cor = pct >= 100 ? "#10b981" : pct > 0 ? "#f5a623" : "#6b7280";
+    const el=$("evolColabLista"); if(!el) return;
+    if(!ativs.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma atividade cadastrada.</p></div>`; return; }
+    el.innerHTML=ativs.map(a=>{
+      const pct=Number(a.pctAtual)||0;
+      const qtdExec=Number(a.qtdExecutada)||0;
+      const qtdTotal=Number(a.qtdTotal)||1;
+      const cor=pct>=100?"#10b981":pct>0?"#f5a623":"#6b7280";
       return `
-      <div class="evol-ativ-card ${pct>=100?"concluida-card":pct>0?"em-andamento":"pendente"}"
-           onclick="App.evolAbrirRegistroColab('${a.id}')"
-           style="margin-bottom:8px">
+      <div class="evol-ativ-card ${pct>=100?"concluida-card":pct>0?"em-andamento":"pendente"}" onclick="App.evolAbrirRegistroColab('${a.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
-            ${a.frente ? `<div class="evol-frente-badge">${a.frente}</div>` : ""}
-            <div style="font-weight:700;font-size:.9rem;margin-top:2px">${a.desc}</div>
+            ${a.frente?`<div class="evol-frente-badge">${a.frente}</div>`:""}
+            <div style="font-weight:700;font-size:.88rem;margin-top:2px">${a.desc}</div>
           </div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:${cor}">${pct.toFixed(1)}%</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${cor}">${pct.toFixed(1)}%</div>
         </div>
-        <div class="evol-prog-bar" style="margin-top:8px">
-          <div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${cor}"></div>
-        </div>
-        <div style="font-size:.73rem;color:var(--muted);margin-top:4px">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</div>
+        <div class="evol-prog-bar" style="margin-top:6px"><div class="evol-prog-fill" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${qtdExec.toLocaleString("pt-BR")} / ${qtdTotal.toLocaleString("pt-BR")} ${a.unidade||"un"}</div>
       </div>`;
     }).join("");
-
-    // Botão nova atividade (se obra permitir)
-    const btnWrap = $("evolColabBtnNova");
-    if(btnWrap) btnWrap.style.display = _evolPermColab ? "" : "none";
+    const btnWrap=$("evolColabBtnNova");
+    if(btnWrap) btnWrap.style.display=_evolPermColab?"":"none";
   }
 
-  // Abre modal de registro de progresso no contexto do colaborador (usa dbAux)
-  function evolAbrirRegistroColab(ativId) {
-    // Reutiliza o mesmo modal mas salva via dbAux
-    evolAbrirRegistro(ativId);
-  }
+  function evolAbrirRegistroColab(ativId) { evolAbrirRegistro(ativId); }
 
   // Cache local dos EPIs carregados
   let _epiCache = [];
@@ -8343,10 +8667,11 @@
     // Helpers
     _getProcessoId,
     // Evolução de Obras
-    evolInicializar, evolCarregarObra, evolFiltrarFrente,
+    evolInicializar, evolCarregarObra, evolFiltrarFrente, evolSetView,
     evolAbrirModalAtividade, evolEditarAtividade, evolSalvarAtividade, evolExcluirAtividade,
     evolAbrirRegistro, evolAbrirRegistroColab, evolFotoSelecionada, evolSalvarRegistro,
-    evolAbrirParaColab,
+    evolAbrirParaColab, evolPreencherIbitu,
+    evolAbrirContrato, evolSalvarContrato, evolAddMarco,
     // Cadastro de EPIs
     epiCarregar, epiFiltrar, epiAutoCA,
     epiSalvarNovo, epiIniciarEdicao, epiCancelarEdicao, epiSalvarEdicao, epiExcluir,
