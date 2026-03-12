@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
@@ -2756,7 +2757,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div style="min-width:0">
             <div style="font-weight:600;font-size:.84rem;color:var(--text)">${s.desc}</div>
-            <div style="font-size:.69rem;color:var(--muted);margin-top:1px">${q.toLocaleString("pt-BR")} / ${t.toLocaleString("pt-BR")} ${s.unidade||"un"} · ⚖️ ${s.peso||1} pts</div>
+            <div style="font-size:.69rem;color:var(--muted);margin-top:1px">${q.toLocaleString("pt-BR")} / ${t.toLocaleString("pt-BR")} ${s.unidade||"un"}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;color:${cor}">${p.toFixed(1)}%</div>
@@ -2987,23 +2988,36 @@
 
       y=46;
 
-      // Responsável (dados do contrato ou empresa)
-      const cliente=_eCont?.cliente||"—";
+      // Responsável: buscar da aba Empresa (Firestore)
+      let nomeResponsavel = currentUser?.displayName||currentUser?.email||"—";
+      let clienteNome = _eCont?.cliente||"—";
+      try{
+        const empSnap = await getDoc(doc(db,"configuracoes","empresa"));
+        if(empSnap.exists()){
+          const emp = empSnap.data();
+          if(emp.responsavel) nomeResponsavel = emp.responsavel + (emp.cargoResp ? " — "+emp.cargoResp : "");
+        }
+      }catch(e){ /* usa fallback */ }
+      // Se o cliente não está no contrato, tenta pegar do nome do contratante no contrato
+      if(clienteNome==="—"||!clienteNome){
+        clienteNome = _eCont?.cliente || "—";
+      }
+
       doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);
-      doc.text(`Cliente / Contratante: ${cliente}`, mg, y);
+      doc.text(`Cliente / Contratante: ${clienteNome}`, mg, y);
       if(_eCont?.inicio){
         const ini=new Date(_eCont.inicio+"T12:00:00").toLocaleDateString("pt-BR");
         doc.text(`Mobilização: ${ini}  ·  Prazo: ${_eCont.prazo||"—"} dias`, mg, y+5);
       }
-      doc.text(`Responsável: ${currentUser?.displayName||currentUser?.email||"—"}`, W-mg, y, {align:"right"});
+      doc.text(`Responsável: ${nomeResponsavel}`, W-mg, y, {align:"right"});
       y+=12;
 
       // ── BARRA GLOBAL ──
       doc.setFillColor(cBg[0],cBg[1],cBg[2]);
       doc.roundedRect(mg, y, W-mg*2, 16, 3, 3, "F");
       const barW=(W-mg*2-4)*Math.min(100,pctGlobal)/100;
-      const barColor = pctGlobal>=80?cSuccess:pctGlobal>=40?[245,166,35]:cAccent;
-      doc.setFillColor(barColor[0],barColor[1],barColor[2]);
+      // Barra sempre verde
+      doc.setFillColor(cSuccess[0],cSuccess[1],cSuccess[2]);
       doc.roundedRect(mg+2, y+2, Math.max(barW,4), 12, 2.5, 2.5, "F");
       doc.setFontSize(9); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
       if(barW>15) doc.text(pctGlobal.toFixed(1)+"%", mg+barW/2+2, y+10, {align:"center"});
