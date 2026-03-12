@@ -2957,6 +2957,19 @@
     toast("⏳ Gerando relatório...");
 
     try{
+      // Buscar dados da empresa ANTES de criar o jsPDF
+      // (após criar "doc = new jsPDF", a função doc() do Firestore fica sombreada)
+      let nomeResponsavel = currentUser?.displayName||currentUser?.email||"—";
+      let clienteNome = _eCont?.cliente||"—";
+      try{
+        const _empRef = doc(db,"configuracoes","empresa");
+        const _empSnap = await getDoc(_empRef);
+        if(_empSnap.exists()){
+          const _emp = _empSnap.data();
+          if(_emp.responsavel) nomeResponsavel = _emp.responsavel + (_emp.cargoResp?" — "+_emp.cargoResp:"");
+        }
+      }catch(e){ /* usa fallback do login */ }
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
       const W=210, H=297, mg=14;
@@ -2988,20 +3001,7 @@
 
       y=46;
 
-      // Responsável: buscar da aba Empresa (Firestore)
-      let nomeResponsavel = currentUser?.displayName||currentUser?.email||"—";
-      let clienteNome = _eCont?.cliente||"—";
-      try{
-        const empSnap = await getDoc(doc(db,"configuracoes","empresa"));
-        if(empSnap.exists()){
-          const emp = empSnap.data();
-          if(emp.responsavel) nomeResponsavel = emp.responsavel + (emp.cargoResp ? " — "+emp.cargoResp : "");
-        }
-      }catch(e){ /* usa fallback */ }
-      // Se o cliente não está no contrato, tenta pegar do nome do contratante no contrato
-      if(clienteNome==="—"||!clienteNome){
-        clienteNome = _eCont?.cliente || "—";
-      }
+
 
       doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);
       doc.text(`Cliente / Contratante: ${clienteNome}`, mg, y);
@@ -3099,24 +3099,6 @@
           doc.setFillColor(cor[0],cor[1],cor[2]); doc.roundedRect(mg+2, y, Math.max((W-mg*2-4)*pct/100, 0.5), 2.5, 1, 1, "F");
           y+=5;
 
-          // Serviços com progresso
-          const svcsFeitos=svcs.filter(s=>_ePctSvc(u.id,s.id)>0);
-          if(svcsFeitos.length){
-            for(const s of svcsFeitos){
-              if(y>H-20){ doc.addPage(); y=mg; }
-              const ps=_ePctSvc(u.id,s.id);
-              const qe=_eQtdExec(u.id,s.id);
-              const qt=Number(s.qtdTotal)||1;
-              const corS=ps>=100?cSuccess:ps>0?[245,166,35]:cMuted;
-              doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);
-              doc.text("  • "+s.desc, mg+3, y);
-              doc.text(`${qe.toLocaleString("pt-BR")}/${qt} ${s.unidade||"un"} — ${ps.toFixed(0)}%`, W-mg-2, y, {align:"right"});
-              // Mini-barra de serviço
-              doc.setFillColor(cBorder[0],cBorder[1],cBorder[2]); doc.rect(mg+3, y+1, 30, 1.5, "F");
-              doc.setFillColor(corS[0],corS[1],corS[2]); doc.rect(mg+3, y+1, 30*ps/100, 1.5, "F");
-              y+=5;
-            }
-          }
           y+=2;
         }
         y+=3;
