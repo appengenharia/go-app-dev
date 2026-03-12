@@ -3025,19 +3025,19 @@
     if(btn){ btn.disabled=true; btn.textContent="⏳ Gerando..."; }
     toast("⏳ Gerando relatório...");
 
+    // Alias para doc() do Firestore — evita conflito com variável doc do jsPDF
+    const _firestoreDoc = doc;
+
     try{
-      // Buscar dados da empresa ANTES de criar o jsPDF
-      // (após criar "doc = new jsPDF", a função doc() do Firestore fica sombreada)
       let nomeResponsavel = currentUser?.displayName||currentUser?.email||"—";
       let clienteNome = _eCont?.cliente||"—";
       try{
-        const _empRef = doc(db,"configuracoes","empresa");
-        const _empSnap = await getDoc(_empRef);
+        const _empSnap = await getDoc(_firestoreDoc(db,"configuracoes","empresa"));
         if(_empSnap.exists()){
           const _emp = _empSnap.data();
           if(_emp.responsavel) nomeResponsavel = _emp.responsavel + (_emp.cargoResp?" — "+_emp.cargoResp:"");
         }
-      }catch(e){ /* usa fallback do login */ }
+      }catch(e){ console.warn("empresa:",e); }
 
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
