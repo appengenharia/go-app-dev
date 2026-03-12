@@ -842,7 +842,14 @@
 
       <div class="admin-panel active" id="adm-obras">
         <div class="card">
-          <div class="card-header"><div><h3>Cadastrar Obra</h3><p>Adicione uma nova obra ao sistema.</p></div></div>
+          <div class="card-header">
+            <div>
+              <h3 id="obraFormTitulo">Cadastrar Obra</h3>
+              <p id="obraFormSubtitulo">Adicione uma nova obra ao sistema.</p>
+            </div>
+            <button class="btn btn-outline sm" id="btnCancelarEditObra" onclick="App.cancelarEditObra()" style="display:none;font-size:.79rem">✕ Cancelar edição</button>
+          </div>
+          <input type="hidden" id="obraEditId">
 
           <label>Nome da Obra</label>
           <input id="obraName" type="text" placeholder="Ex: Residencial Parque Verde">
@@ -2057,40 +2064,101 @@
     const raio    = parseInt($("obraRaio").value) || 100;
     const travar  = $("obraTravarPonto").checked;
     const btn     = $("btnSaveObra");
+    const editId  = $("obraEditId")?.value||"";
 
     if(!nome){ setMsg("obraMsg","Informe o nome da obra."); return; }
 
-    // Monta endereço formatado
     const endereco = [rua, num, bairro, cidade, estado].filter(Boolean).join(", ");
 
     btn.disabled=true; btn.textContent="Salvando...";
     try {
-      const id = "OBRA_"+Date.now();
-      await setDoc(doc(db,"obras",id),{
-        id, nome, descricao: desc, ativa: true,
-        endereco, rua, numero: num, bairro, cidade, estado,
-        lat, lng,
-        raio: raio,
-        travarPonto: travar,
-        criadoPor: currentUser.uid,
-        criadoEm: serverTimestamp()
-      });
-
-      // Limpa formulário
-      ["obraName","obraDesc","obraRua","obraNum","obraBairro","obraCidade","obraLat","obraLng"].forEach(id=>{ const el=$(id); if(el) el.value=""; });
-      $("obraEstado").value="SP";
-      $("obraRaio").value="100";
-      $("obraTravarPonto").checked=false;
-      $("obraGeoStatus").style.display="none";
-
-      setMsg("obraMsg","✅ Obra cadastrada!" + (lat&&lng?" · Geofencing configurado.":""), true);
-      toast("Obra cadastrada! 🏗️");
+      if(editId){
+        // ── ATUALIZAR obra existente ──
+        await updateDoc(doc(db,"obras",editId),{
+          nome, descricao: desc,
+          endereco, rua, numero: num, bairro, cidade, estado,
+          lat, lng, raio, travarPonto: travar,
+          atualizadoEm: serverTimestamp()
+        });
+        setMsg("obraMsg","✅ Obra atualizada!", true);
+        toast("Obra atualizada! ✏️");
+        _obraLimparForm();
+      } else {
+        // ── CRIAR nova obra ──
+        const id = "OBRA_"+Date.now();
+        await setDoc(doc(db,"obras",id),{
+          id, nome, descricao: desc, ativa: true,
+          endereco, rua, numero: num, bairro, cidade, estado,
+          lat, lng, raio, travarPonto: travar,
+          criadoPor: currentUser.uid,
+          criadoEm: serverTimestamp()
+        });
+        setMsg("obraMsg","✅ Obra cadastrada!" + (lat&&lng?" · Geofencing configurado.":""), true);
+        toast("Obra cadastrada! 🏗️");
+        _obraLimparForm();
+      }
       await loadObras();
       const snap=await getDocs(collection(db,"obras"));
       $("statObras").textContent=snap.docs.filter(d=>d.data().ativa!==false).length;
     } catch(e){ setMsg("obraMsg","Erro: "+e.message); }
-    finally{ btn.disabled=false; btn.textContent="💾 Salvar Obra"; }
+    finally{ btn.disabled=false; btn.textContent= $("obraEditId")?.value ? "💾 Atualizar Obra" : "💾 Salvar Obra"; }
   }
+
+  function _obraLimparForm(){
+    $("obraEditId").value="";
+    ["obraName","obraDesc","obraRua","obraNum","obraBairro","obraCidade","obraLat","obraLng"].forEach(id=>{ const el=$(id); if(el) el.value=""; });
+    $("obraEstado").value="SP";
+    $("obraRaio").value="100";
+    $("obraTravarPonto").checked=false;
+    $("obraGeoStatus").style.display="none";
+    $("obraFormTitulo").textContent="Cadastrar Obra";
+    $("obraFormSubtitulo").textContent="Adicione uma nova obra ao sistema.";
+    $("btnSaveObra").textContent="💾 Salvar Obra";
+    $("btnCancelarEditObra").style.display="none";
+    // Rolar suavemente de volta ao topo do formulário
+    document.getElementById("adm-obras")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  async function editarObra(id){
+    try{
+      const snap = await getDoc(doc(db,"obras",id));
+      if(!snap.exists()){ toast("Obra não encontrada.", false); return; }
+      const o = snap.data();
+
+      // Preencher formulário
+      $("obraEditId").value   = id;
+      $("obraName").value     = o.nome||"";
+      $("obraDesc").value     = o.descricao||"";
+      $("obraRua").value      = o.rua||"";
+      $("obraNum").value      = o.numero||"";
+      $("obraBairro").value   = o.bairro||"";
+      $("obraCidade").value   = o.cidade||"";
+      if(o.estado) $("obraEstado").value = o.estado;
+      $("obraLat").value      = o.lat||"";
+      $("obraLng").value      = o.lng||"";
+      $("obraRaio").value     = o.raio||100;
+      $("obraTravarPonto").checked = o.travarPonto||false;
+
+      // Atualizar visual do formulário
+      $("obraFormTitulo").textContent    = "✏️ Editar Obra";
+      $("obraFormSubtitulo").textContent = `Editando: ${o.nome}`;
+      $("btnSaveObra").textContent       = "💾 Atualizar Obra";
+      $("btnCancelarEditObra").style.display = "";
+      setMsg("obraMsg","");
+      if(o.lat&&o.lng){
+        $("obraGeoStatus").style.display="";
+        $("obraGeoStatus").style.background="#ecfdf5";
+        $("obraGeoStatus").style.color="#065f46";
+        $("obraGeoStatus").textContent=`📍 Coordenadas salvas: ${o.lat.toFixed(5)}, ${o.lng.toFixed(5)}`;
+      }
+
+      // Scroll para o formulário
+      document.getElementById("adm-obras")?.scrollIntoView({behavior:"smooth",block:"start"});
+      $("obraName").focus();
+    }catch(e){ toast("Erro: "+e.message, false); }
+  }
+
+  function cancelarEditObra(){ _obraLimparForm(); setMsg("obraMsg",""); }
 
   async function loadObras() {
     const el=$("obraList"); if(!el) return;
@@ -2118,6 +2186,7 @@
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
             <span class="badge-status ${o.ativa!==false?"active":"inactive"}">${o.ativa!==false?"✅ Ativa":"⛔ Inativa"}</span>
             <div class="list-item-actions">
+              <button class="btn btn-outline sm" onclick="App.editarObra('${d.id}')" title="Editar dados da obra" style="color:var(--brand)">✏️</button>
               <button class="btn btn-outline sm" onclick="App.editarGeofencing('${d.id}')" title="Configurar GPS">📍</button>
               <button class="btn btn-outline sm" onclick="App.toggleObra('${d.id}',${o.ativa!==false})">${o.ativa!==false?"Desativar":"Ativar"}</button>
               <button class="btn btn-danger sm" data-id="${d.id}" data-nome="${o.nome}" onclick="App.deleteObra(this.dataset.id, this.dataset.nome)">🗑️</button>
@@ -8837,7 +8906,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     // Navegação
     goTab, adminTab,
     // Obras
-    saveObra, loadObras, toggleObra, deleteObra,
+    saveObra, loadObras, toggleObra, deleteObra, editarObra, cancelarEditObra,
     geocodificarObra, editarGeofencing, geocodificarModal, salvarGeofencing,
     // Colaboradores
     saveUser, loadUsers, filterUsers, toggleUser,
