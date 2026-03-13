@@ -9052,6 +9052,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       $("vLoading").style.display="none";
       $("vMain").style.display="";
       _vRenderKpis();
+      _vRenderListaUnidades();
       _vRenderGrafico();
       await _vRenderHistorico();
       await _vCarregarGaleria();
@@ -9081,6 +9082,75 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       fill.style.background = g>=100?"linear-gradient(90deg,#10b981,#059669)":g>=60?"linear-gradient(90deg,#f5a623,#10b981)":g>=30?"linear-gradient(90deg,#e94560,#f5a623)":"linear-gradient(90deg,#e94560,#0f3460)";
     }
     $("vDataAtualizacao").textContent = "Atualizado em "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  }
+
+  function _vRenderListaUnidades() {
+    const el=$("vListaUnidades"); if(!el) return;
+    const unids = _vCfg?.unidades||[];
+    const svcs  = _vCfg?.servicos||[];
+    const grupos = _vCfg?.grupos||[];
+    const tipo  = _vCfg?.tipoUnidade||"Unidade";
+
+    $("vLblTipoUnid").textContent = tipo;
+
+    // Filtro de grupos
+    const sg=$("vFiltroGrupo");
+    if(sg && grupos.length>1){
+      sg.style.display="";
+      const v=sg.value;
+      sg.innerHTML=`<option value="">Todos os grupos</option>`;
+      grupos.forEach(g2=>{ const o=document.createElement("option"); o.value=g2; o.textContent=g2; if(g2===v) o.selected=true; sg.appendChild(o); });
+    }
+
+    const filtroGrupo = $("vFiltroGrupo")?.value||"";
+    const filtradas = filtroGrupo ? unids.filter(u=>u.grupo===filtroGrupo) : unids;
+    if(!filtradas.length){ el.innerHTML=`<div style="color:rgba(255,255,255,.35);text-align:center;padding:20px;font-size:.82rem">Nenhuma unidade encontrada.</div>`; return; }
+
+    // Agrupar hierarquicamente
+    const porGrupo={};
+    filtradas.forEach(u=>{ const k=u.grupo||"__sg__"; if(!porGrupo[k]) porGrupo[k]=[]; porGrupo[k].push(u); });
+    const temGrupos = Object.keys(porGrupo).some(k=>k!=="__sg__") && Object.keys(porGrupo).length>1;
+
+    el.innerHTML = Object.entries(porGrupo).map(([g2,ug],gi)=>{
+      const pctG = ug.reduce((a,u)=>a+_vPctUnid(u.id),0)/ug.length;
+      const corG = pctG>=100?"#10b981":pctG>0?"#f5a623":"rgba(255,255,255,.4)";
+
+      const cab = (temGrupos && g2!=="__sg__") ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;margin-bottom:8px;border-bottom:1.5px solid rgba(255,255,255,.15);margin-top:${gi>0?'16px':'0'}">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.87rem;color:rgba(255,255,255,.9)">${g2}</span>
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.83rem;color:${corG}">${pctG.toFixed(1)}%</span>
+        </div>` : "";
+
+      const cards = ug.map(u=>{
+        const pct = _vPctUnid(u.id);
+        const concSvcs = svcs.filter(s=>_vPctSvc(u.id,s.id)>=100).length;
+        const cor = pct>=100?"#10b981":pct>0?"#f5a623":"rgba(255,255,255,.4)";
+        const bord = pct>=100?"rgba(16,185,129,.4)":pct>0?"rgba(245,166,35,.4)":"rgba(255,255,255,.1)";
+        const bg   = pct>=100?"rgba(16,185,129,.08)":pct>0?"rgba(245,166,35,.05)":"rgba(255,255,255,.04)";
+        return `
+        <div style="background:${bg};border:1.5px solid ${bord};border-radius:10px;padding:11px 13px;margin-bottom:7px;transition:all .18s"
+             onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.3)'"
+             onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="min-width:0">
+              <div style="font-weight:700;font-size:.87rem;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
+              ${svcs.length?`<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:1px">${concSvcs}/${svcs.length} serviços concluídos</div>`:""}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${cor}">${pct.toFixed(1)}%</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:999px;height:5px;overflow:hidden;margin-top:7px">
+            <div style="height:100%;border-radius:999px;background:${cor};width:${pct.toFixed(1)}%;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>
+          </div>
+        </div>`;
+      }).join("");
+      return `<div>${cab}${cards}</div>`;
+    }).join("");
+  }
+
+  function vFiltrarGrupo() {
+    _vRenderListaUnidades();
   }
 
   function _vRenderGrafico() {
@@ -9314,7 +9384,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     evolAbrirModalContrato, evolSalvarContrato, evolAddMarco, evolAnexarArquivo, evolTrocarArquivo, evolDeletarArquivo,
     evolAbrirParaColab,
     evolAbrirGaleria, evolFiltrarGaleria, evolVerFotoAmp, evolGerarRelatorio,
-    visitanteInicializar, vFiltrarGaleria, vVerFotoAmp,
+    visitanteInicializar, vFiltrarGaleria, vVerFotoAmp, vFiltrarGrupo,
     // Cadastro de EPIs
     epiCarregar, epiFiltrar, epiAutoCA,
     epiSalvarNovo, epiIniciarEdicao, epiCancelarEdicao, epiSalvarEdicao, epiExcluir,
@@ -9398,14 +9468,27 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
           <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:6px;text-align:right" id="vDataAtualizacao"></div>
         </div>
 
+        <!-- Lista de unidades (igual ao ADM) -->
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+            <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem">🏗️ Progresso por <span id="vLblTipoUnid">Unidade</span></div>
+            <select id="vFiltroGrupo" onchange="App.vFiltrarGrupo()" style="display:none;margin:0;font-size:.76rem;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:7px;width:auto">
+              <option value="">Todos os grupos</option>
+            </select>
+          </div>
+          <div id="vListaUnidades">
+            <div style="color:rgba(255,255,255,.35);text-align:center;padding:20px;font-size:.82rem">Carregando...</div>
+          </div>
+        </div>
+
         <!-- Gráfico de barras -->
         <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px">
-          <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem;margin-bottom:14px">📊 Progresso por Unidade</div>
+          <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem;margin-bottom:14px">📊 Gráfico de Progresso</div>
           <canvas id="vChartBarra" style="max-height:320px"></canvas>
         </div>
 
         <!-- Gráfico de linha (histórico) -->
-        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px" id="vCardHistorico" style="display:none">
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px;display:none" id="vCardHistorico">
           <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem;margin-bottom:14px">📈 Evolução ao Longo do Tempo</div>
           <canvas id="vChartLinha" style="max-height:220px"></canvas>
         </div>
