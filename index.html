@@ -2789,6 +2789,8 @@
       dados=unids.slice(0,max).map(u=>parseFloat(_ePctUnid(u.id).toFixed(1)));
     }
 
+    // Orientação: horizontal (y) quando muitas unidades, vertical (x) quando poucas
+    const horizontal = labels.length > 6;
     if(_eChartB) _eChartB.destroy();
     _eChartB=new Chart(canvas,{
       type:"bar",
@@ -2796,10 +2798,27 @@
         backgroundColor:E_CORES.slice(0,labels.length).map(c=>c+"BB"),
         borderColor:E_CORES.slice(0,labels.length), borderWidth:1.5, borderRadius:3
       }]},
-      options:{ responsive:true, maintainAspectRatio:true, indexAxis:labels.length>6?"y":"x",
-        scales:{ x:{min:0,max:100,ticks:{callback:v=>v+"%",font:{size:9}},grid:{color:"#f0f2f7"}},
-                 y:{ticks:{font:{size:9}},grid:{display:false}} },
-        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.parsed[labels.length>6?"x":"y"].toFixed(1)}%`}} }
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        indexAxis: horizontal ? "y" : "x",
+        scales:{
+          // Eixo dos valores (sempre 0–100%):
+          // horizontal → eixo X é o valor; vertical → eixo Y é o valor
+          x: horizontal
+            ? { min:0, max:100, ticks:{callback:v=>v+"%",font:{size:9}}, grid:{color:"#f0f2f7"} }
+            : { ticks:{font:{size:9}}, grid:{display:false} },
+          y: horizontal
+            ? { ticks:{font:{size:9}}, grid:{display:false} }
+            : { min:0, max:100, ticks:{callback:v=>v+"%",font:{size:9}}, grid:{color:"#f0f2f7"} }
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>{
+            // horizontal → valor em ctx.parsed.x; vertical → valor em ctx.parsed.y
+            const val = horizontal ? ctx.parsed.x : ctx.parsed.y;
+            return ` ${val.toFixed(1)}%`;
+          }}}
+        }
       }
     });
   }
