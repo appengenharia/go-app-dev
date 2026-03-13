@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
@@ -1456,12 +1457,32 @@
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;font-size:.67rem;color:var(--muted);padding:0 2px;margin-top:3px"><span>Nome</span><span style="text-align:center">% prog.</span><span style="text-align:center">% pag.</span><span></span></div>
       </div>
       <div style="margin-top:13px;padding:10px 13px;background:var(--bg);border-radius:10px">
-        <div style="font-size:.81rem;font-weight:600;margin-bottom:5px">📎 Arquivo do contrato</div>
-        <div id="evolContArqNome" style="font-size:.76rem;color:var(--muted);margin-bottom:7px">Nenhum arquivo</div>
-        <label class="btn btn-outline sm" style="cursor:pointer;font-size:.76rem;margin:0;display:inline-flex;align-items:center;gap:5px">
-          Anexar contrato
-          <input type="file" id="evolContFile" accept=".pdf,.docx,.doc" style="display:none" onchange="App.evolAnexarArquivo()">
-        </label>
+        <div style="font-size:.81rem;font-weight:600;margin-bottom:8px">📎 Arquivo do contrato</div>
+
+        <!-- Estado: nenhum arquivo -->
+        <div id="evolContSemArq" style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:.75rem;color:var(--muted)">Nenhum arquivo anexado</span>
+          <label class="btn btn-outline sm" style="cursor:pointer;font-size:.75rem;margin:0;display:inline-flex;align-items:center;gap:5px">
+            📎 Anexar contrato
+            <input type="file" id="evolContFile" accept=".pdf,.docx,.doc" style="display:none" onchange="App.evolAnexarArquivo()">
+          </label>
+        </div>
+
+        <!-- Estado: arquivo anexado -->
+        <div id="evolContComArq" style="display:none;align-items:center;gap:8px;background:#fff;border:1.5px solid #bfdbfe;border-radius:9px;padding:9px 12px">
+          <span style="font-size:1.1rem">📄</span>
+          <div style="flex:1;min-width:0">
+            <div id="evolContArqNome" style="font-size:.82rem;font-weight:600;color:var(--brand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+            <a id="evolContArqLink" href="#" target="_blank" rel="noopener" style="font-size:.72rem;color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--muted)'">🔗 Visualizar arquivo</a>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <label class="btn btn-outline sm" style="cursor:pointer;font-size:.73rem;margin:0;padding:5px 9px;display:inline-flex;align-items:center;gap:4px" title="Substituir arquivo">
+              🔄
+              <input type="file" id="evolContFileTroca" accept=".pdf,.docx,.doc" style="display:none" onchange="App.evolTrocarArquivo()">
+            </label>
+            <button class="btn sm" onclick="App.evolDeletarArquivo()" title="Remover arquivo" style="background:#fef2f2;color:var(--danger);border:1.5px solid #fca5a5;font-size:.73rem;padding:5px 9px">🗑️</button>
+          </div>
+        </div>
       </div>
       <div class="msg" id="evolContMsg"></div>
       <div class="modal-footer">
@@ -3468,8 +3489,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     $("evolContValor").value   = c.valor||"";
     $("evolContInicio").value  = c.inicio||"";
     $("evolContPrazo").value   = c.prazo||"";
-    $("evolContArqNome").textContent = c.arquivoNome||"Nenhum arquivo";
-    $("evolContArqNome").dataset.url = c.arquivoUrl||"";
+    _evolContRenderArquivo(c.arquivoUrl||"", c.arquivoNome||"");
     setMsg("evolContMsg","");
     _eRenderMarcosEd(c.marcos||JSON.parse(JSON.stringify(E_MARCOS_PAD)));
     $("modalEvolContrato").classList.remove("hidden");
@@ -3492,17 +3512,57 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     _eRenderMarcosEd(marcos);
   }
 
+  // Renderiza o estado do arquivo no modal (com ou sem arquivo)
+  function _evolContRenderArquivo(url, nome){
+    const semArq=$("evolContSemArq"), comArq=$("evolContComArq");
+    const nomeEl=$("evolContArqNome"), linkEl=$("evolContArqLink");
+    if(url){
+      if(semArq) semArq.style.display="none";
+      if(comArq) comArq.style.display="flex";
+      if(nomeEl) nomeEl.textContent=nome||"Contrato anexado";
+      if(linkEl){ linkEl.href=url; }
+      // Guardar no data-url para uso posterior
+      if(nomeEl) nomeEl.dataset.url=url;
+    } else {
+      if(semArq) semArq.style.display="flex";
+      if(comArq) comArq.style.display="none";
+      if(nomeEl){ nomeEl.textContent=""; nomeEl.dataset.url=""; }
+    }
+  }
+
+  async function _evolUploadArquivoContrato(file){
+    if(!file) return null;
+    const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
+    const fd=new FormData(); fd.append("file",b64); fd.append("upload_preset",CLOUDINARY_PRESET); fd.append("folder","contratos");
+    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`,{method:"POST",body:fd});
+    const data=await res.json();
+    return { url: data.secure_url||"", nome: file.name };
+  }
+
   async function evolAnexarArquivo(){
     const file=$("evolContFile")?.files?.[0]; if(!file) return;
-    $("evolContArqNome").textContent="⏳ Enviando...";
+    const nomeEl=$("evolContArqNome");
+    if(nomeEl) nomeEl.textContent="⏳ Enviando...";
     try{
-      const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
-      const fd=new FormData(); fd.append("file",b64); fd.append("upload_preset",CLOUDINARY_PRESET); fd.append("folder","contratos");
-      const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`,{method:"POST",body:fd});
-      const data=await res.json();
-      $("evolContArqNome").textContent="✅ "+file.name;
-      $("evolContArqNome").dataset.url=data.secure_url||"";
-    }catch(e){ $("evolContArqNome").textContent="❌ Erro no upload"; }
+      const result=await _evolUploadArquivoContrato(file);
+      if(result) _evolContRenderArquivo(result.url, result.nome);
+    }catch(e){ toast("❌ Erro no upload do arquivo","err"); }
+  }
+
+  async function evolTrocarArquivo(){
+    const file=$("evolContFileTroca")?.files?.[0]; if(!file) return;
+    const nomeEl=$("evolContArqNome");
+    if(nomeEl) nomeEl.textContent="⏳ Enviando...";
+    try{
+      const result=await _evolUploadArquivoContrato(file);
+      if(result){ _evolContRenderArquivo(result.url, result.nome); toast("✅ Arquivo substituído!"); }
+    }catch(e){ toast("❌ Erro no upload","err"); }
+  }
+
+  function evolDeletarArquivo(){
+    if(!confirm("Remover o arquivo do contrato? Esta ação não exclui o registro, apenas remove o anexo.")) return;
+    _evolContRenderArquivo("","");
+    toast("🗑️ Arquivo removido. Clique em Salvar para confirmar.");
   }
 
   async function evolSalvarContrato(){
@@ -3510,8 +3570,8 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     const btn=$("modalEvolContrato").querySelector(".btn-primary"); if(btn){ btn.disabled=true; btn.textContent="⏳"; }
     try{
       const marcos=Array.from($("evolContMarcos").querySelectorAll("[data-m]")).map(r=>({label:r.querySelector(".mc-lbl").value,pct:parseFloat(r.querySelector(".mc-pct").value)||0,pagPct:parseFloat(r.querySelector(".mc-pag").value)||0}));
-      const url=$("evolContArqNome").dataset.url||_eCont?.arquivoUrl||"";
-      const nome=$("evolContArqNome").textContent.replace("✅ ","");
+      const url=$("evolContArqNome")?.dataset?.url||"";
+      const nome=url?($("evolContArqNome")?.textContent||""):"";
       const payload={cliente:$("evolContCliente").value.trim(),valor:parseFloat($("evolContValor").value)||0,inicio:$("evolContInicio").value,prazo:parseInt($("evolContPrazo").value)||50,marcos,arquivoUrl:url,arquivoNome:url?nome:"",atualizadoEm:serverTimestamp()};
       await setDoc(doc(db,"obras",_eObraId,"evolContrato","main"),payload,{merge:true});
       _eCont=payload;
@@ -8970,7 +9030,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     evolAddSvc, evolAnalisarIA,
     evolAbrirUnidade, evolReabrirUnidade,
     evolAbrirReg, evolFotoSel, evolSalvarReg,
-    evolAbrirModalContrato, evolSalvarContrato, evolAddMarco, evolAnexarArquivo,
+    evolAbrirModalContrato, evolSalvarContrato, evolAddMarco, evolAnexarArquivo, evolTrocarArquivo, evolDeletarArquivo,
     evolAbrirParaColab,
     evolAbrirGaleria, evolFiltrarGaleria, evolVerFotoAmp, evolGerarRelatorio,
     // Cadastro de EPIs
