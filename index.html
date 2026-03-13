@@ -949,6 +949,7 @@
           <select id="userRole">
             <option value="USER">👤 Colaborador</option>
             <option value="ADMIN">👑 Administrador</option>
+            <option value="VISITANTE">👁️ Visitante (somente leitura)</option>
           </select>
           <label>Alocar em obra (opcional)</label>
           <select id="userObra">
@@ -1805,7 +1806,7 @@
   }
 
   function showPage(page) {
-    ["loginPage","pontoPage","changePwPage","appLayout"].forEach(id=>{
+    ["loginPage","pontoPage","changePwPage","appLayout","visitantePage"].forEach(id=>{
       const el=$(id);
       if(el) el.classList.add("hidden");
     });
@@ -1959,7 +1960,7 @@
     }
 
     $("welcomeName").textContent=`Olá, ${nome}! 👋`;
-    $("welcomeRole").textContent=currentRole==="ADMIN"?"👑 Administrador":"👤 Colaborador";
+    $("welcomeRole").textContent=currentRole==="ADMIN"?"👑 Administrador":currentRole==="VISITANTE"?"👁️ Visitante":"👤 Colaborador";
     $("pillUser").textContent=nome;
     $("pillUser").classList.remove("hidden");
     $("btnLogout").classList.remove("hidden");
@@ -1982,6 +1983,14 @@
       const statUsers=$("statUsers");
       if(statUsers) statUsers.textContent=users.docs.filter(d=>d.data().ativo!==false&&d.data().role!=="ADMIN").length||"0";
     } catch(_){}
+
+    // ── VISITANTE: redireciona para página própria ──
+    if(currentRole==="VISITANTE"){
+      showPage("visitantePage");
+      $("vNomeVisitante").textContent = nome;
+      await visitanteInicializar(profile?.obra_id||"");
+      return;
+    }
 
     showPage("appLayout");
     await fillDashFilters();
@@ -8978,7 +8987,260 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     if(layout) layout.classList.toggle("rh-fluxo-ativo", ativo);
   }
 
-  window.App = {
+
+  // ══════════════════════════════════════════════════════════
+  // MÓDULO VISITANTE — somente leitura
+  // ══════════════════════════════════════════════════════════
+  let _vObraId = "", _vCfg = null, _vProg = {}, _vCont = null;
+  let _vChartB = null, _vChartL = null;
+  let _vGaleriaRegistros = [];
+  const E_CORES_V = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#84cc16","#f97316","#ec4899","#14b8a6","#6366f1","#d946ef","#0ea5e9","#22c55e","#eab308","#f43f5e"];
+
+  function _vPctSvc(uid, sid) {
+    const k = uid+"_"+sid;
+    return _vProg[k]?.pct || 0;
+  }
+  function _vQtdExec(uid, sid) {
+    return _vProg[k=uid+"_"+sid]?.qtdExec || 0;
+  }
+  function _vPctUnid(uid) {
+    const svcs = _vCfg?.servicos||[];
+    if(!svcs.length) return 0;
+    let pT=0, pp=0;
+    svcs.forEach(s=>{ const p=Number(s.peso)||1; pT+=p; pp+=p*_vPctSvc(uid,s.id); });
+    return pT>0 ? pp/pT : 0;
+  }
+  function _vPctGlobal() {
+    const u = _vCfg?.unidades||[];
+    return u.length ? u.reduce((a,x)=>a+_vPctUnid(x.id),0)/u.length : 0;
+  }
+
+  async function visitanteInicializar(obraId) {
+    $("vLoading").style.display="";
+    $("vMain").style.display="none";
+    if(!obraId){ $("vLoading").innerHTML=`<div style="font-size:2rem">⚠️</div><p style="color:rgba(255,255,255,.5);margin-top:8px">Nenhuma obra vinculada à sua conta.<br>Fale com o administrador.</p>`; return; }
+    _vObraId = obraId;
+
+    try {
+      // Nome da obra
+      const obraSnap = await getDoc(doc(db,"obras",obraId));
+      const obraNome = obraSnap.exists() ? obraSnap.data().nome : "Obra";
+      $("vNomeObra").textContent = obraNome;
+      document.title = obraNome+" · GO";
+
+      // Config (unidades e serviços)
+      const cfgSnap = await getDoc(doc(db,"obras",obraId,"evolConfig","main"));
+      _vCfg = cfgSnap.exists() ? cfgSnap.data() : null;
+
+      if(!_vCfg || !(_vCfg.unidades||[]).length){
+        $("vLoading").innerHTML=`<div style="font-size:2rem">🏗️</div><p style="color:rgba(255,255,255,.5);margin-top:8px">Esta obra ainda não tem estrutura configurada.</p>`;
+        return;
+      }
+
+      // Progresso
+      _vProg = {};
+      const progSnap = await getDocs(collection(db,"obras",obraId,"evolProgresso"));
+      progSnap.forEach(d=>{ _vProg[d.id] = d.data(); });
+
+      // Contrato (opcional)
+      try{
+        const contSnap = await getDoc(doc(db,"obras",obraId,"evolContrato","main"));
+        _vCont = contSnap.exists() ? contSnap.data() : null;
+      }catch(_){}
+
+      // Renderizar tudo
+      $("vLoading").style.display="none";
+      $("vMain").style.display="";
+      _vRenderKpis();
+      _vRenderGrafico();
+      await _vRenderHistorico();
+      await _vCarregarGaleria();
+
+    } catch(e) {
+      $("vLoading").innerHTML=`<div style="font-size:2rem">❌</div><p style="color:rgba(255,255,255,.5);margin-top:8px">Erro ao carregar dados.<br><small>${e.message}</small></p>`;
+    }
+  }
+
+  function _vRenderKpis() {
+    const unids = _vCfg?.unidades||[];
+    const g = _vPctGlobal();
+    const conc = unids.filter(u=>_vPctUnid(u.id)>=100).length;
+    const anda = unids.filter(u=>{ const p=_vPctUnid(u.id); return p>0&&p<100; }).length;
+    const tipo = _vCfg?.tipoUnidade||"Unidade";
+
+    $("vPctGlobal").textContent = g.toFixed(1)+"%";
+    $("vPctGlobal").style.color = g>=100?"#10b981":g>=60?"#f5a623":"#fff";
+    $("vTotalUnids").textContent = unids.length;
+    $("vLblUnids").textContent = tipo+"s";
+    $("vConcluidas").textContent = conc;
+    $("vEmAndamento").textContent = anda;
+    $("vBarPct").textContent = g.toFixed(1)+"%";
+    const fill=$("vBarFill");
+    if(fill){
+      fill.style.width = g.toFixed(1)+"%";
+      fill.style.background = g>=100?"linear-gradient(90deg,#10b981,#059669)":g>=60?"linear-gradient(90deg,#f5a623,#10b981)":g>=30?"linear-gradient(90deg,#e94560,#f5a623)":"linear-gradient(90deg,#e94560,#0f3460)";
+    }
+    $("vDataAtualizacao").textContent = "Atualizado em "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  }
+
+  function _vRenderGrafico() {
+    const canvas=$("vChartBarra"); if(!canvas) return;
+    const grupos = _vCfg?.grupos||[];
+    const unids = _vCfg?.unidades||[];
+
+    let labels, dados;
+    if(grupos.length>1){
+      labels = grupos;
+      dados = grupos.map(g2=>{ const ug=unids.filter(u=>u.grupo===g2); return ug.length?parseFloat((_vPctUnid.apply(null,[]) || ug.reduce((a,u)=>a+_vPctUnid(u.id),0)/ug.length).toFixed(1)):0; });
+      // corrigir
+      dados = grupos.map(g2=>{ const ug=unids.filter(u=>u.grupo===g2); return ug.length?parseFloat((ug.reduce((a,u)=>a+_vPctUnid(u.id),0)/ug.length).toFixed(1)):0; });
+    } else {
+      const max = Math.min(unids.length,18);
+      labels = unids.slice(0,max).map(u=>u.nome);
+      dados  = unids.slice(0,max).map(u=>parseFloat(_vPctUnid(u.id).toFixed(1)));
+    }
+
+    const horizontal = labels.length > 6;
+    if(_vChartB) _vChartB.destroy();
+
+    Chart.defaults.color = "rgba(255,255,255,0.55)";
+    Chart.defaults.borderColor = "rgba(255,255,255,0.08)";
+    _vChartB = new Chart(canvas, {
+      type:"bar",
+      data:{ labels, datasets:[{
+        label:"% Progresso",
+        data: dados,
+        backgroundColor: E_CORES_V.slice(0,labels.length).map(c=>c+"BB"),
+        borderColor: E_CORES_V.slice(0,labels.length),
+        borderWidth:1.5, borderRadius:4
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        indexAxis: horizontal?"y":"x",
+        scales:{
+          x: horizontal
+            ? {min:0,max:100,ticks:{callback:v=>v+"%",font:{size:9},color:"rgba(255,255,255,.5)"},grid:{color:"rgba(255,255,255,.06)"}}
+            : {ticks:{font:{size:9},color:"rgba(255,255,255,.5)"},grid:{display:false}},
+          y: horizontal
+            ? {ticks:{font:{size:9},color:"rgba(255,255,255,.5)"},grid:{display:false}}
+            : {min:0,max:100,ticks:{callback:v=>v+"%",font:{size:9},color:"rgba(255,255,255,.5)"},grid:{color:"rgba(255,255,255,.06)"}}
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>{ const val=horizontal?ctx.parsed.x:ctx.parsed.y; return ` ${val.toFixed(1)}%`; }}}
+        }
+      }
+    });
+    // reset defaults
+    Chart.defaults.color = "#666";
+    Chart.defaults.borderColor = "rgba(0,0,0,0.1)";
+  }
+
+  async function _vRenderHistorico() {
+    try {
+      const snap = await getDocs(query(
+        collection(db,"obras",_vObraId,"evolHistorico"),
+        orderBy("data","asc"), limit(60)
+      ));
+      if(snap.empty){ $("vCardHistorico").style.display="none"; return; }
+      const labels=[], dados=[];
+      snap.forEach(d=>{
+        labels.push(new Date(d.data().data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
+        dados.push(parseFloat((d.data().pctGlobal||0).toFixed(1)));
+      });
+      $("vCardHistorico").style.display="";
+      const canvas=$("vChartLinha"); if(!canvas) return;
+      if(_vChartL) _vChartL.destroy();
+      Chart.defaults.color = "rgba(255,255,255,0.5)";
+      Chart.defaults.borderColor = "rgba(255,255,255,0.07)";
+      _vChartL = new Chart(canvas,{
+        type:"line",
+        data:{labels, datasets:[{
+          label:"% Global", data:dados,
+          borderColor:"#3b82f6", backgroundColor:"rgba(59,130,246,.12)",
+          fill:true, tension:0.4, pointBackgroundColor:"#f5a623", pointRadius:3, borderWidth:2
+        }]},
+        options:{
+          responsive:true, maintainAspectRatio:true,
+          scales:{
+            y:{min:0,max:100,ticks:{callback:v=>v+"%",font:{size:9},color:"rgba(255,255,255,.5)"},grid:{color:"rgba(255,255,255,.06)"}},
+            x:{grid:{display:false},ticks:{font:{size:9},color:"rgba(255,255,255,.5)"}}
+          },
+          plugins:{legend:{display:false}}
+        }
+      });
+      Chart.defaults.color = "#666";
+      Chart.defaults.borderColor = "rgba(0,0,0,0.1)";
+    }catch(e){}
+  }
+
+  async function _vCarregarGaleria() {
+    try {
+      const snap = await getDocs(query(
+        collection(db,"obras",_vObraId,"evolRegistros"),
+        orderBy("criadoEm","desc"), limit(200)
+      ));
+      _vGaleriaRegistros = [];
+      snap.forEach(d=>{ const r={id:d.id,...d.data()}; if(r.fotoUrl) _vGaleriaRegistros.push(r); });
+
+      // Popular filtro de unidades
+      const sel=$("vGaleriaFiltroUnid"); if(sel){
+        sel.innerHTML=`<option value="">Todas as unidades</option>`;
+        (_vCfg?.unidades||[]).forEach(u=>{ const o=document.createElement("option"); o.value=u.id; o.textContent=u.nome; sel.appendChild(o); });
+      }
+      vFiltrarGaleria();
+    }catch(e){}
+  }
+
+  function vFiltrarGaleria() {
+    const filtroUnid = $("vGaleriaFiltroUnid")?.value||"";
+    const filtroDias = parseInt($("vGaleriaFiltroPeriodo")?.value)||0;
+    const corte = filtroDias>0 ? new Date(Date.now()-filtroDias*86400000) : null;
+
+    const regs = _vGaleriaRegistros.filter(r=>{
+      if(filtroUnid && r.unidId!==filtroUnid) return false;
+      if(corte && r.data){ const d=new Date(r.data+"T12:00:00"); if(d<corte) return false; }
+      return true;
+    });
+
+    const grid=$("vGaleriaGrid"); if(!grid) return;
+    $("vGaleriaTotais").textContent = regs.length ? `${regs.length} foto${regs.length!==1?"s":""} encontrada${regs.length!==1?"s":""}` : "";
+
+    if(!regs.length){
+      grid.innerHTML=`<div style="color:rgba(255,255,255,.35);font-size:.82rem;text-align:center;padding:24px;grid-column:1/-1">📷 Nenhuma foto neste período</div>`;
+      return;
+    }
+
+    grid.innerHTML = regs.map(r=>{
+      const dtFmt = new Date((r.data||"")+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+      const unid = (_vCfg?.unidades||[]).find(u=>u.id===r.unidId);
+      const delta = r.pctDepois-r.pctAntes;
+      return `
+      <div onclick="App.vVerFotoAmp('${r.fotoUrl}','${(r.unidNome||"").replace(/'/g,"&#39;")}','${(r.svcDesc||"").replace(/'/g,"&#39;")}','${r.data||""}','${delta.toFixed(1)}')"
+           style="cursor:zoom-in;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);transition:transform .15s,box-shadow .15s"
+           onmouseover="this.style.transform='scale(1.03)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.4)'"
+           onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <img src="${r.fotoUrl}" style="width:100%;height:120px;object-fit:cover;display:block" loading="lazy" alt="">
+        <div style="padding:7px 9px">
+          <div style="font-size:.73rem;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${unid?.nome||r.unidNome||"—"}</div>
+          <div style="font-size:.67rem;color:rgba(255,255,255,.45);margin-top:1px">${dtFmt} · <span style="color:#10b981">+${delta.toFixed(1)}%</span></div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function vVerFotoAmp(url, unid, svc, data, delta) {
+    $("vFotoAmpImg").src = url;
+    const dtFmt = data ? new Date(data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}) : "";
+    $("vFotoAmpInfo").innerHTML = `<strong>${unid}</strong> · ${svc} · ${dtFmt} · <span style="color:#86efac">+${delta}%</span>`;
+    $("vModalFotoAmp").classList.remove("hidden");
+  }
+
+
+
+  // ── fim módulo visitante ──
+
+    window.App = {
     // Auth
     login, logout, togglePass, changePassword,
     // Navegação
@@ -9052,6 +9314,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     evolAbrirModalContrato, evolSalvarContrato, evolAddMarco, evolAnexarArquivo, evolTrocarArquivo, evolDeletarArquivo,
     evolAbrirParaColab,
     evolAbrirGaleria, evolFiltrarGaleria, evolVerFotoAmp, evolGerarRelatorio,
+    visitanteInicializar, vFiltrarGaleria, vVerFotoAmp,
     // Cadastro de EPIs
     epiCarregar, epiFiltrar, epiAutoCA,
     epiSalvarNovo, epiIniciarEdicao, epiCancelarEdicao, epiSalvarEdicao, epiExcluir,
@@ -9067,5 +9330,122 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     });
   }
 </script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA DO VISITANTE — somente leitura, fullscreen
+       ══════════════════════════════════════════════════════════ -->
+  <div class="auth-page hidden" id="visitantePage" style="background:var(--brand2);min-height:100vh;padding:0;display:flex;flex-direction:column">
+
+    <!-- Topbar -->
+    <div style="background:var(--brand);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,.3)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="background:var(--accent);border-radius:9px;padding:6px 10px;font-family:'Syne',sans-serif;font-weight:800;color:#fff;font-size:.95rem">GO</div>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;font-size:.95rem" id="vNomeObra">—</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.6)">Acompanhamento de Obra</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="text-align:right">
+          <div style="font-size:.78rem;color:rgba(255,255,255,.7)" id="vNomeVisitante"></div>
+          <div style="font-size:.66rem;color:rgba(255,255,255,.45)">👁️ Visitante</div>
+        </div>
+        <button onclick="App.logout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">Sair</button>
+      </div>
+    </div>
+
+    <!-- Conteúdo scrollável -->
+    <div style="flex:1;overflow-y:auto;padding:20px 16px 40px" id="vConteudo">
+
+      <!-- Loading state -->
+      <div id="vLoading" style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">
+        <div style="font-size:2.5rem;margin-bottom:12px">⏳</div>
+        <p style="font-size:.9rem">Carregando dados da obra...</p>
+      </div>
+
+      <!-- Conteúdo principal (oculto até carregar) -->
+      <div id="vMain" style="display:none;max-width:900px;margin:0 auto">
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px" id="vKpiGrid">
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:#fff" id="vPctGlobal">—</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-top:2px">Progresso Global</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:#fff" id="vTotalUnids">—</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-top:2px" id="vLblUnids">Unidades</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:#10b981" id="vConcluidas">—</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-top:2px">Concluídas</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:#f5a623" id="vEmAndamento">—</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-top:2px">Em andamento</div>
+          </div>
+        </div>
+
+        <!-- Barra de progresso global -->
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="color:rgba(255,255,255,.8);font-weight:600;font-size:.88rem">Progresso Geral</span>
+            <span style="font-family:'Syne',sans-serif;font-weight:800;color:#fff;font-size:1.1rem" id="vBarPct">0%</span>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:999px;height:14px;overflow:hidden">
+            <div id="vBarFill" style="height:100%;border-radius:999px;width:0%;transition:width 1s cubic-bezier(.4,0,.2,1);background:linear-gradient(90deg,#e94560,#f5a623)"></div>
+          </div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:6px;text-align:right" id="vDataAtualizacao"></div>
+        </div>
+
+        <!-- Gráfico de barras -->
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px">
+          <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem;margin-bottom:14px">📊 Progresso por Unidade</div>
+          <canvas id="vChartBarra" style="max-height:320px"></canvas>
+        </div>
+
+        <!-- Gráfico de linha (histórico) -->
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px" id="vCardHistorico" style="display:none">
+          <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem;margin-bottom:14px">📈 Evolução ao Longo do Tempo</div>
+          <canvas id="vChartLinha" style="max-height:220px"></canvas>
+        </div>
+
+        <!-- Galeria de fotos -->
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="font-weight:600;color:rgba(255,255,255,.8);font-size:.88rem">🖼️ Registro Fotográfico</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <select id="vGaleriaFiltroUnid" onchange="App.vFiltrarGaleria()" style="margin:0;font-size:.76rem;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:7px;width:auto">
+                <option value="">Todas as unidades</option>
+              </select>
+              <select id="vGaleriaFiltroPeriodo" onchange="App.vFiltrarGaleria()" style="margin:0;font-size:.76rem;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:7px;width:auto">
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="0">Todos</option>
+              </select>
+            </div>
+          </div>
+          <div id="vGaleriaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+            <div style="color:rgba(255,255,255,.4);font-size:.82rem;text-align:center;padding:24px;grid-column:1/-1">📷 Nenhuma foto registrada ainda</div>
+          </div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.4);text-align:center;margin-top:10px" id="vGaleriaTotais"></div>
+        </div>
+
+
+
+      </div><!-- /vMain -->
+    </div><!-- /scroll -->
+
+    <!-- Modal foto ampliada (visitante) -->
+    <div class="modal-overlay hidden" id="vModalFotoAmp" onclick="App.closeModal('vModalFotoAmp')" style="align-items:center;justify-content:center;padding:16px;cursor:zoom-out">
+      <div style="max-width:90vw;max-height:90vh;position:relative" onclick="event.stopPropagation()">
+        <img id="vFotoAmpImg" style="max-width:100%;max-height:85vh;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.6)" alt="">
+        <div id="vFotoAmpInfo" style="background:rgba(0,0,0,.75);color:#fff;padding:10px 14px;border-radius:0 0 12px 12px;font-size:.82rem"></div>
+        <button onclick="App.closeModal('vModalFotoAmp')" style="position:absolute;top:-12px;right:-12px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">✕</button>
+      </div>
+    </div>
+
+  </div><!-- /visitantePage -->
+
 </body>
 </html>
