@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
@@ -511,10 +510,10 @@
     </div>
     <div class="alert-banner">⚠️ Por segurança, crie uma nova senha antes de continuar.</div>
     <h2>Crie sua senha</h2>
-    <p class="subtitle">Escolha uma senha com pelo menos 6 caracteres.</p>
+    <p class="subtitle">Escolha uma senha com pelo menos 8 caracteres, incluindo letras e números.</p>
     <label>Nova Senha</label>
     <div class="pass-row">
-      <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres">
+      <input id="newPass1" type="password" placeholder="Mínimo 8 caracteres com letras e números">
       <button class="eye-btn" type="button" onclick="App.togglePass('newPass1')">👁</button>
     </div>
     <label>Confirmar Senha</label>
@@ -942,7 +941,7 @@
       <div class="admin-panel" id="adm-usuarios">
         <div class="card">
           <div class="card-header"><div><h3>Cadastrar Colaborador</h3><p>Crie um novo acesso ao sistema.</p></div></div>
-          <div class="info-box">ℹ️ A senha padrão é <strong>user123</strong>. No primeiro acesso o colaborador será obrigado a criar uma nova senha.</div>
+          <div class="info-box">ℹ️ O colaborador receberá as credenciais de acesso. No primeiro acesso será obrigado a criar uma nova senha pessoal.</div>
           <label>Nome completo</label>
           <input id="userNome" type="text" placeholder="Ex: João da Silva">
           <label>E-mail</label>
@@ -1157,6 +1156,7 @@
             <button class="btn btn-outline" id="rhBtnAnterior" onclick="App.rhEtapaAnterior()">← Anterior</button>
             <button class="btn btn-primary" id="rhBtnProximo" onclick="App.rhEtapaProxima()">Próximo →</button>
             <button class="btn btn-primary hidden" id="rhBtnFinalizar" onclick="App.rhFinalizar()" style="background:var(--success,#10b981)">✅ Finalizar e Gerar Documentos</button>
+            <button class="btn btn-danger sm" onclick="App.rhCancelarProcesso()" style="margin-left:auto" title="Cancelar e excluir este processo">🗑️ Cancelar processo</button>
             <button onclick="App.rhAbrirPreview()" class="btn btn-outline sm" style="margin-left:auto">👁️ Pré-visualizar</button>
             <span id="rhEtapaMsg" style="font-size:.82rem;color:var(--danger)"></span>
           </div>
@@ -1220,10 +1220,11 @@
         <h3 id="modalRhTitulo">Processo RH</h3>
         <div id="modalRhConteudo" style="max-height:60vh;overflow-y:auto"></div>
         <div class="modal-footer" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="App.rhReabrirProcesso()">✏️ Continuar Edição</button>
+          <button class="btn btn-primary" onclick="App.rhReabrirProcesso()" id="btnRhContinuar">✏️ Continuar Edição</button>
           <button class="btn btn-outline" onclick="App.rhGerarPDFs()" id="btnRhGerarPDF">📄 Gerar Ficha + EPI</button>
           <button class="btn btn-outline" onclick="App.rhGerarFichaEPIPDF(App._getProcessoId()).then(p=>p.save('FichaEPI.pdf'))">🦺 Só EPI</button>
           <button class="btn btn-outline" onclick="App.closeModal('modalRhProcesso')">Fechar</button>
+          <button class="btn btn-danger sm" id="btnRhCancelarProcesso" onclick="App.rhCancelarProcesso()" style="margin-left:auto" title="Cancelar e excluir este processo">🗑️ Cancelar Processo</button>
         </div>
       </div>
     </div>
@@ -1698,7 +1699,7 @@
     <label style="margin-top:12px">E-mail</label>
     <input id="editColabEmail" type="email" placeholder="email@exemplo.com">
     <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-top:12px;font-size:.79rem;color:#92400e">
-      ⚠️ Alterar o e-mail atualiza apenas o cadastro do sistema. O login de autenticação (Firebase Auth) não é alterado automaticamente — o colaborador deve continuar usando o e-mail original para fazer login até que o acesso seja redefinido.
+      ⚠️ O e-mail exibido aqui é apenas para identificação no sistema. O e-mail de login (Firebase Auth) não muda — o colaborador continua usando o e-mail original para entrar. Use o botão <strong>🔑 Senha</strong> para redefinir o acesso se necessário.
     </div>
     <div class="modal-footer" style="margin-top:16px">
       <button class="btn btn-outline" onclick="App.closeModal('modalEditColab')">Cancelar</button>
@@ -1986,9 +1987,10 @@
     setMsg("changePwMsg","");
     const p1=$("newPass1").value, p2=$("newPass2").value;
     const btn=$("btnChangePw");
-    if(p1.length<6){setMsg("changePwMsg","Mínimo 6 caracteres.");return;}
+    if(p1.length<8){setMsg("changePwMsg","⚠️ A senha deve ter pelo menos 8 caracteres.");return;}
+    if(!/[A-Za-z]/.test(p1)||!/[0-9]/.test(p1)){setMsg("changePwMsg","⚠️ A senha deve conter letras e números.");return;}
     if(p1!==p2){setMsg("changePwMsg","As senhas não conferem.");return;}
-    if(p1===SENHA_PADRAO){setMsg("changePwMsg","Escolha uma senha diferente da senha padrão.");return;}
+    if(p1===SENHA_PADRAO){setMsg("changePwMsg","Escolha uma senha diferente da senha temporária.");return;}
     btn.disabled=true; btn.textContent="Salvando...";
     try {
       // Verifica se há senha_temp definida pelo ADM — se sim, reautentica com ela primeiro
@@ -2478,7 +2480,7 @@
       const nomeEl = $("userFotoNome");
       if(nomeEl) nomeEl.style.display="none";
 
-      setMsg("userMsg","✅ Colaborador cadastrado! Senha padrão: user123"+(fotoUrl?" · Foto de reconhecimento salva.":""),true);
+      setMsg("userMsg","✅ Colaborador cadastrado! Acesso criado com senha temporária."+(fotoUrl?" · Foto de reconhecimento salva.":""),true);
       toast("Colaborador cadastrado! 👤");
       await loadUsers();
       const snap=await getDocs(collection(db,"usuarios"));
@@ -4021,7 +4023,8 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     const conf  = $("resetSenhaConf").value;
     const nome  = $("resetSenhaNomeLabel").textContent;
 
-    if(!nova || nova.length < 6) { setMsg("resetSenhaMsg","⚠️ A senha deve ter ao menos 6 caracteres.","err"); return; }
+    if(!nova || nova.length < 8) { setMsg("resetSenhaMsg","⚠️ A senha deve ter pelo menos 8 caracteres.","err"); return; }
+    if(!/[A-Za-z]/.test(nova)||!/[0-9]/.test(nova)){ setMsg("resetSenhaMsg","⚠️ A senha deve conter letras e números.","err"); return; }
     if(nova !== conf)            { setMsg("resetSenhaMsg","⚠️ As senhas não coincidem.","err"); return; }
 
     const btn = $("btnConfResetSenha");
@@ -4652,6 +4655,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
 
           if(snap.empty) {
             pontoData.criadoEm = serverTimestamp();
+            pontoData.origemOffline = true;  // auditoria: registro veio de sync offline
             await addDoc(collection(db,"pontos"), pontoData);
           } else {
             // Atualiza documento existente
@@ -4699,6 +4703,8 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
           const obraDoc = await getDoc(doc(db,"obras", lancData.obra_id));
           lancData.obra_nome = obraDoc.exists() ? obraDoc.data().nome : lancData.obra_id;
           lancData.criadoEm  = serverTimestamp();
+          lancData.origemOffline = true;  // auditoria: indica que veio de sync offline
+          if(!lancData.dataRegistroLocal) lancData.dataRegistroLocal = new Date().toISOString();
           await setDoc(doc(db,"lancamentos","LANC_"+Date.now()+"_"+synced), lancData);
           await deleteOfflineRecord(localId);
           synced++;
@@ -5933,9 +5939,11 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       }
     } catch(e) {
       console.warn("Erro no reconhecimento facial:", e);
-      // Em caso de erro de rede/API, permite continuar com aviso
-      facialOk = true;
-      setStatusItem("statusFacial","warn","⚠️ Reconhecimento indisponível — ponto registrado com aviso");
+      // Em caso de erro de rede/API: registra aviso mas NÃO aprova automaticamente
+      // O ponto será salvo com anomalia "facial_indisponivel" para auditoria
+      facialOk = true;  // permite continuar para não bloquear trabalho
+      window._facialAnomaliaRegistrar = true;  // sinaliza para adicionar anomalia
+      setStatusItem("statusFacial","warn","⚠️ Verificação facial indisponível — ponto registrado com aviso de auditoria");
     }
     verificarTudoPronto();
   }
@@ -5997,7 +6005,9 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       // anomaliasBase: guarda o tipo descritivo (ex: "atraso", "saida_cedo", "fora_raio")
       const anomaliasBase = anomaliaEntrada ? [anomaliaEntrada] : [];
       if(foraDoRaio) anomaliasBase.push("fora_raio");
-      const statusFinal = (anomaliaEntrada || foraDoRaio) ? "anomalia" : "ok";
+      if(window._facialAnomaliaRegistrar) { anomaliasBase.push("facial_indisponivel"); window._facialAnomaliaRegistrar=false; }
+      if(!pontoProfile?.fotoUrl) anomaliasBase.push("sem_foto_cadastrada");
+      const statusFinal = (anomaliaEntrada || foraDoRaio || anomaliasBase.length) ? "anomalia" : "ok";
 
       // ── MODO OFFLINE: salva no IndexedDB ──────────────────────
       if(!navigator.onLine) {
@@ -7995,6 +8005,9 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span class="${badgeClass}">${badgeTxt}</span>
             <span class="${statusCls}">${statusTxt}</span>
+            <button onclick="event.stopPropagation();App.rhCancelarProcesso('${p.id}')"
+              style="margin-top:4px;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;padding:2px 8px;font-size:.68rem;cursor:pointer"
+              title="Cancelar e excluir este processo">🗑️ Cancelar</button>
           </div>
         </div>`;
       }).join("");
@@ -8033,6 +8046,54 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
   function rhReabrirProcesso() {
     closeModal("modalRhProcesso");
     rhMostrarFluxo();
+  }
+
+  async function rhCancelarProcesso(idParam) {
+    // idParam: vem do card da lista OU usa rhFluxo.processoId (quando chamado do modal)
+    const id = idParam || rhFluxo.processoId;
+    if(!id) { toast("Nenhum processo selecionado."); return; }
+
+    // Busca dados para exibir no modal de confirmação
+    let nome = "este processo";
+    let tipo = "contratação";
+    try {
+      const snap = await getDoc(doc(db,"rh_processos",id));
+      if(snap.exists()) {
+        const d = snap.data();
+        nome = d.dados?.nomeCompleto || "sem nome";
+        tipo = d.tipo === "contratacao" ? "contratação" : "demissão";
+      }
+    } catch(_) {}
+
+    showModal(
+      "⚠️ Cancelar Processo",
+      `Você está prestes a cancelar e excluir definitivamente o processo de <strong>${tipo}</strong> de <strong>${nome}</strong>.
+
+Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação não pode ser desfeita.`,
+      async () => {
+        try {
+          await deleteDoc(doc(db,"rh_processos",id));
+          closeModal("modalRhProcesso");
+          // Limpa fluxo se era o processo ativo
+          if(rhFluxo.processoId === id) {
+            rhFluxo = { tipo:null, processoId:null, etapaAtual:0, dados:{}, arquivos:{} };
+          }
+          toast("🗑️ Processo cancelado e excluído.");
+          // Volta para lista ou fecha modal do fluxo se estava aberto
+          const modalFluxo = $("modalRhConteudo")?.closest(".modal-overlay");
+          if(modalFluxo && !modalFluxo.classList.contains("hidden")) {
+            modalFluxo.classList.add("hidden");
+          }
+          // Recarrega a lista de processos se estiver visível
+          const listaEl = $("rhListaProcessos");
+          if(listaEl) rhCarregarLista("");
+        } catch(e) {
+          toast("❌ Erro ao cancelar: " + e.message);
+        }
+      },
+      "Excluir definitivamente",
+      true  // botão vermelho
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -9594,7 +9655,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     rhUploadDoc, rhRemDoc,
     rhToggleExame, rhToggleNR,
     rhFiltrarLista, rhAbrirProcesso,
-    rhReabrirProcesso, rhGerarPDFs, rhFinalizar,
+    rhReabrirProcesso, rhCancelarProcesso, rhGerarPDFs, rhFinalizar,
     rhGerarFichaRegistroPDF, rhGerarFichaEPIPDF,
     rhIrParaEtapa,
     // Preview ao vivo
