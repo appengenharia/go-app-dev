@@ -1,0 +1,184 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth() &&
+        get(
+          /databases/$(database)/documents/usuarios/$(request.auth.uid)
+        ).data.get("role", "") == "ADMIN";
+    }
+
+    function isOwner(uid) {
+      return isAuth() &&
+        request.auth.uid == uid;
+    }
+
+    function canEvoluirObraAuth(obraId) {
+      let u = get(
+        /databases/$(database)/documents/usuarios/$(request.auth.uid)
+      ).data;
+
+      return
+        u.get("role", "") == "ADMIN" ||
+        (
+          u.get("ativo", true) == true &&
+          u.get("role", "") == "USER" &&
+          (
+            u.get("obra_id", "") == obraId ||
+            obraId in u.get("obras", [])
+          ) &&
+          (
+            u.get("permEvolucao", false) == true ||
+            u.get("evolResponsavel", false) == true
+          )
+        );
+    }
+
+    function canEvoluirObra(obraId) {
+      return isAuth() &&
+        canEvoluirObraAuth(obraId);
+    }
+
+    match /financeiro_obras/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /reembolsos/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /obras/{obraId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+
+      match /evolConfig/{docId} {
+        allow read: if isAuth();
+        allow write: if isAdmin();
+      }
+
+      match /evolContrato/{docId} {
+        allow read: if isAuth();
+        allow write: if isAdmin();
+      }
+
+      match /evolProgresso/{docId} {
+        allow read: if isAuth();
+        allow create, update: if canEvoluirObra(obraId);
+        allow delete: if isAdmin();
+      }
+
+      match /evolHistorico/{docId} {
+        allow read: if isAuth();
+        allow create, update: if canEvoluirObra(obraId);
+        allow delete: if isAdmin();
+      }
+
+      match /evolRegistros/{docId} {
+        allow read: if isAuth();
+
+        allow create:
+          if canEvoluirObra(obraId);
+
+        allow update:
+          if isAdmin() ||
+          (
+            canEvoluirObra(obraId) &&
+            request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly([
+                "fotoUrl",
+                "fotoUrlDepois",
+                "atualizadoEm"
+              ])
+          );
+
+        allow delete:
+          if isAdmin();
+      }
+
+      match /mensagens/{msgId} {
+        allow read, write: if isAuth();
+      }
+
+      match /dds/{docId} {
+        allow read: if isAuth();
+        allow write: if isAuth();
+      }
+    }
+
+    match /usuarios/{uid} {
+      allow read: if isAuth();
+      allow create: if isAdmin();
+
+      allow update:
+        if isAdmin() ||
+        (
+          isOwner(uid) &&
+          resource.data.get("ativo", true) == true &&
+          request.resource.data
+            .diff(resource.data)
+            .affectedKeys()
+            .hasOnly([
+              "primeiro_acesso",
+              "senha_temp",
+              "atualizadoEm"
+            ])
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /lancamentos/{lancId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+
+      allow update, delete:
+        if isAdmin() ||
+        (
+          isAuth() &&
+          resource.data.colaborador_uid == request.auth.uid
+        );
+    }
+
+    match /pontos/{pontoId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+
+      allow update:
+        if isAdmin() ||
+        (
+          isAuth() &&
+          resource.data.uid == request.auth.uid
+        );
+
+      allow delete:
+        if isAdmin();
+    }
+
+    match /rh_processos/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /configuracoes/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /relatorios_enviados/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pontos_enviados/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
