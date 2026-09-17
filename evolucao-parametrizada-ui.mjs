@@ -331,13 +331,6 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
           ${motivo ? `<br><strong>Motivo:</strong> ${esc(motivo)}` : ''}
         </p>
         ${resumo}
-        <details>
-          <summary>Ver detalhes técnicos</summary>
-          <pre class="ep-audit">${esc(JSON.stringify({
-            dadosAnteriores: a.dadosAnteriores,
-            dadosNovos: a.dadosNovos
-          }, null, 2))}</pre>
-        </details>
       </div>`;
     }
 
