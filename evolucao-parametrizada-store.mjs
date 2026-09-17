@@ -1,4 +1,4 @@
-import { parametrizada, validarConfig, prepararRegistro, podeProduzir } from './evolucao-parametrizada.mjs';
+import { parametrizada, validarConfig, prepararRegistro, podeProduzir, micros, ativo } from './evolucao-parametrizada.mjs';
 
 // SDK injetado para exercitar as mesmas operações no emulador, sem acessar Firebase remoto.
 export function criarStore(sdk) {
@@ -8,7 +8,7 @@ export function criarStore(sdk) {
     const snap = await getDocsFromServer(collection(db, 'obras', obraId, 'evolRegistros'));
     return snap.docs.map(d => ({ ...d.data(), id: d.id }));
   }
-  async function salvarConfig({ db, obraId, user }, cfg, revisaoEsperada) {
+  async function salvarConfig({ db, obraId, user }, cfg, revisaoEsperada, motivo = '') {
     const ref = doc(db, 'obras', obraId, 'evolConfig', 'main');
     return runTransaction(db, async tx => {
       const snap = await tx.get(ref);
@@ -17,8 +17,14 @@ export function criarStore(sdk) {
       const anterior = snap.exists() ? snap.data() : null;
       if ((anterior?.revisaoConfig || 0) !== revisaoEsperada) throw new Error('O planejamento foi alterado em outra sessão. Reabra a configuração.');
       const itensPorId = validarConfig(cfg, anterior);
+      if (anterior && (!motivo.trim() || motivo.length > 2000)) throw new Error('Informe o motivo da alteração (até 2.000 caracteres).');
       const value = { ...anterior, ...cfg, itensPorId, revisaoConfig: revisaoEsperada + 1, atualizadoEm: serverTimestamp() };
       tx.set(ref, value);
+      tx.set(doc(ref, 'auditoria', 'r' + value.revisaoConfig), {
+        revisao: value.revisaoConfig, alteradoPor: user.uid, alteradoEm: value.atualizadoEm,
+        operacao: anterior ? 'alteracao' : 'criacao', motivo: anterior ? motivo.trim() : 'Configuração inicial',
+        dadosAnteriores: anterior, dadosNovos: value,
+      });
       return value;
     });
   }
@@ -38,9 +44,11 @@ export function criarStore(sdk) {
       const atualCfg = configSnap.data();
       if (!parametrizada(atualCfg) || atualCfg.revisaoConfig !== cfg.revisaoConfig) throw new Error('O planejamento mudou. Atualize a obra antes de lançar.');
       const anterior = snap.exists() ? snap.data() : null;
+      const perfilAtual = perfil.data();
+      if (anterior && !ativo(micros(atualCfg).find(s => s.id === anterior.svcId)) && perfilAtual.role !== 'ADMIN') throw new Error('Somente ADMIN pode corrigir histórico retirado.');
       if ((anterior?.revisao || 0) !== revisaoEsperada) throw new Error('Lançamento alterado em outra sessão. Reabra para conferir os novos dados.');
       const { registro, auditoria } = prepararRegistro(atualCfg, entrada, anterior, {
-        uid: user.uid, timestamp: serverTimestamp(), motivo, cancelar,
+        uid: user.uid, timestamp: serverTimestamp(), motivo, cancelar, permitirInativo: perfilAtual.role === 'ADMIN',
       });
       tx.set(ref, registro);
       tx.set(auditRef, { ...auditoria, operacaoId });

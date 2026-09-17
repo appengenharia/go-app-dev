@@ -11,8 +11,32 @@
 .ep-modal input,.ep-modal select,.ep-modal textarea { font-size: 16px; }
 .ep-modal img { max-width: 100%; max-height: 130px; object-fit: contain; border-radius: 8px; }
 .ep-error { color: var(--danger); white-space: pre-wrap; margin: 12px 0; }
+.ep-ok { color: #067647; }
 .ep-audit { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .78rem; }
 .ep-cancelado { border-color: #fca5a5; background: #fff5f5; }
+.ep-modal.ep-planning { width: 96vw; max-width: 1380px; padding: 22px; }
+.ep-planning * { min-width: 0; box-sizing: border-box; }
+.ep-planning summary { cursor: pointer; padding: 12px 0; font-size: .9rem; overflow-wrap: anywhere; }
+.ep-planning summary > span { display: inline-block; margin: 0 8px; font-size: .8rem; }
+.ep-planning summary > strong { margin-right: 12px; }
+.ep-planning details > .ep-row { margin-top: 12px; }
+.ep-planning input,.ep-planning select,.ep-planning textarea { width: 100%; min-height: 44px; }
+.ep-planning input[readonly] { background: #eef2f6; font-weight: bold; }
+.ep-planning [aria-invalid="true"] { outline: 2px solid var(--danger); }
+.ep-planning small { display: block; font-size: .75rem; }
+.ep-planning-footer { position: sticky; bottom: -22px; background: #fff; border-top: 1px solid var(--border); padding: 14px 0; display: flex; gap: 12px; align-items: center; z-index: 2; }
+.ep-planning-footer button { min-height: 48px; }
+.ep-stage { background: #f8fafc; }
+.ep-service { background: white; }
+@media(max-width: 700px) {
+  .ep-overlay:has(.ep-planning) { padding: 0; }
+  .ep-modal.ep-planning { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; padding: 12px; }
+  .ep-planning .ep-row > label { flex-basis: 100%; min-width: 0; }
+  .ep-planning .ep-metas { grid-template-columns: minmax(0,1fr); }
+  .ep-planning .ep-card { padding: 10px; }
+  .ep-planning-footer { bottom: -12px; }
+  .ep-planning-footer button { width: 100%; }
+}
 @media(max-width: 520px) {
   .ep-overlay { padding: 8px; }
   .ep-modal { padding: 16px; max-height: 96dvh; }

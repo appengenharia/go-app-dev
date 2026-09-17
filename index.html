@@ -1310,6 +1310,7 @@
       </div>
 
       <div class="admin-panel" id="adm-usuarios">
+        <div class="card" id="adminAcessos" hidden></div>
         <div class="card">
           <div class="card-header"><div><h3>Cadastrar Colaborador</h3><p>Crie um novo acesso ao sistema.</p></div></div>
           <div class="info-box">ℹ️ O colaborador receberá as credenciais de acesso. No primeiro acesso será obrigado a criar uma nova senha pessoal.</div>
@@ -2773,6 +2774,7 @@
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
   import { parametrizada as _epModo, calcular as _epCalcular, historicoCalculado as _epHistorico, podeProduzir as _epPermissao } from './evolucao-parametrizada.mjs';
+  import { registrarAcesso, loginAuditado, criarPainelAcessos } from './acessos.mjs';
   import { criarInterface } from './evolucao-parametrizada-ui.mjs';
   import { initializeApp }
     from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -2876,12 +2878,13 @@
   }
 
   function adminTab(tab) {
+    if(currentRole !== "ADMIN") return;
     document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
     const btns=document.querySelectorAll(".admin-tab-btn");
     btns.forEach(b=>b.classList.remove("active"));
     $(`adm-${tab}`)?.classList.add("active");
     if(tab==="obras")   { btns[0].classList.add("active"); loadObras(); }
-    if(tab==="usuarios"){ btns[1].classList.add("active"); loadUsers(); fillObraSelect(); }
+    if(tab==="usuarios"){ btns[1].classList.add("active"); loadUsers(); fillObraSelect(); carregarAcessos(document.getElementById("adminAcessos")); }
     if(tab==="empresa") { btns[2].classList.add("active"); carregarEmpresa(); }
     if(tab==="epi")     { btns[3].classList.add("active"); epiCarregar(); }
   }
@@ -2912,17 +2915,21 @@
   // ─────────────────────────────────────────
   // AUTENTICAÇÃO
   // ─────────────────────────────────────────
+  const acessosSDK = {getDoc,doc,addDoc,collection,serverTimestamp,getDocs,query,orderBy,limit};
+  const carregarAcessos = criarPainelAcessos({sdk:acessosSDK,db,getRole:()=>currentRole});
+  const signInPrincipal = (...args) => loginAuditado({signIn:signInWithEmailAndPassword,registrar:uid=>registrarAcesso({sdk:acessosSDK,db,uid})},...args);
   async function login() {
     setMsg("loginMsg","");
     const email=$("loginEmail").value.trim();
     const password=$("loginPass").value;
     lastMainLoginPassword = password || "";
     const btn=$("btnLogin");
+    if(btn.disabled) return;
     if(!email){setMsg("loginMsg","Informe o e-mail.");return;}
     if(!password){setMsg("loginMsg","Informe a senha.");return;}
     btn.disabled=true; btn.textContent="Entrando...";
     try {
-      await signInWithEmailAndPassword(auth,email,password);
+      await signInPrincipal(auth,email,password);
     } catch(e) {
       // Se falhou, verifica no Firestore se há senha_temp definida pelo ADM
       // e tenta login com ela (caso a senha do Firebase Auth ainda seja a antiga)
@@ -2933,7 +2940,7 @@
         if(!snap.empty){
           const prof = snap.docs[0].data();
           if(prof.senha_temp){
-            await signInWithEmailAndPassword(auth, email, prof.senha_temp);
+            await signInPrincipal(auth, email, prof.senha_temp);
             lastMainLoginPassword = prof.senha_temp || lastMainLoginPassword;
             logouComSenhaTemp = true;
           }
@@ -3102,6 +3109,7 @@
 
   async function initApp(user) {
     currentUser=user;
+    if($("adminAcessos")) { $("adminAcessos").hidden=true; $("adminAcessos").replaceChildren(); }
     ["sideAdmin","bottomAdmin","sidePonto","bottomPonto","sideRH","bottomRH","sideEvolucao","bottomEvolucao","sideDDS","bottomDDS","sideLancamentos","bottomLancamentos","sideRelatorios","bottomRelatorios","sideFinanceiro","bottomFinanceiro"].forEach(id=>$(id)?.classList.add("hidden"));
     const profile=await loadProfile(user.uid);
     const nome=profile?.nome||user.email.split("@")[0];
@@ -4206,7 +4214,7 @@
     : (_eCfg?.servicos||[]);
       const cards=ug.map(u=>{
         const pct=_ePctUnid(u.id);
-        const svcsLocal=_epModo(_eCfg) ? svcs.filter(s=>s.metasPorLocal?.[u.id]>0) : svcs;
+        const svcsLocal=_epModo(_eCfg) ? svcs.filter(s=>s.ativo!==false && s.metasPorLocal?.[u.id]>0) : svcs;
         const concSvcs=svcsLocal.filter(s=>_ePctSvc(u.id,s.id)>=100).length;
         const cor=pct>=100?"#10b981":pct>0?"#f5a623":"#94a3b8";
         const bord=pct>=100?"#a7f3d0":pct>0?"#fcd34d":"#e5e7eb";
@@ -5891,7 +5899,7 @@ async function _eSnapshotHist(id,g){
 
 
               ${
-                podeEditarAdm && (!_epModo(_eCfg) || !r.cancelado)
+                podeEditarAdm && (!_epModo(_eCfg) || (!r.cancelado && (_epContext().profile?.role === "ADMIN" || _eCfg.macros.some(m=>m.micros.some(s=>s.id===r.svcId && s.ativo!==false)))))
                   ? `
                     <div style="
                       display:flex;
@@ -6340,7 +6348,7 @@ async function _evolTrocarFotoAdm(
 
       if(_epModo(_eCfg)) {
         doc.setFontSize(10); doc.setTextColor(...cBrand);
-        doc.text("Avanço físico por Macro",mg,y); y+=6;
+        doc.text("Avanço físico por Etapa",mg,y); y+=6;
         _eCfg.macros.forEach(m=>{
           if(y>H-25){doc.addPage();y=mg;}
           const p=_eFisico.macros[m.id];
@@ -13866,7 +13874,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
       const cards = ug.map(u=>{
         const pct = _vPctUnid(u.id);
-        const svcsLocal = _epModo(_vCfg) ? svcs.filter(s=>s.metasPorLocal?.[u.id]>0) : svcs;
+        const svcsLocal = _epModo(_vCfg) ? svcs.filter(s=>s.ativo!==false && s.metasPorLocal?.[u.id]>0) : svcs;
         const concSvcs = svcsLocal.filter(s=>_vPctSvc(u.id,s.id)>=100).length;
         const cor = pct>=100?"#10b981":pct>0?"#f5a623":"rgba(255,255,255,.4)";
         const bord = pct>=100?"rgba(16,185,129,.4)":pct>0?"rgba(245,166,35,.4)":"rgba(255,255,255,.1)";
@@ -13879,7 +13887,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
             <div style="min-width:0">
               <div style="font-weight:700;font-size:.87rem;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
                ${svcsLocal.length?`<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:1px">${concSvcs}/${svcsLocal.length} serviços concluídos</div>`:""}
-               ${_epModo(_vCfg)?`<button class="btn btn-outline sm" style="background:white;margin-top:8px" onclick="App.evolAbrirUnidadeVisitante('${u.id}')">Ver Micros e metas</button>`:""}
+               ${_epModo(_vCfg)?`<button class="btn btn-outline sm" style="background:white;margin-top:8px" onclick="App.evolAbrirUnidadeVisitante('${u.id}')">Ver Serviços e metas</button>`:""}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${cor}">${pct.toFixed(1)}%</div>
@@ -14201,7 +14209,7 @@ function vFiltrarGaleria() {
 
 
       const btnEditar=
-        podeEditar && (!_epModo(_vCfg) || !r.cancelado)
+        podeEditar && (!_epModo(_vCfg) || (!r.cancelado && (_epContext("v").profile?.role === "ADMIN" || _vCfg.macros.some(m=>m.micros.some(s=>s.id===r.svcId && s.ativo!==false)))))
           ? `
             <div
               style="

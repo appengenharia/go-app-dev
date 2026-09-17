@@ -2,6 +2,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parametrizada, validarConfig, calcular, historicoCalculado, prepararRegistro, podeProduzir, dataLocal } from '../evolucao-parametrizada.mjs';
 import { config, entrada, registro, autorizado } from './fixture.mjs';
+import { ativo, fecharPesos, retirarServico, modoApontamento, quantidadeApontada, validarLancamento } from '../evolucao-parametrizada.mjs';
+
+test('config antiga considera Serviço ativo e modo quantidade',()=>{
+  const cfg=config(); assert.equal(ativo(cfg.macros[0].micros[0]),true);
+  assert.equal(modoApontamento(cfg),'quantidade'); assert.equal(quantidadeApontada(cfg,3,10),10);
+  cfg.modoApontamento='percentual'; assert.equal(quantidadeApontada(cfg,3,10),0.3);
+});
+test('último Serviço fecha 100%, recalcula após edição e retirada',()=>{
+  const m=config().macros[0]; fecharPesos(m); assert.equal(m.micros[0].pesoFisico,100);
+  m.micros=[20,15,25,10,0].map((pesoFisico,i)=>({...m.micros[0],id:'x'+i,pesoFisico}));
+  fecharPesos(m); assert.equal(m.micros[4].pesoFisico,30);
+  m.micros[2].pesoFisico=35; fecharPesos(m); assert.equal(m.micros[4].pesoFisico,20);
+  retirarServico(m,'x4','Retirada'); assert.equal(m.micros[3].pesoFisico,30);
+});
+test('retirada/substituição preserva IDs, registros e índice, sem medição vigente',()=>{
+  const original=config(), cfg=config(), m=cfg.macros[0];
+  const old=prepararRegistro(original,entrada(),null,{uid:'u',timestamp:'x'}).registro;
+  const novo=retirarServico(m,'s1','Substituição de escopo','novo');
+  assert.equal(novo.id,'novo'); assert.equal(m.micros[0].ativo,false);
+  const index=validarConfig(cfg,original); assert.equal(index.s1.ativo,false); assert.equal(index.novo.ativo,true);
+  assert.equal(calcular(cfg,[old]).global,0); assert.equal(calcular(cfg,[old]).locais.u1.aplicaveis,1);
+  assert.equal(old.svcId,'s1'); assert.throws(()=>validarLancamento(cfg,entrada()),/retirado/);
+  const edit=prepararRegistro(cfg,{...old,qtdHoje:2},old,{uid:'admin',timestamp:'x',motivo:'Correção',permitirInativo:true});
+  assert.equal(edit.auditoria.dadosAnteriores.qtdHoje,1); assert.equal(edit.registro.qtdHoje,2);
+  assert.throws(()=>prepararRegistro(cfg,entrada(),null,{uid:'admin',timestamp:'x',permitirInativo:true}),/retirado/);
+});
+test('soma excedente bloqueia; inativos não entram na distribuição ativa',()=>{
+  const cfg=config(),m=cfg.macros[0]; m.micros.push({...m.micros[0],id:'s3',pesoFisico:0});
+  m.micros[0].pesoFisico=101; fecharPesos(m); assert.equal(m.micros[1].pesoFisico,-1);
+  assert.throws(()=>validarConfig(cfg));
+  m.micros[0].ativo=false; m.micros[0].motivoRetirada='Mudança'; fecharPesos(m);
+  assert.equal(m.micros[1].pesoFisico,100); assert.doesNotThrow(()=>validarConfig(cfg));
+});
 
 test('V1 e V2 antigo não ativam o novo cálculo', () => {
   assert.equal(parametrizada({ servicos: [] }), false);

@@ -1,9 +1,9 @@
-import { MODO, parametrizada, micros, calcular, validarConfig, podeProduzir, chave } from './evolucao-parametrizada.mjs';
+import { abrirPlanejamento } from './evolucao-planejamento-ui.mjs';
+import { parametrizada, micros, podeProduzir, chave, ativo, modoApontamento, quantidadeApontada } from './evolucao-parametrizada.mjs';
 import { criarStore } from './evolucao-parametrizada-store.mjs';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = value => Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-const copy = value => JSON.parse(JSON.stringify(value));
 const stamp = value => value?.toDate ? value.toDate().toLocaleString('pt-BR') : '';
 
 export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto }) {
@@ -56,97 +56,15 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     finally { controls.forEach((el, i) => { el.disabled = disabled[i]; }); }
   }
 
-  function openConfig() {
-    const context = getContext();
-    if (context.profile?.role !== 'ADMIN') throw new Error('Somente ADMIN pode alterar a configuração.');
-    if (context.cfg && !parametrizada(context.cfg)) throw new Error('A configuração legada permanece no editor original.');
-    const original = context.cfg;
-    const cfg = copy(original || { modeloEvolucao: 2, modoCalculo: MODO, revisaoConfig: 0, tipoUnidade: 'Local', grupos: [], unidades: [], macros: [], permColab: false });
-    const host = open('Planejamento físico da obra');
-    const body = host.querySelector('[data-body]');
-    const id = () => store.novoId(context.db);
-    const isSavedLocal = uid => original?.unidades.some(u => u.id === uid);
-    const isSavedMacro = mid => original?.macros.some(m => m.id === mid);
-    const isSavedMicro = sid => micros(original).some(s => s.id === sid);
-    function render() {
-      body.innerHTML = `<p class="ep-muted">Somente ADMIN. Macros somam 100% da obra; Micros somam 100% de sua Macro. Deixe a meta vazia onde a Micro não se aplica. Alterar pesos/metas recalcula o avanço com o planejamento atual.</p>
-        <label>Nome do tipo de local<input data-config="tipoUnidade" value="${esc(cfg.tipoUnidade)}" placeholder="Ex.: Pavimento, Trecho, Tracker"></label>
-        <label>Grupos / setores (um por linha)<textarea data-config="grupos" rows="3">${esc(cfg.grupos.join('\n'))}</textarea></label>
-        <h4>Unidades / locais</h4>
-        ${cfg.unidades.map(u => `<div class="ep-card ep-row" data-local="${u.id}">
-          <label>Nome<input data-local-field="nome" value="${esc(u.nome)}"></label>
-          <label>Grupo<select data-local-field="grupo"><option value="">Sem grupo</option>${cfg.grupos.map(g => `<option${g === u.grupo ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
-          <button class="btn btn-outline sm" data-action="remove-local" data-id="${u.id}" ${isSavedLocal(u.id) ? 'disabled title="Local já salvo: referência histórica preservada"' : ''}>Remover</button></div>`).join('')}
-        <button class="btn btn-outline" data-action="add-local">+ Local</button>
-        <h4 style="margin-top:20px">Macros — soma <span data-total-macros>${fmt(cfg.macros.reduce((n,m)=>n+m.pesoFisico,0))}</span>% / 100%</h4>
-        ${cfg.macros.map(m => `<section class="ep-card" data-macro="${m.id}"><div class="ep-row">
-          <label>Macro<input data-macro-field="nome" value="${esc(m.nome)}"></label>
-          <label>Peso Físico na Obra (%)<input type="number" min="0.01" max="100" step="0.01" data-macro-field="pesoFisico" value="${m.pesoFisico}"></label>
-          <button class="btn btn-outline sm" data-action="remove-macro" data-id="${m.id}" ${isSavedMacro(m.id) ? 'disabled' : ''}>Remover Macro</button></div>
-          ${m.micros.map(s => `<div class="ep-card" data-micro="${s.id}"><div class="ep-row">
-            <label>Micro / serviço<input data-micro-field="desc" value="${esc(s.desc)}"></label>
-            <label>Peso Físico na Macro (%)<input type="number" min="0.01" max="100" step="0.01" data-micro-field="pesoFisico" value="${s.pesoFisico}"></label>
-            <label>Unidade de medição<input data-micro-field="unidade" value="${esc(s.unidade)}" placeholder="un, m², kg, km…" ${isSavedMicro(s.id) ? 'disabled' : ''}></label></div>
-            <div class="ep-metas">${cfg.unidades.map(u => `<label>${esc(u.nome || 'Local sem nome')} — previsto<input type="number" min="0.000001" step="any" data-meta="${u.id}" value="${s.metasPorLocal[u.id] ?? ''}" placeholder="Não se aplica"></label>`).join('')}</div>
-            <button class="btn btn-outline sm" style="margin-top:10px" data-action="remove-micro" data-id="${s.id}" ${isSavedMicro(s.id) ? 'disabled' : ''}>Remover Micro</button></div>`).join('')}
-          <p class="ep-muted">Soma das Micros: <span data-total-micros="${m.id}">${fmt(m.micros.reduce((n,s)=>n+s.pesoFisico,0))}</span>% / 100%</p>
-          <button class="btn btn-outline sm" data-action="add-micro" data-id="${m.id}">+ Micro</button></section>`).join('')}
-        <button class="btn btn-outline" data-action="add-macro">+ Macro</button>
-        <div class="modal-footer"><button class="btn btn-primary" data-action="save">Salvar planejamento</button></div>`;
-    }
-    body.oninput = event => {
-      host.querySelector('[data-error]').textContent = '';
-      const el = event.target;
-      if (el.dataset.config === 'tipoUnidade') cfg.tipoUnidade = el.value;
-      if (el.dataset.config === 'grupos') cfg.grupos = el.value.split('\n').map(v => v.trim()).filter(Boolean);
-      const local = cfg.unidades.find(u => u.id === el.closest('[data-local]')?.dataset.local);
-      if (local && el.dataset.localField) local[el.dataset.localField] = el.value;
-      const macro = cfg.macros.find(m => m.id === el.closest('[data-macro]')?.dataset.macro);
-      if (macro && el.dataset.macroField) macro[el.dataset.macroField] = el.dataset.macroField === 'pesoFisico' ? Number(el.value) : el.value;
-      const micro = macro?.micros.find(s => s.id === el.closest('[data-micro]')?.dataset.micro);
-      if (micro && el.dataset.microField) micro[el.dataset.microField] = el.dataset.microField === 'pesoFisico' ? Number(el.value) : el.value;
-      if (micro && el.dataset.meta) {
-        if (el.value === '') delete micro.metasPorLocal[el.dataset.meta];
-        else micro.metasPorLocal[el.dataset.meta] = Number(el.value);
-      }
-      body.querySelector('[data-total-macros]').textContent = fmt(cfg.macros.reduce((n,m)=>n+m.pesoFisico,0));
-      cfg.macros.forEach(m => { body.querySelector(`[data-total-micros="${m.id}"]`).textContent = fmt(m.micros.reduce((n,s)=>n+s.pesoFisico,0)); });
-    };
-    body.onchange = event => {
-      host.querySelector('[data-error]').textContent = '';
-      if (event.target.dataset.config === 'grupos' || event.target.dataset.localField === 'nome') render();
-    };
-    body.onclick = async event => {
-      const button = event.target.closest('[data-action]');
-      if (!button) return;
-      const action = button.dataset.action, target = button.dataset.id;
-      if (action === 'save') {
-        await busy(host, async () => {
-          validarConfig(cfg, original);
-          await store.salvarConfig(context, cfg, original?.revisaoConfig || 0);
-          body.innerHTML = '<p>Planejamento salvo. Atualizando a obra…</p>';
-          await refresh(); host.remove();
-        });
-        return;
-      }
-      if (action === 'add-local') cfg.unidades.push({ id: id(), nome: '', grupo: '' });
-      if (action === 'remove-local') { cfg.unidades = cfg.unidades.filter(u => u.id !== target); cfg.macros.forEach(m => m.micros.forEach(s => { delete s.metasPorLocal[target]; })); }
-      if (action === 'add-macro') cfg.macros.push({ id: id(), nome: '', pesoFisico: cfg.macros.length ? 0 : 100, micros: [] });
-      if (action === 'remove-macro') cfg.macros = cfg.macros.filter(m => m.id !== target);
-      if (action === 'add-micro') { const m = cfg.macros.find(m => m.id === target); m.micros.push({ id: id(), desc: '', pesoFisico: m.micros.length ? 0 : 100, unidade: 'un', metasPorLocal: {} }); }
-      if (action === 'remove-micro') cfg.macros.forEach(m => { m.micros = m.micros.filter(s => s.id !== target); });
-      render();
-    };
-    render();
-  }
+  function openConfig() { return abrirPlanejamento({context:getContext(), store, open, refresh}); }
 
   function renderSummary(container, side = 'e') {
     container.replaceChildren();
     const context = getContext(side), state = getState(side);
     if (!parametrizada(context.cfg) || !state) return;
-    container.innerHTML = `<div class="ep-card" style="background:#fff;color:var(--text)"><h4>Avanço físico por Macro</h4>
+    container.innerHTML = `<div class="ep-card" style="background:#fff;color:var(--text)"><h4>Avanço físico por Etapa</h4>
       ${context.cfg.macros.map(m => `<p class="ep-muted"><strong>${esc(m.nome)}</strong> · ${fmt(state.macros[m.id].pct)}% executado · Peso Físico ${fmt(m.pesoFisico)}% · contribuição ${fmt(state.macros[m.id].contribuicao)} p.p.</p>`).join('')}
-      <p class="ep-muted">Avanço dos locais: indicador operacional. O global é calculado pelos pesos das Macros e Micros.</p>
+      <p class="ep-muted">Avanço dos locais: indicador operacional. O global é calculado pelos pesos das Etapas e Serviços.</p>
       <div class="ep-row"><button class="btn btn-outline sm" data-history>Lançamentos e auditoria</button><button class="btn btn-outline sm" data-refresh>Atualizar produção</button></div></div>`;
     container.querySelector('[data-history]').onclick = () => openHistory(side);
     container.querySelector('[data-refresh]').onclick = async event => {
@@ -162,13 +80,13 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     if (!local || !state) return;
     const host = open(local.nome), body = host.querySelector('[data-body]');
     const edit = podeProduzir(context.profile, context.obraId);
-    const aplicaveis = cfg.macros.filter(m => m.micros.some(s => s.metasPorLocal[uid] > 0));
+    const aplicaveis = cfg.macros.filter(m => m.micros.some(s => ativo(s) && s.metasPorLocal[uid] > 0));
     body.innerHTML = `<p class="ep-muted">${esc(local.grupo)} · Avanço operacional: ${state.locais[uid].aplicaveis ? fmt(state.locais[uid].pct) + '%' : 'Sem planejamento'}</p>
-      ${aplicaveis.map(m => `<div class="ep-card"><h4>${esc(m.nome)}</h4><p class="ep-muted">Macro na obra: ${fmt(state.macros[m.id].pct)}% · Peso Físico ${fmt(m.pesoFisico)}% · contribuição ${fmt(state.macros[m.id].contribuicao)} p.p.</p>
-        ${m.micros.filter(s => s.metasPorLocal[uid] > 0).map(s => {
+      ${aplicaveis.map(m => `<div class="ep-card"><h4>${esc(m.nome)}</h4><p class="ep-muted">Etapa na obra: ${fmt(state.macros[m.id].pct)}% · Peso Físico ${fmt(m.pesoFisico)}% · contribuição ${fmt(state.macros[m.id].contribuicao)} p.p.</p>
+        ${m.micros.filter(s => ativo(s) && s.metasPorLocal[uid] > 0).map(s => {
           const p = state.progresso[chave(uid,s.id)], total = state.micros[s.id];
-          return `<div class="ep-card"><strong>${esc(s.desc)}</strong><p class="ep-muted">Peso Físico na Macro: ${fmt(s.pesoFisico)}%<br>Local: previsto ${fmt(p.qtdTotal)} · executado ${fmt(p.qtdExec)} · saldo ${fmt(p.saldo)} ${esc(s.unidade)} · ${fmt(p.pct)}%<br>Micro em toda a obra: ${fmt(total.executado)} / ${fmt(total.previsto)} ${esc(s.unidade)} · ${fmt(total.pct)}%</p>${edit ? `<button class="btn btn-primary sm" data-register="${s.id}">Lançar produção</button>` : ''}</div>`;
-        }).join('')}</div>`).join('') || '<p>Não há Micros previstas neste local.</p>'}
+          return `<div class="ep-card"><strong>${esc(s.desc)}</strong><p class="ep-muted">Peso Físico na Etapa: ${fmt(s.pesoFisico)}%<br>Local: previsto ${fmt(p.qtdTotal)} · executado ${fmt(p.qtdExec)} · saldo ${fmt(p.saldo)} ${esc(s.unidade)} · ${fmt(p.pct)}%<br>Serviço em toda a obra: ${fmt(total.executado)} / ${fmt(total.previsto)} ${esc(s.unidade)} · ${fmt(total.pct)}%</p>${edit ? `<button class="btn btn-primary sm" data-register="${s.id}">Lançar produção</button>` : ''}</div>`;
+        }).join('')}</div>`).join('') || '<p>Não há Serviços previstos neste local.</p>'}
       <button class="btn btn-outline" data-history>Histórico deste local</button>`;
     body.querySelectorAll('[data-register]').forEach(button => { button.onclick = () => openRecord({ unidId: uid, svcId: button.dataset.register }, side); });
     body.querySelector('[data-history]').onclick = () => openHistory(side, uid);
@@ -177,14 +95,17 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
   function openRecord(initial = {}, side = 'e', anterior = null) {
     const context = getContext(side);
     try { requireEditor(context); } catch (e) { const h = open('Lançamento'); error(h,e); return; }
-    const cfg = context.cfg, all = micros(cfg), state = getState(side);
+    const cfg = context.cfg, state = getState(side);
+    if (anterior && !ativo(micros(cfg).find(s=>s.id===anterior.svcId)) && context.profile.role !== 'ADMIN') { const h=open('Histórico retirado'); error(h,new Error('Somente ADMIN pode corrigir histórico retirado.')); return; }
+    const all = micros(cfg).filter(s=>ativo(s) || (anterior?.svcId===s.id && context.profile.role==='ADMIN'));
+    const porPercentual = modoApontamento(cfg) === 'percentual';
     const host = open(anterior ? 'Editar lançamento' : 'Lançar produção'), body = host.querySelector('[data-body]');
     const id = anterior?.id || store.novoId(context.db), operacaoId = store.novoId(context.db);
     const photo = { fotoUrl: anterior?.fotoUrl || '', fotoUrlDepois: anterior?.fotoUrlDepois || '' };
     body.innerHTML = `<label>Local<select data-local>${cfg.unidades.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label>
-      <label>Macro<select data-macro></select></label><label>Micro / serviço<select data-micro></select></label>
+      <label>Etapa<select data-macro></select></label><label>Serviço<select data-micro></select></label>
       <p class="ep-muted" data-balance></p>
-      <label>Quantidade executada ${anterior ? 'neste lançamento' : 'hoje'}<input data-quantity type="number" min="0" step="any" value="${anterior?.qtdHoje ?? ''}" inputmode="decimal"></label>
+      <label>${porPercentual ? 'Avanço (%)' : 'Quantidade executada'} ${anterior ? 'neste lançamento' : 'hoje'}<input data-quantity type="number" min="0" step="any" value="${anterior ? (porPercentual ? anterior.qtdHoje / all.find(s=>s.id===anterior.svcId).metasPorLocal[anterior.unidId] * 100 : anterior.qtdHoje) : ''}" inputmode="decimal"></label>
       <p class="ep-muted" data-preview></p>
       <label>Observação<textarea data-obs rows="3" maxlength="10000">${esc(anterior?.obs || '')}</textarea></label>
       <div class="ep-row">${[['fotoUrl','Antes'],['fotoUrlDepois','Depois']].map(([field,label]) => `<label>Foto ${label}<input data-photo="${field}" type="file" accept="image/*"><img data-photo-preview="${field}" ${photo[field] ? `src="${esc(photo[field])}"` : 'hidden'} alt="Foto ${label}"><button type="button" class="btn btn-outline sm" data-remove-photo="${field}">Remover ${label}</button></label>`).join('')}</div>
@@ -195,7 +116,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     localSel.value = anterior?.unidId || initial.unidId || cfg.unidades[0]?.id;
     function balance() {
       const s = all.find(s => s.id === microSel.value), p = state?.progresso[chave(localSel.value,microSel.value)];
-      body.querySelector('[data-balance]').textContent = s && p ? `Previsto ${fmt(p.qtdTotal)} · executado ${fmt(p.qtdExec)} · saldo ${fmt(p.saldo)} ${s.unidade} · local ${fmt(p.pct)}% · Micro na obra ${fmt(state.micros[s.id].pct)}%` : 'Nenhuma Micro aplicável a este local.';
+      body.querySelector('[data-balance]').textContent = s && p ? `Previsto ${fmt(p.qtdTotal)} · executado ${fmt(p.qtdExec)} · saldo ${fmt(p.saldo)} ${s.unidade} · local ${fmt(p.pct)}% · Serviço na obra ${fmt(state.micros[s.id].pct)}%` : 'Nenhum Serviço aplicável a este local.';
       body.querySelector('[data-save]').disabled = !s;
       preview();
     }
@@ -205,7 +126,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       balance();
     }
     function fillMacros(preferredMicro) {
-      macroSel.innerHTML = cfg.macros.filter(m => m.micros.some(s => s.metasPorLocal[localSel.value] > 0)).map(m => `<option value="${m.id}">${esc(m.nome)}</option>`).join('');
+      macroSel.innerHTML = cfg.macros.filter(m => all.some(s => s.macroId === m.id && s.metasPorLocal[localSel.value] > 0)).map(m => `<option value="${m.id}">${esc(m.nome)}</option>`).join('');
       const selected = all.find(s => s.id === preferredMicro);
       if (selected && [...macroSel.options].some(o => o.value === selected.macroId)) macroSel.value = selected.macroId;
       fillMicros(preferredMicro);
@@ -214,8 +135,8 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       const p = state?.progresso[chave(localSel.value,microSel.value)];
       const value = body.querySelector('[data-quantity]').value;
       const retirada = anterior && anterior.unidId === localSel.value && anterior.svcId === microSel.value ? anterior.qtdHoje : 0;
-      const next = p ? p.qtdExec - retirada + Number(value) : 0;
-      body.querySelector('[data-preview]').textContent = p && value !== '' && Number(value) >= 0 ? `Após salvar neste local: ${fmt(next)} · saldo ${fmt(p.qtdTotal-next)}${next > p.qtdTotal ? ' · excedente preservado no histórico' : ''}` : '';
+      const next = p ? p.qtdExec - retirada + quantidadeApontada(cfg,p.qtdTotal,Number(value)) : 0;
+      body.querySelector('[data-preview]').textContent = p && value !== '' && Number(value) >= 0 ? `Após salvar: ${fmt(next / p.qtdTotal * 100)}% · restante ${fmt(Math.max(0,100-next/p.qtdTotal*100))}% · quantidade ${fmt(next)}${next > p.qtdTotal ? ' · excedente preservado no histórico' : ''}` : '';
     }
     localSel.onchange = () => fillMacros(); macroSel.onchange = () => fillMicros(); microSel.onchange = balance;
     body.querySelector('[data-quantity]').oninput = preview;
@@ -244,7 +165,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
         if (input.files[0]) { photo[field] = await uploadPhoto(input.files[0]); input.value = ''; }
       }
       await store.salvarRegistro(context, { id, operacaoId, revisaoEsperada: anterior?.revisao || 0, motivo,
-        entrada: { unidId: localSel.value, svcId: microSel.value, qtdHoje: Number(qtyInput.value), obs: body.querySelector('[data-obs]').value.trim(), ...photo } });
+        entrada: { unidId: localSel.value, svcId: microSel.value, qtdHoje: quantidadeApontada(cfg,all.find(s=>s.id===microSel.value).metasPorLocal[localSel.value],Number(qtyInput.value)), obs: body.querySelector('[data-obs]').value.trim(), ...photo } });
       body.innerHTML = '<p>Lançamento salvo. Atualizando os totais…</p>';
       await refresh(side); host.remove();
     });
@@ -270,7 +191,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
         <strong>Dados do lançamento</strong>
         <p class="ep-muted" style="margin-top:8px">
           Local: ${esc(textoValor(d.unidNome))}<br>
-          Macro: ${esc(textoValor(d.macroNome))}<br>
+          Etapa: ${esc(textoValor(d.macroNome))}<br>
           Serviço: ${esc(textoValor(d.svcDesc || d.microDesc))}<br>
           Quantidade: ${fmt(d.qtdHoje)} ${esc(d.unidade || '')}<br>
           ${d.obs ? `Observação: ${esc(d.obs)}<br>` : ''}
@@ -291,7 +212,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       };
 
       pushTexto('Local', ant.unidNome, novo.unidNome);
-      pushTexto('Macro', ant.macroNome, novo.macroNome);
+      pushTexto('Etapa', ant.macroNome, novo.macroNome);
       pushTexto('Serviço', ant.svcDesc || ant.microDesc, novo.svcDesc || novo.microDesc);
 
       if (diferente(ant.qtdHoje, novo.qtdHoje)) {
@@ -367,7 +288,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
           return `<article class="ep-card ${r.cancelado ? 'ep-cancelado' : ''}"><strong>${esc(r.data)} · ${esc(r.unidNome)} · ${esc(r.svcDesc)}</strong>
             <p>${fmt(r.qtdHoje)} ${esc(r.unidade)} ${r.cancelado ? '· CANCELADO' : ''}</p>
             <p class="ep-muted">${esc(r.obs)}<br>Autor: ${esc(autor)}${alteracao}</p>
-            <div class="ep-row">${edit && !r.cancelado ? `<button class="btn btn-outline sm" data-edit="${r.id}">Editar lançamento</button><button class="btn btn-outline sm" data-cancel="${r.id}">Cancelar lançamento</button>` : ''}<button class="btn btn-outline sm" data-audit="${r.id}">Auditoria</button></div>
+            <div class="ep-row">${edit && !r.cancelado && (context.profile.role === 'ADMIN' || ativo(micros(context.cfg).find(s=>s.id===r.svcId))) ? `<button class="btn btn-outline sm" data-edit="${r.id}">Editar lançamento</button><button class="btn btn-outline sm" data-cancel="${r.id}">Cancelar lançamento</button>` : ''}<button class="btn btn-outline sm" data-audit="${r.id}">Auditoria</button></div>
           </article>`;
         }).join('') || '<p>Nenhum lançamento.</p>';
 

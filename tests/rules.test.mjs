@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import * as sdk from 'firebase/firestore';
 import { criarStore } from '../evolucao-parametrizada-store.mjs';
-import { calcular, prepararRegistro } from '../evolucao-parametrizada.mjs';
+import { calcular, prepararRegistro, retirarServico } from '../evolucao-parametrizada.mjs';
 import { config, entrada, autorizado } from './fixture.mjs';
 
 // Proteção contra execução acidental em qualquer projeto real.
@@ -12,6 +12,8 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8089') throw new Error('E
 const projectId = 'demo-go-evolucao';
 let env;
 const cfg = config(), store = criarStore(sdk);
+// Simula um planejamento V2 já salvo antes da inclusão de ativo no índice.
+Object.values(cfg.itensPorId).forEach(item=>{delete item.ativo;});
 const context = uid => ({ db: env.authenticatedContext(uid).firestore(), user: { uid }, obraId: 'obra', cfg });
 const ref = (ctx, id) => sdk.doc(ctx.db,'obras','obra','evolRegistros',id);
 const create = (ctx,id,values={}) => store.salvarRegistro(ctx,{id,entrada:entrada(values),operacaoId:'create-'+id});
@@ -30,6 +32,89 @@ before(async()=>{
   });
 });
 after(async()=>{ await env?.cleanup(); });
+
+test('acessos: próprio login válido, somente ADMIN lê; append-only para todos',async()=>{
+  const visitante=context('visitante'),admin=context('admin');
+  const target=sdk.doc(visitante.db,'acessos','login-valido');
+  const value={uid:'visitante',role:'VISITANTE',obraId:'',evento:'login',criadoEm:sdk.serverTimestamp()};
+  await assertSucceeds(sdk.setDoc(target,value));
+  await assertFails(sdk.getDoc(target));
+  await assertFails(sdk.getDocs(sdk.collection(visitante.db,'acessos')));
+  await assertSucceeds(sdk.getDoc(sdk.doc(admin.db,'acessos','login-valido')));
+  for(const ctx of [visitante,admin]) {
+    await assertFails(sdk.updateDoc(sdk.doc(ctx.db,'acessos','login-valido'),{evento:'outro'}));
+    await assertFails(sdk.deleteDoc(sdk.doc(ctx.db,'acessos','login-valido')));
+  }
+  for(const [i,patch] of [{uid:'admin'},{role:'ADMIN'},{criadoEm:sdk.Timestamp.fromMillis(1)},{obraId:'outra'},{evento:'logout'},{token:'nao'}].entries()) {
+    await assertFails(sdk.setDoc(sdk.doc(visitante.db,'acessos','forjado-'+i),{...value,...patch}));
+  }
+  await assertFails(sdk.setDoc(sdk.doc(env.unauthenticatedContext().firestore(),'acessos','anonimo'),value));
+  await assertSucceeds(sdk.setDoc(sdk.doc(admin.db,'acessos','login-admin'),{...value,uid:'admin',role:'ADMIN'}));
+  await assertSucceeds(sdk.setDoc(sdk.doc(context('autor').db,'acessos','login-user'),{...value,uid:'autor',role:'USER'}));
+});
+
+test('auditoria de planejamento atômica, motivo obrigatório e revisões imutáveis',async()=>{
+  const ctx={...context('admin'),obraId:'audit-plan'};
+  const initial=await store.salvarConfig(ctx,{...cfg,revisaoConfig:0},0);
+  const plan=sdk.doc(ctx.db,'obras',ctx.obraId,'evolConfig','main');
+  const audit=sdk.doc(plan,'auditoria','r1');
+  assert.equal((await sdk.getDoc(audit)).data().motivo,'Configuração inicial');
+  await assert.rejects(store.salvarConfig(ctx,initial,1),/motivo/);
+  await assertFails(sdk.updateDoc(plan,{revisaoConfig:2,tipoUnidade:'Tentativa sem auditoria'}));
+  const updated=await store.salvarConfig(ctx,{...initial,tipoUnidade:'Trecho'},1,'Novo tipo de local');
+  assert.equal(updated.revisaoConfig,2);
+  const revision=(await sdk.getDoc(sdk.doc(plan,'auditoria','r2'))).data();
+  assert.equal(revision.dadosAnteriores.tipoUnidade,'Tracker'); assert.equal(revision.dadosNovos.tipoUnidade,'Trecho');
+  await assertFails(sdk.updateDoc(audit,{motivo:'reescrever'})); await assertFails(sdk.deleteDoc(audit));
+  await assertFails(sdk.setDoc(sdk.doc(plan,'auditoria','r3'),{...revision,revisao:3}));
+  const user={...context('autor'),obraId:'audit-plan'};
+  await assertFails(sdk.getDoc(sdk.doc(user.db,'obras',user.obraId,'evolConfig','main','auditoria','r1')));
+});
+
+test('Serviço retirado: sem produção nova; ADMIN corrige/cancela histórico com auditoria',async()=>{
+  const ctx={...context('admin'),obraId:'retirada'};
+  ctx.cfg=await store.salvarConfig(ctx,{...config(),revisaoConfig:0},0);
+  const recordRef=sdk.doc(ctx.db,'obras','retirada','evolRegistros','antigo');
+  await store.salvarRegistro(ctx,{id:'antigo',entrada:entrada({fotoUrl:'antes',fotoUrlDepois:'depois'}),operacaoId:'retirada-create'});
+  const updated=structuredClone(config()); retirarServico(updated.macros[0],'s1','Escopo substituído','novo');
+  ctx.cfg=await store.salvarConfig(ctx,updated,1,'Substituição de escopo');
+  let old=(await sdk.getDoc(recordRef)).data();
+  assert.equal(calcular(ctx.cfg,[old]).global,0);
+  await assert.rejects(store.salvarRegistro(ctx,{id:'proibido',entrada:entrada(),operacaoId:'proibido'}),/retirado/);
+  // SDK direto: nem ADMIN pode criar uma produção em serviço retirado.
+  const forged=prepararRegistro(cfg,entrada(),null,{uid:'admin',timestamp:sdk.serverTimestamp()});
+  forged.registro.revisaoConfig=ctx.cfg.revisaoConfig; forged.auditoria.dadosNovos=forged.registro;
+  const batch=sdk.writeBatch(ctx.db),invalid=sdk.doc(ctx.db,'obras','retirada','evolRegistros','direto');
+  batch.set(invalid,forged.registro); batch.set(sdk.doc(invalid,'auditoria','r1'),{...forged.auditoria,operacaoId:'direto'});
+  await assertFails(batch.commit());
+  await env.withSecurityRulesDisabled(async c=>{await sdk.setDoc(sdk.doc(c.firestore(),'usuarios','campo-retirada'),{...autorizado,obras:['retirada']});});
+  const user={...ctx,db:env.authenticatedContext('campo-retirada').firestore(),user:{uid:'campo-retirada'}};
+  await assert.rejects(store.salvarRegistro(user,{id:'novo-proibido',entrada:entrada(),operacaoId:'user-create'}),/retirado/);
+  await assert.rejects(store.salvarRegistro(user,{id:'antigo',entrada:old,revisaoEsperada:1,motivo:'Teste',operacaoId:'user-edit'}),/ADMIN/);
+  const editPair=prepararRegistro(ctx.cfg,{...old,qtdHoje:2},old,{uid:'campo-retirada',timestamp:sdk.serverTimestamp(),motivo:'Tentativa direta',permitirInativo:true});
+  const editBatch=sdk.writeBatch(user.db),userRef=sdk.doc(user.db,'obras','retirada','evolRegistros','antigo');
+  editBatch.set(userRef,editPair.registro); editBatch.set(sdk.doc(userRef,'auditoria','r2'),{...editPair.auditoria,operacaoId:'direto-edit'});
+  await assertFails(editBatch.commit());
+  await assertSucceeds(store.salvarRegistro(ctx,{id:'antigo',entrada:{...old,qtdHoje:2},revisaoEsperada:1,motivo:'Correção histórica',operacaoId:'admin-edit'}));
+  old=(await sdk.getDoc(recordRef)).data(); assert.equal(old.fotoUrlDepois,'depois');
+  await assertSucceeds(store.salvarRegistro(ctx,{id:'antigo',entrada:old,revisaoEsperada:2,motivo:'Duplicado',cancelar:true,operacaoId:'admin-cancel'}));
+  assert.equal((await store.carregarAuditoria(ctx.db,'retirada','antigo')).length,3);
+  assert.equal((await store.carregarRegistros(ctx.db,'retirada')).length,1);
+  await assertSucceeds(store.salvarRegistro(user,{id:'novo-ativo',entrada:entrada({svcId:'novo'}),operacaoId:'user-active'}));
+});
+
+test('Visitante não escreve DDS, mensagens, ponto ou despesas, inclusive próprios documentos',async()=>{
+  const visitor=context('visitante'),user=context('autor');
+  for(const path of ['obras/obra/dds/vis','obras/obra/mensagens/vis','pontos/vis','lancamentos/vis']) {
+    const r=sdk.doc(visitor.db,path);
+    const data={uid:'visitante',colaborador_uid:'visitante',texto:'Teste'};
+    await assertFails(sdk.setDoc(r,data));
+    await env.withSecurityRulesDisabled(async c=>sdk.setDoc(sdk.doc(c.firestore(),path),data));
+    await assertFails(sdk.updateDoc(r,{texto:'Mudança'})); await assertFails(sdk.deleteDoc(r));
+    await assertSucceeds(sdk.getDoc(r));
+    await assertSucceeds(sdk.setDoc(sdk.doc(user.db,path+'-user'),{uid:'autor',colaborador_uid:'autor',texto:'Permitido'}));
+  }
+});
 
 test('criação atômica com auditoria, idempotência e vários dias/lançamentos',async()=>{
   const ctx=context('autor');
