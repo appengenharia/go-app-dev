@@ -24,12 +24,12 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       });
       usuariosCacheCarregado = true;
     } catch (_) {
-      // HistÃ³rico continua funcional; em falha de leitura usa UID como fallback.
+      // Histórico continua funcional; em falha de leitura usa UID como fallback.
     }
   }
 
   function nomeUsuario(uid) {
-    return usuarioCache.get(uid) || uid || 'â€”';
+    return usuarioCache.get(uid) || uid || '—';
   }
   function open(title) {
     modal?.remove();
@@ -247,31 +247,31 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
   }
 
   async function openHistory(side = 'e', local = '') {
-    const context = getContext(side), host = open('LanÃ§amentos e auditoria'), body = host.querySelector('[data-body]');
-    body.textContent = 'Carregando histÃ³rico completoâ€¦';
+    const context = getContext(side), host = open('Lançamentos e auditoria'), body = host.querySelector('[data-body]');
+    body.textContent = 'Carregando histórico completo…';
 
     const auditOpLabel = op => ({
-      criacao: 'CriaÃ§Ã£o',
-      correcao: 'CorreÃ§Ã£o',
+      criacao: 'Criação',
+      correcao: 'Correção',
       cancelamento: 'Cancelamento',
-    }[op] || op || 'AlteraÃ§Ã£o');
+    }[op] || op || 'Alteração');
 
     const vazio = value => value === undefined || value === null || value === '';
-    const textoValor = value => vazio(value) ? 'â€”' : String(value);
+    const textoValor = value => vazio(value) ? '—' : String(value);
     const diferente = (a, b) => String(a ?? '') !== String(b ?? '');
 
     function renderCriacao(a) {
       const d = a.dadosNovos || {};
       return `<div class="ep-card" style="margin-top:10px">
-        <strong>Dados do lanÃ§amento</strong>
+        <strong>Dados do lançamento</strong>
         <p class="ep-muted" style="margin-top:8px">
           Local: ${esc(textoValor(d.unidNome))}<br>
           Macro: ${esc(textoValor(d.macroNome))}<br>
-          ServiÃ§o: ${esc(textoValor(d.svcDesc || d.microDesc))}<br>
+          Serviço: ${esc(textoValor(d.svcDesc || d.microDesc))}<br>
           Quantidade: ${fmt(d.qtdHoje)} ${esc(d.unidade || '')}<br>
-          ${d.obs ? `ObservaÃ§Ã£o: ${esc(d.obs)}<br>` : ''}
-          Foto Antes: ${d.fotoUrl ? 'Sim' : 'NÃ£o'}<br>
-          Foto Depois: ${d.fotoUrlDepois ? 'Sim' : 'NÃ£o'}
+          ${d.obs ? `Observação: ${esc(d.obs)}<br>` : ''}
+          Foto Antes: ${d.fotoUrl ? 'Sim' : 'Não'}<br>
+          Foto Depois: ${d.fotoUrlDepois ? 'Sim' : 'Não'}
         </p>
       </div>`;
     }
@@ -283,18 +283,18 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
 
       const pushTexto = (label, antes, depois) => {
         if (!diferente(antes, depois)) return;
-        itens.push(`<div style="margin:8px 0"><strong>${esc(label)}:</strong><br>${esc(textoValor(antes))} â†’ ${esc(textoValor(depois))}</div>`);
+        itens.push(`<div style="margin:8px 0"><strong>${esc(label)}:</strong><br>${esc(textoValor(antes))} → ${esc(textoValor(depois))}</div>`);
       };
 
       pushTexto('Local', ant.unidNome, novo.unidNome);
       pushTexto('Macro', ant.macroNome, novo.macroNome);
-      pushTexto('ServiÃ§o', ant.svcDesc || ant.microDesc, novo.svcDesc || novo.microDesc);
+      pushTexto('Serviço', ant.svcDesc || ant.microDesc, novo.svcDesc || novo.microDesc);
 
       if (diferente(ant.qtdHoje, novo.qtdHoje)) {
-        itens.push(`<div style="margin:8px 0"><strong>Quantidade executada:</strong><br>${fmt(ant.qtdHoje)} ${esc(ant.unidade || '')} â†’ ${fmt(novo.qtdHoje)} ${esc(novo.unidade || '')}</div>`);
+        itens.push(`<div style="margin:8px 0"><strong>Quantidade executada:</strong><br>${fmt(ant.qtdHoje)} ${esc(ant.unidade || '')} → ${fmt(novo.qtdHoje)} ${esc(novo.unidade || '')}</div>`);
       }
 
-      pushTexto('ObservaÃ§Ã£o', ant.obs, novo.obs);
+      pushTexto('Observação', ant.obs, novo.obs);
 
       const pushFoto = (label, antes, depois) => {
         if (!diferente(antes, depois)) return;
@@ -306,12 +306,12 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       pushFoto('Foto Depois', ant.fotoUrlDepois, novo.fotoUrlDepois);
 
       if (Boolean(ant.cancelado) !== Boolean(novo.cancelado)) {
-        itens.push(`<div style="margin:8px 0"><strong>Status:</strong><br>${ant.cancelado ? 'Cancelado' : 'Ativo'} â†’ ${novo.cancelado ? 'Cancelado' : 'Ativo'}</div>`);
+        itens.push(`<div style="margin:8px 0"><strong>Status:</strong><br>${ant.cancelado ? 'Cancelado' : 'Ativo'} → ${novo.cancelado ? 'Cancelado' : 'Ativo'}</div>`);
       }
 
       return itens.length
-        ? `<div class="ep-card" style="margin-top:10px"><strong>AlteraÃ§Ãµes</strong>${itens.join('')}</div>`
-        : '<p class="ep-muted">Nenhuma alteraÃ§Ã£o de negÃ³cio identificada nesta revisÃ£o.</p>';
+        ? `<div class="ep-card" style="margin-top:10px"><strong>Alterações</strong>${itens.join('')}</div>`
+        : '<p class="ep-muted">Nenhuma alteração de negócio identificada nesta revisão.</p>';
     }
 
     function renderAuditoria(a) {
@@ -324,15 +324,15 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       const resumo = a.operacao === 'criacao' ? renderCriacao(a) : renderAlteracoes(a);
 
       return `<div class="ep-card">
-        <strong>RevisÃ£o ${a.revisao} Â· ${esc(op)}</strong>
+        <strong>Revisão ${a.revisao} · ${esc(op)}</strong>
         <p class="ep-muted">
           ${esc(stamp(a.corrigidoEm))}<br>
-          <strong>UsuÃ¡rio:</strong> ${esc(usuario)}
+          <strong>Usuário:</strong> ${esc(usuario)}
           ${motivo ? `<br><strong>Motivo:</strong> ${esc(motivo)}` : ''}
         </p>
         ${resumo}
         <details>
-          <summary>Ver detalhes tÃ©cnicos</summary>
+          <summary>Ver detalhes técnicos</summary>
           <pre class="ep-audit">${esc(JSON.stringify({
             dadosAnteriores: a.dadosAnteriores,
             dadosNovos: a.dadosNovos
@@ -348,7 +348,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       let page = 0;
       const edit = podeProduzir(context.profile, context.obraId);
 
-      body.innerHTML = `<label>Local<select data-filter><option value="">Todos os locais</option>${context.cfg.unidades.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label><p class="ep-muted">Inclui registros sem foto e cancelados. Cancelados nÃ£o entram na mediÃ§Ã£o.</p><div data-records></div><div class="ep-row"><button class="btn btn-outline" data-prev>Anterior</button><button class="btn btn-outline" data-next>PrÃ³xima</button></div>`;
+      body.innerHTML = `<label>Local<select data-filter><option value="">Todos os locais</option>${context.cfg.unidades.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label><p class="ep-muted">Inclui registros sem foto e cancelados. Cancelados não entram na medição.</p><div data-records></div><div class="ep-row"><button class="btn btn-outline" data-prev>Anterior</button><button class="btn btn-outline" data-next>Próxima</button></div>`;
       body.querySelector('[data-filter]').value = local;
 
       function render() {
@@ -362,17 +362,17 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
           let alteracao = '';
 
           if (r.cancelado) {
-            alteracao = `<br>Cancelado por: ${esc(nomeUsuario(r.canceladoPor || r.corrigidoPor))}${r.motivoCancelamento ? ' Â· ' + esc(r.motivoCancelamento) : ''}`;
+            alteracao = `<br>Cancelado por: ${esc(nomeUsuario(r.canceladoPor || r.corrigidoPor))}${r.motivoCancelamento ? ' · ' + esc(r.motivoCancelamento) : ''}`;
           } else if (r.motivoCorrecao) {
-            alteracao = `<br>Ãšltima correÃ§Ã£o: ${esc(nomeUsuario(r.corrigidoPor))} Â· ${esc(r.motivoCorrecao)}`;
+            alteracao = `<br>Última correção: ${esc(nomeUsuario(r.corrigidoPor))} · ${esc(r.motivoCorrecao)}`;
           }
 
-          return `<article class="ep-card ${r.cancelado ? 'ep-cancelado' : ''}"><strong>${esc(r.data)} Â· ${esc(r.unidNome)} Â· ${esc(r.svcDesc)}</strong>
-            <p>${fmt(r.qtdHoje)} ${esc(r.unidade)} ${r.cancelado ? 'Â· CANCELADO' : ''}</p>
+          return `<article class="ep-card ${r.cancelado ? 'ep-cancelado' : ''}"><strong>${esc(r.data)} · ${esc(r.unidNome)} · ${esc(r.svcDesc)}</strong>
+            <p>${fmt(r.qtdHoje)} ${esc(r.unidade)} ${r.cancelado ? '· CANCELADO' : ''}</p>
             <p class="ep-muted">${esc(r.obs)}<br>Autor: ${esc(autor)}${alteracao}</p>
-            <div class="ep-row">${edit && !r.cancelado ? `<button class="btn btn-outline sm" data-edit="${r.id}">Editar lanÃ§amento</button><button class="btn btn-outline sm" data-cancel="${r.id}">Cancelar lanÃ§amento</button>` : ''}<button class="btn btn-outline sm" data-audit="${r.id}">Auditoria</button></div>
+            <div class="ep-row">${edit && !r.cancelado ? `<button class="btn btn-outline sm" data-edit="${r.id}">Editar lançamento</button><button class="btn btn-outline sm" data-cancel="${r.id}">Cancelar lançamento</button>` : ''}<button class="btn btn-outline sm" data-audit="${r.id}">Auditoria</button></div>
           </article>`;
-        }).join('') || '<p>Nenhum lanÃ§amento.</p>';
+        }).join('') || '<p>Nenhum lançamento.</p>';
 
         body.querySelector('[data-prev]').disabled = page === 0;
         body.querySelector('[data-next]').disabled = (page+1)*25 >= rows.length;
@@ -393,7 +393,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
         if (btn.dataset.edit) openRecord({}, side, registro);
 
         if (btn.dataset.cancel) {
-          const motivo = prompt('Motivo do cancelamento (o registro permanecerÃ¡ no histÃ³rico):');
+          const motivo = prompt('Motivo do cancelamento (o registro permanecerá no histórico):');
           if (!motivo?.trim()) return;
 
           await busy(host, async () => {
@@ -414,7 +414,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
           await busy(host, async () => {
             const audits = await store.carregarAuditoria(context.db, context.obraId, id);
             await carregarUsuarios(context);
-            const h = open('Auditoria do lanÃ§amento');
+            const h = open('Auditoria do lançamento');
             h.querySelector('[data-body]').innerHTML = audits.map(renderAuditoria).join('') || '<p>Nenhuma auditoria encontrada.</p>';
           });
         }
@@ -422,7 +422,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
 
       render();
     } catch (e) {
-      body.textContent = 'NÃ£o foi possÃ­vel carregar os lanÃ§amentos. Feche e tente novamente.';
+      body.textContent = 'Não foi possível carregar os lançamentos. Feche e tente novamente.';
       error(host,e);
     }
   }
