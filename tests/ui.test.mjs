@@ -81,6 +81,18 @@ test('configuração incompleta fica aberta com erro claro',async()=>{
   t.input('[data-macro-field="pesoFisico"]','26');
   t.el('[data-action="save"]').click(); await t.settle();
   assert.match(t.el('[data-error]').textContent,/somar 100/); assert.equal(t.refreshed,0);
+  assert.equal(t.el('[data-total-macros]').textContent,'99');
+  t.input('[data-macro-field="pesoFisico"]','25');
+  assert.equal(t.el('[data-error]').textContent,'');
+  assert.equal(t.el('[data-total-macros]').textContent,'98');
+  t.el('[data-action="save"]').click(); await t.settle();
+  assert.match(t.el('[data-error]').textContent,/somar 100/);
+  t.change('[data-local-field="grupo"]','');
+  assert.equal(t.el('[data-error]').textContent,'');
+  t.input('[data-macro-field="pesoFisico"]','27');
+  assert.equal(t.el('[data-total-macros]').textContent,'100');
+  t.el('[data-action="save"]').click(); await t.settle();
+  assert.equal(t.refreshed,1);
 });
 test('edição exige motivo, preserva foto Depois ao remover Antes, histórico sem fotos acessível',async()=>{
   const t=setup();

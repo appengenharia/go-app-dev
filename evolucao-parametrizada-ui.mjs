@@ -95,6 +95,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
         <div class="modal-footer"><button class="btn btn-primary" data-action="save">Salvar planejamento</button></div>`;
     }
     body.oninput = event => {
+      host.querySelector('[data-error]').textContent = '';
       const el = event.target;
       if (el.dataset.config === 'tipoUnidade') cfg.tipoUnidade = el.value;
       if (el.dataset.config === 'grupos') cfg.grupos = el.value.split('\n').map(v => v.trim()).filter(Boolean);
@@ -111,7 +112,10 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       body.querySelector('[data-total-macros]').textContent = fmt(cfg.macros.reduce((n,m)=>n+m.pesoFisico,0));
       cfg.macros.forEach(m => { body.querySelector(`[data-total-micros="${m.id}"]`).textContent = fmt(m.micros.reduce((n,s)=>n+s.pesoFisico,0)); });
     };
-    body.onchange = event => { if (event.target.dataset.config === 'grupos' || event.target.dataset.localField === 'nome') render(); };
+    body.onchange = event => {
+      host.querySelector('[data-error]').textContent = '';
+      if (event.target.dataset.config === 'grupos' || event.target.dataset.localField === 'nome') render();
+    };
     body.onclick = async event => {
       const button = event.target.closest('[data-action]');
       if (!button) return;

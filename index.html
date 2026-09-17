@@ -4222,7 +4222,7 @@
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.93rem;color:${cor}">${pct.toFixed(1)}%</div>
-              <div style="font-size:.67rem;color:var(--muted)">${concSvcs}/${svcsLocal.length} serv.${_epModo(_eCfg) ? ' · operacional' : ''}</div>
+              <div style="font-size:.67rem;color:var(--muted)">${_epModo(_eCfg) ? `${concSvcs} de ${svcsLocal.length} ${svcsLocal.length === 1 ? 'serviço concluído' : 'serviços concluídos'} · operacional` : `${concSvcs}/${svcsLocal.length} serv.`}</div>
             </div>
           </div>
           <div style="background:var(--bg);border-radius:999px;height:5px;overflow:hidden;margin-top:5px">
