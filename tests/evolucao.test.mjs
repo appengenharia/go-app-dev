@@ -24,6 +24,7 @@ test('retirada/substituição preserva IDs, registros e índice, sem medição v
   const index=validarConfig(cfg,original); assert.equal(index.s1.ativo,false); assert.equal(index.novo.ativo,true);
   assert.equal(calcular(cfg,[old]).global,0); assert.equal(calcular(cfg,[old]).locais.u1.aplicaveis,1);
   assert.equal(old.svcId,'s1'); assert.throws(()=>validarLancamento(cfg,entrada()),/retirado/);
+  for(const svcId of ['novo','s2']) assert.throws(()=>prepararRegistro(cfg,{...old,svcId,unidId:'u2'},old,{uid:'admin',timestamp:'x',motivo:'Transferência',permitirInativo:true}),/Não transfira/);
   const edit=prepararRegistro(cfg,{...old,qtdHoje:2},old,{uid:'admin',timestamp:'x',motivo:'Correção',permitirInativo:true});
   assert.equal(edit.auditoria.dadosAnteriores.qtdHoje,1); assert.equal(edit.registro.qtdHoje,2);
   assert.throws(()=>prepararRegistro(cfg,entrada(),null,{uid:'admin',timestamp:'x',permitirInativo:true}),/retirado/);

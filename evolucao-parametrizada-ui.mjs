@@ -97,12 +97,14 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     try { requireEditor(context); } catch (e) { const h = open('Lançamento'); error(h,e); return; }
     const cfg = context.cfg, state = getState(side);
     if (anterior && !ativo(micros(cfg).find(s=>s.id===anterior.svcId)) && context.profile.role !== 'ADMIN') { const h=open('Histórico retirado'); error(h,new Error('Somente ADMIN pode corrigir histórico retirado.')); return; }
-    const all = micros(cfg).filter(s=>ativo(s) || (anterior?.svcId===s.id && context.profile.role==='ADMIN'));
+    const servicoAnterior = anterior && micros(cfg).find(s=>s.id===anterior.svcId);
+    const historicoRetirado = servicoAnterior?.ativo === false;
+    const all = micros(cfg).filter(s=>historicoRetirado ? s.id===anterior.svcId : ativo(s));
     const porPercentual = modoApontamento(cfg) === 'percentual';
     const host = open(anterior ? 'Editar lançamento' : 'Lançar produção'), body = host.querySelector('[data-body]');
     const id = anterior?.id || store.novoId(context.db), operacaoId = store.novoId(context.db);
     const photo = { fotoUrl: anterior?.fotoUrl || '', fotoUrlDepois: anterior?.fotoUrlDepois || '' };
-    body.innerHTML = `<label>Local<select data-local>${cfg.unidades.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label>
+    body.innerHTML = `${historicoRetirado ? '<p class="ep-muted">Serviço retirado do escopo — histórico preservado</p>' : ''}<label>Local<select data-local>${cfg.unidades.filter(u=>!historicoRetirado || servicoAnterior.metasPorLocal[u.id]>0).map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label>
       <label>Etapa<select data-macro></select></label><label>Serviço<select data-micro></select></label>
       <p class="ep-muted" data-balance></p>
       <label>${porPercentual ? 'Avanço (%)' : 'Quantidade executada'} ${anterior ? 'neste lançamento' : 'hoje'}<input data-quantity type="number" min="0" step="any" value="${anterior ? (porPercentual ? anterior.qtdHoje / all.find(s=>s.id===anterior.svcId).metasPorLocal[anterior.unidId] * 100 : anterior.qtdHoje) : ''}" inputmode="decimal"></label>
@@ -141,6 +143,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     localSel.onchange = () => fillMacros(); macroSel.onchange = () => fillMicros(); microSel.onchange = balance;
     body.querySelector('[data-quantity]').oninput = preview;
     fillMacros(anterior?.svcId || initial.svcId);
+    macroSel.disabled = microSel.disabled = historicoRetirado;
     body.querySelectorAll('[data-photo]').forEach(input => {
       input.onchange = () => {
         const file = input.files[0]; if (!file) return;

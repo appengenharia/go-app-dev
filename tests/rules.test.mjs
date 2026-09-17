@@ -80,6 +80,21 @@ test('Serviço retirado: sem produção nova; ADMIN corrige/cancela histórico c
   ctx.cfg=await store.salvarConfig(ctx,updated,1,'Substituição de escopo');
   let old=(await sdk.getDoc(recordRef)).data();
   assert.equal(calcular(ctx.cfg,[old]).global,0);
+  // Testa tanto o substituto na mesma Etapa quanto outro Serviço em outra Etapa.
+  for(const svcId of ['novo','s2']) {
+    await assert.rejects(store.salvarRegistro(ctx,{id:'antigo',entrada:{...old,svcId,unidId:'u2'},revisaoEsperada:1,motivo:'Transferir',operacaoId:'move-'+svcId}),/Não transfira/);
+    // Simula um cliente que ignora o motor: todos os dados/auditoria são coerentes,
+    // mas a origem real nas Rules continua sendo o Serviço retirado.
+    const forjada=structuredClone(ctx.cfg); forjada.macros[0].micros[0].ativo=true;
+    const pair=prepararRegistro(forjada,{...old,svcId,unidId:'u2'},old,{uid:'admin',timestamp:sdk.serverTimestamp(),motivo:'Transferir'});
+    const transfer=sdk.writeBatch(ctx.db);
+    transfer.set(recordRef,pair.registro);
+    transfer.set(sdk.doc(recordRef,'auditoria','r2'),{...pair.auditoria,operacaoId:'sdk-move-'+svcId});
+    await assertFails(transfer.commit());
+    assert.deepEqual((await sdk.getDoc(recordRef)).data(),old);
+    assert.equal((await store.carregarAuditoria(ctx.db,'retirada','antigo')).length,1);
+  }
+  await assert.rejects(store.salvarRegistro(ctx,{id:'antigo',entrada:{...old,unidId:'u4'},revisaoEsperada:1,motivo:'Local inválido',operacaoId:'bad-local'}),/aplicável/);
   await assert.rejects(store.salvarRegistro(ctx,{id:'proibido',entrada:entrada(),operacaoId:'proibido'}),/retirado/);
   // SDK direto: nem ADMIN pode criar uma produção em serviço retirado.
   const forged=prepararRegistro(cfg,entrada(),null,{uid:'admin',timestamp:sdk.serverTimestamp()});
@@ -95,10 +110,15 @@ test('Serviço retirado: sem produção nova; ADMIN corrige/cancela histórico c
   const editBatch=sdk.writeBatch(user.db),userRef=sdk.doc(user.db,'obras','retirada','evolRegistros','antigo');
   editBatch.set(userRef,editPair.registro); editBatch.set(sdk.doc(userRef,'auditoria','r2'),{...editPair.auditoria,operacaoId:'direto-edit'});
   await assertFails(editBatch.commit());
-  await assertSucceeds(store.salvarRegistro(ctx,{id:'antigo',entrada:{...old,qtdHoje:2},revisaoEsperada:1,motivo:'Correção histórica',operacaoId:'admin-edit'}));
+  await assertSucceeds(store.salvarRegistro(ctx,{id:'antigo',entrada:{...old,qtdHoje:2,unidId:'u2'},revisaoEsperada:1,motivo:'Correção histórica',operacaoId:'admin-edit'}));
   old=(await sdk.getDoc(recordRef)).data(); assert.equal(old.fotoUrlDepois,'depois');
+  assert.equal(old.qtdHoje,2); assert.equal(old.unidId,'u2');
+  assert.deepEqual([old.svcId,old.microId,old.macroId],['s1','s1','m1']);
   await assertSucceeds(store.salvarRegistro(ctx,{id:'antigo',entrada:old,revisaoEsperada:2,motivo:'Duplicado',cancelar:true,operacaoId:'admin-cancel'}));
   assert.equal((await store.carregarAuditoria(ctx.db,'retirada','antigo')).length,3);
+  const final=(await sdk.getDoc(recordRef)).data();
+  assert.equal(final.cancelado,true);
+  assert.deepEqual([final.svcId,final.microId,final.macroId],['s1','s1','m1']);
   assert.equal((await store.carregarRegistros(ctx.db,'retirada')).length,1);
   await assertSucceeds(store.salvarRegistro(user,{id:'novo-ativo',entrada:entrada({svcId:'novo'}),operacaoId:'user-active'}));
 });

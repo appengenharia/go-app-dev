@@ -164,7 +164,10 @@ export function historicoCalculado(cfg, registros) {
 export function prepararRegistro(cfg, entrada, anterior, { uid, timestamp, motivo = '', cancelar = false, data = dataLocal(), permitirInativo = false }) {
   exigir(!anterior?.cancelado, 'Lançamento cancelado não pode ser alterado.');
   exigir(!anterior || texto(motivo), 'Informe o motivo da correção/cancelamento.');
+  const historicoRetirado = anterior && !ativo(micros(cfg).find(s => s.id === anterior.svcId));
+  exigir(!historicoRetirado || entrada.svcId === anterior.svcId, 'Não transfira o histórico de Serviço retirado para outro Serviço.');
   const { micro, local } = validarLancamento(cfg, entrada, Boolean(anterior && permitirInativo && anterior.svcId === entrada.svcId));
+  exigir(!historicoRetirado || (micro.id === anterior.microId && micro.macroId === anterior.macroId), 'Preserve os vínculos de Serviço e Etapa do histórico retirado.');
   const registro = {
     ...(anterior || {}),
     modeloEvolucao: 2, modoCalculo: MODO, revisaoConfig: cfg.revisaoConfig,

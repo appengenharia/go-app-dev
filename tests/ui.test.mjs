@@ -181,6 +181,12 @@ test('Serviço retirado some de novos lançamentos; somente ADMIN edita seu hist
   assert.match(t.el('[data-error]').textContent,/ADMIN/); assert.equal(t.el('[data-save]'),null);
   const admin=setup({role:'ADMIN'},cfg); admin.ui.openRecord({},'e',{id:'r',svcId:'s1',unidId:'u1',qtdHoje:1});
   assert.equal(admin.el('[data-micro]').value,'s1'); assert.ok(admin.el('[data-save]'));
+  assert.match(admin.el('[data-body]').textContent,/Serviço retirado do escopo — histórico preservado/);
+  assert.equal(admin.el('[data-micro]').disabled,true); assert.equal(admin.el('[data-macro]').disabled,true);
+  assert.equal(admin.el('[data-micro]').options.length,1); assert.equal(admin.el('[data-macro]').options.length,1);
+  assert.equal(admin.el('[data-local] option[value="u4"]'),null);
+  admin.change('[data-local]','u2');
+  assert.equal(admin.el('[data-micro]').value,'s1'); assert.equal(admin.el('[data-macro]').value,'m1');
 });
 test('edição exige motivo, preserva foto Depois ao remover Antes, histórico sem fotos acessível',async()=>{
   const t=setup();

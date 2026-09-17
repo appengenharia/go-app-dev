@@ -213,7 +213,10 @@ service cloud.firestore {
               ])
           ))) ||
           (evolPercentual(obraId) && canEvoluirObra(obraId) &&
-            (servicoAtivo(obraId, resource.data.svcId) || isAdmin()) &&
+            (servicoAtivo(obraId, resource.data.svcId) || (isAdmin() &&
+              request.resource.data.svcId == resource.data.svcId &&
+              request.resource.data.microId == resource.data.microId &&
+              request.resource.data.macroId == resource.data.macroId)) &&
             (servicoAtivo(obraId, request.resource.data.svcId) || (isAdmin() && request.resource.data.svcId == resource.data.svcId)) &&
             resource.data.cancelado == false &&
             registroPercentualValido(obraId, request.resource.data) &&
