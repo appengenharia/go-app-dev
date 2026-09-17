@@ -1,0 +1,22 @@
+.ep-modal { max-width: 880px; max-height: 92dvh; overflow-y: auto; padding: 22px; }
+.ep-modal h3 { margin-bottom: 12px; }
+.ep-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.ep-row > label { flex: 1; min-width: 130px; margin: 0; }
+.ep-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin: 12px 0; overflow-wrap: anywhere; }
+.ep-card h4 { margin-bottom: 8px; }
+.ep-muted { color: var(--muted); font-size: .78rem; margin: 8px 0; }
+.ep-metas { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 8px; margin-top: 10px; }
+.ep-metas label { margin: 0; }
+.ep-modal .btn { min-height: 42px; }
+.ep-modal input,.ep-modal select,.ep-modal textarea { font-size: 16px; }
+.ep-modal img { max-width: 100%; max-height: 130px; object-fit: contain; border-radius: 8px; }
+.ep-error { color: var(--danger); white-space: pre-wrap; margin: 12px 0; }
+.ep-audit { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .78rem; }
+.ep-cancelado { border-color: #fca5a5; background: #fff5f5; }
+@media(max-width: 520px) {
+  .ep-overlay { padding: 8px; }
+  .ep-modal { padding: 16px; max-height: 96dvh; }
+  .ep-row > label { min-width: 100%; }
+  .ep-modal .modal-footer { flex-wrap: wrap; }
+  .ep-modal .modal-footer > button { flex: 1; }
+}

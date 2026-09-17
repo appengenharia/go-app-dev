@@ -13,6 +13,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GO – Gestão de Obras</title>
+  <link rel="stylesheet" href="evolucao-parametrizada.css">
   <meta name="theme-color" content="#0f3460">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -2771,6 +2772,8 @@
      JAVASCRIPT PRINCIPAL
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
+  import { parametrizada as _epModo, calcular as _epCalcular, historicoCalculado as _epHistorico, podeProduzir as _epPermissao } from './evolucao-parametrizada.mjs';
+  import { criarInterface } from './evolucao-parametrizada-ui.mjs';
   import { initializeApp }
     from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import {
@@ -2779,7 +2782,8 @@
   } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs,
-    updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, limit
+    updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, limit,
+    getDocsFromServer, runTransaction
   } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
   // ─────────────────────────────────────────
@@ -3814,6 +3818,43 @@
   let _eChartL    = null;
   let _eChartB    = null;
   let _eFiltroGrupo = "";
+  let _eRegistrosFisicos = [], _vRegistrosFisicos = [];
+  let _eFisico = null, _vFisico = null;
+  function _epContext(side="e") {
+    const aux = !currentUser && !!pontoUser;
+    return {
+      db: aux ? dbAux : db, user: aux ? pontoUser : currentUser,
+      profile: aux ? pontoProfile : currentProfile,
+      obraId: side==="v" ? _vObraId : _eObraId,
+      cfg: side==="v" ? _vCfg : _eCfg
+    };
+  }
+  const _epUI = criarInterface({
+    sdk: { doc, collection, getDocsFromServer, runTransaction, serverTimestamp },
+    getContext: _epContext,
+    getState: side => side==="v" ? _vFisico : _eFisico,
+    refresh: async (side="e") => {
+      if(side==="v") { await visitanteInicializar(_vObraId); return; }
+      if(!currentUser && pontoUser) { await evolAbrirParaColab(); return; }
+      await evolCarregarObra();
+      if(!$("modalEvolGaleria").classList.contains("hidden")) await evolAbrirGaleria();
+    },
+    uploadPhoto: async file => {
+      const fd=new FormData();
+      fd.append("file",file); fd.append("upload_preset",CLOUDINARY_PRESET); fd.append("folder","evolucao");
+      const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,{method:"POST",body:fd});
+      const data=await res.json();
+      if(!res.ok || !data.secure_url) throw new Error("Falha ao enviar foto. O lançamento não foi alterado; tente novamente.");
+      return data.secure_url;
+    }
+  });
+  function _epResumo(side="e") {
+    const anchor=$(side==="v" ? "vListaUnidades" : "evolListaUnidades");
+    if(!anchor) return;
+    let el=$("epResumo_"+side);
+    if(!el){ el=document.createElement("div"); el.id="epResumo_"+side; anchor.before(el); }
+    _epUI.renderSummary(el,side);
+  }
 
   const E_CORES = ["#0f3460","#e94560","#10b981","#f5a623","#6366f1","#ec4899","#14b8a6","#f97316","#8b5cf6","#06b6d4","#84cc16","#ef4444","#dc2626","#7c3aed","#0284c7","#16a34a"];
   const E_MARCOS_PAD = [{label:"Mobilização",pct:0,pagPct:20},{label:"21 dias",pct:40,pagPct:30},{label:"42 dias",pct:80,pagPct:30},{label:"Conclusão",pct:100,pagPct:20}];
@@ -3955,13 +3996,23 @@
       $("evolSemConfig").style.display="";
       return;
     }
-    await _eCarregarProg(id);
+    try { await _eCarregarProg(id); }
+    catch(e) { toast("Não foi possível carregar a produção: "+e.message,"err"); return; }
     $("evolPainelPrincipal").style.display="";
     _eRenderPainel();
     _eCarregarHistorico(id);
   }
 
   async function _eCarregarProg(id) {
+    if(_epModo(_eCfg)) {
+      const context=_epContext(), cfg=_eCfg;
+      const registros=await _epUI.carregarRegistros(context.db,id);
+      if(_eObraId!==id || _eCfg!==cfg) throw new Error("Obra alterada durante o carregamento.");
+      _eFisico=_epCalcular(cfg,registros); _eRegistrosFisicos=registros;
+      _eProg=_eFisico.progresso;
+      return;
+    }
+    _eFisico=null; _eRegistrosFisicos=[];
     try{
       const s=await getDocs(collection(db,"obras",id,"evolProgresso"));
       _eProg={};
@@ -3976,6 +4027,7 @@
     // Percentual de uma Macro V2:
   // média ponderada dos Micros pertencentes à Macro.
   function _ePctMacro(uid,macro){
+    if(_epModo(_eCfg)) return _eFisico?.macros[macro.id]?.pct || 0;
     const micros=Array.isArray(macro?.micros)
       ? macro.micros
       : [];
@@ -3998,6 +4050,7 @@
   }
 
   function _ePctUnid(uid) {
+    if(_epModo(_eCfg)) return _eFisico?.locais[uid]?.pct || 0;
 
     // ═══════════════════════════════════════
     // MODELO V2 — MACRO / MICRO
@@ -4049,12 +4102,14 @@
   }
   
   function _ePctGlobal() {
+    if(_epModo(_eCfg)) return _eFisico?.global || 0;
     const u=_eCfg?.unidades||[];
     return u.length? u.reduce((a,x)=>a+_ePctUnid(x.id),0)/u.length : 0;
   }
 
   // ──────────────────────────── RENDERIZAR PAINEL ──────────
   function _eRenderPainel() {
+    _epResumo();
     const unids=_eCfg?.unidades||[];
     const g     =_ePctGlobal();
     const conc  =unids.filter(u=>_ePctUnid(u.id)>=100).length;
@@ -4151,7 +4206,8 @@
     : (_eCfg?.servicos||[]);
       const cards=ug.map(u=>{
         const pct=_ePctUnid(u.id);
-        const concSvcs=svcs.filter(s=>_ePctSvc(u.id,s.id)>=100).length;
+        const svcsLocal=_epModo(_eCfg) ? svcs.filter(s=>s.metasPorLocal?.[u.id]>0) : svcs;
+        const concSvcs=svcsLocal.filter(s=>_ePctSvc(u.id,s.id)>=100).length;
         const cor=pct>=100?"#10b981":pct>0?"#f5a623":"#94a3b8";
         const bord=pct>=100?"#a7f3d0":pct>0?"#fcd34d":"#e5e7eb";
         return `
@@ -4166,7 +4222,7 @@
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.93rem;color:${cor}">${pct.toFixed(1)}%</div>
-              <div style="font-size:.67rem;color:var(--muted)">${concSvcs}/${svcs.length} serv.</div>
+              <div style="font-size:.67rem;color:var(--muted)">${concSvcs}/${svcsLocal.length} serv.${_epModo(_eCfg) ? ' · operacional' : ''}</div>
             </div>
           </div>
           <div style="background:var(--bg);border-radius:999px;height:5px;overflow:hidden;margin-top:5px">
@@ -4265,6 +4321,13 @@
       const snap=await getDocs(query(collection(db,"obras",obraId,"evolHistorico"),orderBy("data","asc")));
       const labels=[],dados=[],_histRows=[];
       snap.forEach(d=>{ const _hr=d.data(); _histRows.push(_hr); labels.push(new Date((_hr.data||"2000-01-01")+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})); dados.push(parseFloat((Number(_hr.pctGlobal)||0).toFixed(1))); });
+      if(_epModo(_eCfg)) {
+        labels.length=0; dados.length=0;
+        _epHistorico(_eCfg,_eRegistrosFisicos).forEach(r=>{
+          labels.push(new Date(r.data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
+          dados.push(r.pctGlobal);
+        });
+      }
       _eRenderClimaPainel(_histRows);
       const canvas=$("chartEvolLinha"); if(!canvas) return;
       if(_eChartL) _eChartL.destroy();
@@ -4280,7 +4343,7 @@
       _eChartL=new Chart(canvas,{
         type:"line",
         data:{labels,datasets:[{
-          label:"% Global",data:dados,
+          label:_epModo(_eCfg)?"% Global recalculado (planejamento atual)":"% Global",data:dados,
           borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.12)",
           fill:true,tension:0.4,
           pointBackgroundColor:"#f5a623",pointRadius:3,borderWidth:2
@@ -4687,11 +4750,13 @@
   }
 
 async function _eSnapshotHist(id,g){
+    if(_epModo(_eCfg)) return; // O novo histórico é derivado dos lançamentos, inclusive correções.
     try{const d=new Date().toISOString().split("T")[0];await setDoc(doc(db,"obras",id,"evolHistorico",d),{data:d,pctGlobal:parseFloat(g.toFixed(2)),atualizadoEm:serverTimestamp()},{merge:true});}catch(e){}
   }
 
   // ──────────────────────────── MODAL UNIDADE ──────────────
     function evolAbrirUnidade(uid) {
+    if(_epModo(_eCfg)) { _eUnidAtual=uid; _epUI.openUnit(uid); return; }
     const u=(_eCfg?.unidades||[]).find(x=>x.id===uid);
     if(!u) return;
 
@@ -5075,6 +5140,7 @@ async function _eSnapshotHist(id,g){
     };
   }
   function evolAbrirReg(uid,sid) {
+    if(_epModo(_eCfg)) { _epUI.openRecord({unidId:uid,svcId:sid}); return; }
 
     const u=(_eCfg?.unidades||[])
       .find(x=>x.id===uid);
@@ -5252,6 +5318,7 @@ async function _eSnapshotHist(id,g){
   }
 
    async function evolSalvarReg() {
+    if(_epModo(_eCfg)) { toast("Use o formulário de produção parametrizada.","err"); return; }
 
     const uid=$("evolRegUnidId").value;
     const sid=$("evolRegSvcId").value;
@@ -5630,9 +5697,9 @@ async function _eSnapshotHist(id,g){
   });
 
 
-  const podeEditarAdm =
-    currentRole==="ADMIN" ||
-    canEvoluirObra(currentProfile);
+  const podeEditarAdm = _epModo(_eCfg)
+    ? _epPermissao(_epContext().profile,_eObraId)
+    : currentRole==="ADMIN" || canEvoluirObra(currentProfile);
 
 
   el.style.columns="1";
@@ -5798,7 +5865,7 @@ async function _eSnapshotHist(id,g){
                       border-radius:20px;
                       font-weight:600
                     ">
-                      ${delta>0?"+":""}${delta.toFixed(1)}%
+                      ${_epModo(_eCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : `${delta>0?"+":""}${delta.toFixed(1)}%`}
                     </span>
 
                     ${
@@ -5824,7 +5891,7 @@ async function _eSnapshotHist(id,g){
 
 
               ${
-                podeEditarAdm
+                podeEditarAdm && (!_epModo(_eCfg) || !r.cancelado)
                   ? `
                     <div style="
                       display:flex;
@@ -5977,6 +6044,7 @@ async function _evolApagarFotoAdm(
   regId,
   campo
 ){
+  if(_epModo(_eCfg)) { await _epUI.changePhoto("e",regId,campo); return; }
 
   if(
     !_eObraId ||
@@ -6046,6 +6114,7 @@ async function _evolTrocarFotoAdm(
   campo,
   input
 ){
+  if(_epModo(_eCfg)) { await _epUI.changePhoto("e",regId,campo,input); return; }
 
   if(
     !input?.files?.[0] ||
@@ -6269,6 +6338,18 @@ async function _evolTrocarFotoAdm(
         y+=4;
       }
 
+      if(_epModo(_eCfg)) {
+        doc.setFontSize(10); doc.setTextColor(...cBrand);
+        doc.text("Avanço físico por Macro",mg,y); y+=6;
+        _eCfg.macros.forEach(m=>{
+          if(y>H-25){doc.addPage();y=mg;}
+          const p=_eFisico.macros[m.id];
+          doc.setFontSize(8);
+          const linhas=doc.splitTextToSize(`${m.nome} | Peso ${m.pesoFisico}% | Execução ${p.pct.toFixed(2)}% | Contribuição ${p.contribuicao.toFixed(2)} p.p.`,W-mg*2);
+          doc.text(linhas,mg,y); y+=linhas.length*4+3;
+        });
+        doc.setFontSize(7); doc.text("Locais: indicador operacional. Histórico recalculado com o planejamento atual.",mg,y); y+=7;
+      }
       // ── PROGRESSO POR UNIDADE ──
       doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.setTextColor(cBrand[0],cBrand[1],cBrand[2]);
       doc.text("Progresso por Unidade", mg, y); y+=5;
@@ -6324,7 +6405,8 @@ async function _evolTrocarFotoAdm(
 
       // Buscar registros recentes
       let regsRecentes=[];
-      try{
+      if(_epModo(_eCfg)) regsRecentes=[..._eRegistrosFisicos].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,20);
+      else try{
         const snap=await getDocs(query(
           collection(db,"obras",_eObraId,"evolRegistros"),
           orderBy("criadoEm","desc"), limit(20)
@@ -6343,7 +6425,7 @@ async function _evolTrocarFotoAdm(
         doc.text("UNIDADE", mg+16, y);
         doc.text("SERVIÇO", mg+52, y);
         doc.text("QTDE", mg+110, y);
-        doc.text("AVANÇO", mg+132, y);
+        doc.text(_epModo(_eCfg)?"STATUS":"AVANÇO", mg+132, y);
         doc.text("OBS.", mg+154, y);
         y+=3.5;
         doc.setDrawColor(cBorder[0],cBorder[1],cBorder[2]); doc.line(mg, y, W-mg, y); y+=3;
@@ -6360,7 +6442,7 @@ async function _evolTrocarFotoAdm(
           doc.text((r.svcDesc||"—").slice(0,28), mg+52, y+1);
           doc.text((r.qtdHoje||0)+""+(r.unidade??" "), mg+110, y+1);
           if(delta>0){doc.setTextColor(cSuccess[0],cSuccess[1],cSuccess[2]);}else{doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);}
-          doc.text("+"+(delta||0).toFixed(1)+"%", mg+132, y+1);
+          doc.text(_epModo(_eCfg) ? (r.cancelado ? "Cancelado" : "Ativo") : "+"+(delta||0).toFixed(1)+"%", mg+132, y+1);
           doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);
           doc.text((r.obs||"—").slice(0,18), mg+154, y+1);
           y+=6;
@@ -6402,6 +6484,7 @@ async function _evolTrocarFotoAdm(
   }
 
   function evolAbrirConfig() {
+    if(!_eCfg || _epModo(_eCfg)) { _epUI.openConfig(); return; }
     const c=_eCfg||{};
 
     $("evolCfgTipo").value=c.tipoUnidade||"Subestação";
@@ -7143,6 +7226,7 @@ async function _evolTrocarFotoAdm(
     }
   }
     async function evolCfgSalvarV2(){
+    if(!_eCfg || _epModo(_eCfg)) { _epUI.openConfig(); return; }
 
     // ─────────────────────────────────────────────
     // SEGURANÇA — configuração estrutural
@@ -13559,6 +13643,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
   // Percentual de uma Macro no modelo V2.
   // Calculado pela média ponderada dos Micros.
   function _vPctMacro(uid,macro){
+    if(_epModo(_vCfg)) return _vFisico?.macros[macro.id]?.pct || 0;
 
     const micros=Array.isArray(macro?.micros)
       ? macro.micros
@@ -13584,6 +13669,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
 
   function _vPctUnid(uid) {
+    if(_epModo(_vCfg)) return _vFisico?.locais[uid]?.pct || 0;
 
     // ═══════════════════════════════════════
     // MODELO V2 — MACRO / MICRO
@@ -13642,6 +13728,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
 
   function _vPctGlobal() {
+    if(_epModo(_vCfg)) return _vFisico?.global || 0;
 
     const u=_vCfg?.unidades||[];
 
@@ -13678,8 +13765,15 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
       // Progresso
       _vProg = {};
-      const progSnap = await getDocs(collection(db,"obras",obraId,"evolProgresso"));
-      progSnap.forEach(d=>{ _vProg[d.id] = d.data(); });
+      if(_epModo(_vCfg)) {
+        _vRegistrosFisicos=await _epUI.carregarRegistros(db,obraId);
+        _vFisico=_epCalcular(_vCfg,_vRegistrosFisicos);
+        _vProg=_vFisico.progresso;
+      } else {
+        _vFisico=null; _vRegistrosFisicos=[];
+        const progSnap = await getDocs(collection(db,"obras",obraId,"evolProgresso"));
+        progSnap.forEach(d=>{ _vProg[d.id] = d.data(); });
+      }
 
       // Contrato (opcional)
       try{
@@ -13703,6 +13797,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
   }
 
   function _vRenderKpis() {
+    _epResumo("v");
     const unids = _vCfg?.unidades||[];
     const g = _vPctGlobal();
     const conc = unids.filter(u=>_vPctUnid(u.id)>=100).length;
@@ -13771,7 +13866,8 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
       const cards = ug.map(u=>{
         const pct = _vPctUnid(u.id);
-        const concSvcs = svcs.filter(s=>_vPctSvc(u.id,s.id)>=100).length;
+        const svcsLocal = _epModo(_vCfg) ? svcs.filter(s=>s.metasPorLocal?.[u.id]>0) : svcs;
+        const concSvcs = svcsLocal.filter(s=>_vPctSvc(u.id,s.id)>=100).length;
         const cor = pct>=100?"#10b981":pct>0?"#f5a623":"rgba(255,255,255,.4)";
         const bord = pct>=100?"rgba(16,185,129,.4)":pct>0?"rgba(245,166,35,.4)":"rgba(255,255,255,.1)";
         const bg   = pct>=100?"rgba(16,185,129,.08)":pct>0?"rgba(245,166,35,.05)":"rgba(255,255,255,.04)";
@@ -13782,7 +13878,8 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div style="min-width:0">
               <div style="font-weight:700;font-size:.87rem;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
-              ${svcs.length?`<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:1px">${concSvcs}/${svcs.length} serviços concluídos</div>`:""}
+               ${svcsLocal.length?`<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:1px">${concSvcs}/${svcsLocal.length} serviços concluídos</div>`:""}
+               ${_epModo(_vCfg)?`<button class="btn btn-outline sm" style="background:white;margin-top:8px" onclick="App.evolAbrirUnidadeVisitante('${u.id}')">Ver Micros e metas</button>`:""}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:${cor}">${pct.toFixed(1)}%</div>
@@ -13809,8 +13906,6 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
     let labels, dados;
     if(grupos.length>1){
       labels = grupos;
-      dados = grupos.map(g2=>{ const ug=unids.filter(u=>u.grupo===g2); return ug.length?parseFloat((_vPctUnid.apply(null,[]) || ug.reduce((a,u)=>a+_vPctUnid(u.id),0)/ug.length).toFixed(1)):0; });
-      // corrigir
       dados = grupos.map(g2=>{ const ug=unids.filter(u=>u.grupo===g2); return ug.length?parseFloat((ug.reduce((a,u)=>a+_vPctUnid(u.id),0)/ug.length).toFixed(1)):0; });
     } else {
       const max = Math.min(unids.length,18);
@@ -13856,15 +13951,16 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
   async function _vRenderHistorico() {
     try {
-      const snap = await getDocs(query(
+      const snap = _epModo(_vCfg) ? null : await getDocs(query(
         collection(db,"obras",_vObraId,"evolHistorico"),
         orderBy("data","asc"), limit(60)
       ));
-      if(snap.empty){ $("vCardHistorico").style.display="none"; return; }
+      const rows = _epModo(_vCfg) ? _epHistorico(_vCfg,_vRegistrosFisicos) : snap.docs.map(d=>d.data());
+      if(!rows.length){ $("vCardHistorico").style.display="none"; return; }
       const labels=[], dados=[];
-      snap.forEach(d=>{
-        labels.push(new Date(d.data().data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
-        dados.push(parseFloat((d.data().pctGlobal||0).toFixed(1)));
+      rows.forEach(r=>{
+        labels.push(new Date(r.data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}));
+        dados.push(parseFloat((r.pctGlobal||0).toFixed(1)));
       });
       $("vCardHistorico").style.display="";
       const canvas=$("vChartLinha"); if(!canvas) return;
@@ -13874,7 +13970,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
       _vChartL = new Chart(canvas,{
         type:"line",
         data:{labels, datasets:[{
-          label:"% Global", data:dados,
+          label:_epModo(_vCfg)?"% Global recalculado (planejamento atual)":"% Global", data:dados,
           borderColor:"#3b82f6", backgroundColor:"rgba(59,130,246,.12)",
           fill:true, tension:0.4, pointBackgroundColor:"#f5a623", pointRadius:3, borderWidth:2
         }]},
@@ -14039,9 +14135,9 @@ function vFiltrarGaleria() {
 
 
   // ADMIN ou responsável autorizado pela evolução.
-  const podeEditar=
-    currentRole==="ADMIN" ||
-    canEvoluirObra(currentProfile);
+  const podeEditar= _epModo(_vCfg)
+    ? _epPermissao(_epContext("v").profile,_vObraId)
+    : currentRole==="ADMIN" || canEvoluirObra(currentProfile);
 
 
   grid.innerHTML=
@@ -14105,7 +14201,7 @@ function vFiltrarGaleria() {
 
 
       const btnEditar=
-        podeEditar
+        podeEditar && (!_epModo(_vCfg) || !r.cancelado)
           ? `
             <div
               style="
@@ -14263,7 +14359,7 @@ function vFiltrarGaleria() {
             <span
               style="color:#10b981"
             >
-              ${delta>0?"+":""}${delta.toFixed(1)}%
+              ${_epModo(_vCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : `${delta>0?"+":""}${delta.toFixed(1)}%`}
             </span>
 
           </div>
@@ -14415,6 +14511,7 @@ async function vApagarFoto(
   regId,
   campo
 ) {
+  if(_epModo(_vCfg)) { await _epUI.changePhoto("v",regId,campo); return; }
 
   if(
     !_vObraId ||
@@ -14486,6 +14583,7 @@ async function vTrocarFoto(
   campo,
   input
 ) {
+  if(_epModo(_vCfg)) { await _epUI.changePhoto("v",regId,campo,input); return; }
 
   if(
     !input?.files?.[0] ||
@@ -16508,6 +16606,8 @@ async function finObterReembolsos() {
     // Helpers
     _getProcessoId,
     // Evolução de Obras
+    evolAbrirLancamentos: () => _epUI.openHistory(),
+    evolAbrirUnidadeVisitante: uid => _epUI.openUnit(uid,"v"),
     evolInicializar, evolCarregarObra, evolFiltrarGrupo,
     evolAbrirConfig, evolCfgStep2, evolCfgStep1, evolCfgSalvar,
     evolAddGrupo, evolAddUnidade, evolMostrarSerie, evolConfirmarSerie, _eSyncGrupsSel,
