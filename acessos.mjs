@@ -27,7 +27,8 @@ export function criarPainelAcessos({sdk,db,getRole}) {
     if (getRole() !== 'ADMIN') { host.hidden=true; return; }
     host.hidden=false;
     const doc=host.ownerDocument;
-    const title=doc.createElement('h3'); title.textContent='Acessos recentes';
+    const details=doc.createElement('details');
+    const title=doc.createElement('summary'); title.textContent='Acessos recentes';
     const label=doc.createElement('label'); label.textContent='Perfil';
     const select=doc.createElement('select');
     for(const [value,text] of [['VISITANTE','Visitantes'],['','Todos'],['USER','Colaboradores'],['ADMIN','Administradores']]) {
@@ -36,7 +37,8 @@ export function criarPainelAcessos({sdk,db,getRole}) {
     const refresh=doc.createElement('button'); refresh.className='btn btn-outline'; refresh.textContent='Atualizar';
     const rows=doc.createElement('div'); rows.setAttribute('role','status');
     const note=doc.createElement('p'); note.className='ep-muted'; note.textContent='Filtro aplicado aos últimos 100 acessos do sistema.';
-    label.append(select); host.append(title,label,refresh,note,rows);
+    label.append(select); details.append(title,label,refresh,note,rows); host.append(details);
+    let attempted=false, loaded=false, loading=false;
     let events=[], users=new Map(), obras=new Map();
     const render=()=>{
       rows.replaceChildren();
@@ -51,7 +53,8 @@ export function criarPainelAcessos({sdk,db,getRole}) {
       if(!rows.childElementCount) rows.textContent='Nenhum acesso neste filtro.';
     };
     async function load() {
-      if(getRole()!=='ADMIN') return;
+      if(atual!==generation || getRole()!=='ADMIN' || loading) return;
+      attempted=true; loading=true;
       refresh.disabled=true; rows.textContent='Carregando acessos…';
       try {
         const snap=await sdk.getDocs(sdk.query(sdk.collection(db,'acessos'),sdk.orderBy('criadoEm','desc'),sdk.limit(100)));
@@ -64,10 +67,14 @@ export function criarPainelAcessos({sdk,db,getRole}) {
           }));
         }
         await Promise.all([resolve('usuarios',events.map(e=>e.uid),users),resolve('obras',events.map(e=>e.obraId),obras)]);
-        if(atual===generation) render();
-      } catch(_) { rows.textContent='Não foi possível carregar os acessos. Tente atualizar.'; }
-      finally { refresh.disabled=false; }
+        if(atual===generation && getRole()==='ADMIN') { loaded=true; render(); }
+      } catch(_) {
+        if(atual===generation && getRole()==='ADMIN') rows.textContent='Não foi possível carregar os acessos. Tente atualizar.';
+      }
+      finally { loading=false; refresh.disabled=false; }
     }
-    select.onchange=render; refresh.onclick=load; await load();
+    select.onchange=()=>{ if(loaded && !loading) render(); };
+    refresh.onclick=load;
+    details.ontoggle=()=>{ if(details.open && !attempted) void load(); };
   };
 }

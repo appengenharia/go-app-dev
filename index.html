@@ -13805,7 +13805,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
   }
 
   function _vRenderKpis() {
-    _epResumo("v");
+    document.getElementById("epResumo_v")?.remove();
     const unids = _vCfg?.unidades||[];
     const g = _vPctGlobal();
     const conc = unids.filter(u=>_vPctUnid(u.id)>=100).length;

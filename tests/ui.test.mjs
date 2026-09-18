@@ -141,6 +141,13 @@ test('percentual diário converte meta 3 + 10% em 0.3; correção mantém audito
   assert.equal(t.docs.get(path+'/auditoria/r2').dadosAnteriores.qtdHoje,0.3);
 });
 
+for(const profile of [{role:'ADMIN'},autorizado]) test(`resumo de Etapas preservado na Evolução para ${profile.role}`,()=>{
+  const t=setup(profile,config(),[registro({qtdHoje:3})]);
+  t.ui.renderSummary(t.el('#summary'),'e');
+  assert.match(t.el('#summary').textContent,/50% executado/);
+  assert.match(t.el('#summary').textContent,/13,5 p.p./);
+});
+
 test('Visitante vê o mesmo motor parametrizado sem controles operacionais',()=>{
   const cfg=config(), regs=[registro({qtdHoje:3})], t=setup({...autorizado,role:'VISITANTE'},cfg,regs);
   assert.equal(calcular(cfg,regs).global,13.5);
