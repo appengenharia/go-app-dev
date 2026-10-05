@@ -767,9 +767,11 @@
       </div>
 
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div><h3>Lançamentos</h3></div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="margin:0">Tipo de despesa<select id="filterLancTipo" onchange="App.loadLancs()"><option value="todas">Todas</option><option value="reembolsaveis">Reembolsáveis</option><option value="empresa">Empresa</option></select></label>
+            <label style="margin:0">Mês<input type="month" id="filterLancMes" onchange="App.loadLancs()"></label>
             <select id="filterLancObra" style="padding:6px 10px;font-size:.82rem;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto" onchange="App.loadLancs()">
               <option value="">Todas as obras</option>
             </select>
@@ -1042,6 +1044,7 @@
             <label style="margin-top:0">Obra</label>
             <select id="relObra"></select>
           </div>
+          <div style="flex:1;min-width:140px"><label for="relTipo" style="margin-top:0">Tipo de despesa</label><select id="relTipo"><option value="todas">Todas</option><option value="reembolsaveis">Reembolsáveis</option><option value="empresa">Empresa</option></select></div>
           <div style="flex:1;min-width:140px" id="relColabWrap">
             <label style="margin-top:0">Colaborador</label>
             <select id="relColab">
@@ -2773,6 +2776,7 @@
      JAVASCRIPT PRINCIPAL
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
+  import { filtrarDespesas, resumirDespesas, normalizarTipo, TIPOS_DESPESA } from "./despesas.mjs";
   import { parametrizada as _epModo, calcular as _epCalcular, historicoCalculado as _epHistorico, podeProduzir as _epPermissao } from './evolucao-parametrizada.mjs';
   import { registrarAcesso, loginAuditado, criarPainelAcessos } from './acessos.mjs';
   import { criarInterface } from './evolucao-parametrizada-ui.mjs';
@@ -8761,28 +8765,32 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
   }
 
   let allLancs = [];
+  let lancLoadVersion = 0;
 
   async function loadLancs() {
     const el=$("lancList"); if(!el) return;
+    const version = ++lancLoadVersion;
+    if(currentRole !== "ADMIN" && !canFazerLancamentos()) { el.innerHTML=""; return; }
     el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
     try {
-      let q = query(collection(db,"lancamentos"), orderBy("criadoEm","desc"));
-      const snap = await getDocs(q);
+      // orderBy exclui documentos antigos sem criadoEm; ordenar sem removê-los.
+      const snap = await getDocs(collection(db,"lancamentos"));
+      const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
+      if(version !== lancLoadVersion) return;
       allLancs = snap.docs.map(d=>({id:d.id,...d.data()}));
-      const filtObra = $("filterLancObra")?.value || "";
-      let list = allLancs;
-      if(currentRole !== "ADMIN") {
-        const prof = await loadProfile(currentUser.uid);
-        if(prof?.obra_id) list = list.filter(l=>l.obra_id===prof.obra_id);
-      } else if(filtObra) {
-        list = list.filter(l=>l.obra_id===filtObra);
-      }
+      const obras = currentRole === "ADMIN" ? null : (prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []));
+      const mes = $("filterLancMes")?.value || "";
+      const list = filtrarDespesas(allLancs, {
+        obra: $("filterLancObra")?.value || "",
+        tipo: $("filterLancTipo")?.value,
+        de: mes ? mes+"-01" : "", ate: mes ? mes+"-31" : "",
+      }, obras).sort((a,b)=> (b.criadoEm?.seconds || 0)-(a.criadoEm?.seconds || 0) || (b.data||"").localeCompare(a.data||""));
+      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       if(!list.length){
-        el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div>`;
+        el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa para os filtros selecionados.</p><p>${resumoDespesaTexto(list, $("filterLancTipo")?.value, brl)}</p></div>`;
         return;
       }
-      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-      el.innerHTML="";
+      el.innerHTML=`<p style="padding:12px;font-weight:600">${resumoDespesaTexto(list, $("filterLancTipo")?.value, brl)}</p>`;
       list.forEach(l=>{
         const div=document.createElement("div");
         div.className="lanc-item";
@@ -8809,7 +8817,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
           </div>`;
         el.appendChild(div);
       });
-    } catch(e){ el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar lançamentos.</p>`; }
+    } catch(e){ if(version === lancLoadVersion) el.innerHTML=`<p style="color:var(--danger);padding:12px">Erro ao carregar lançamentos.</p>`; }
   }
 
   async function updateStatTotal() {
@@ -9444,23 +9452,27 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     } catch(e){ console.error(e); }
   }
 
-  async function getLancsFiltrados() {
-    const obraFilt  = $("relObra")?.value  || "";
-    const colabFilt = $("relColab")?.value || "";
-    const deFilt    = $("relDe")?.value    || "";
-    const ateFilt   = $("relAte")?.value   || "";
-    let snap = await getDocs(query(collection(db,"lancamentos"), orderBy("data","asc")));
-    let lancs = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    if(currentRole !== "ADMIN") {
-      const prof = await loadProfile(currentUser.uid);
-      const obras = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
-      lancs = lancs.filter(l => obras.includes(l.obra_id));
-    }
-    if(obraFilt)  lancs = lancs.filter(l => l.obra_id === obraFilt);
-    if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
-    if(deFilt)    lancs = lancs.filter(l => l.data >= deFilt);
-    if(ateFilt)   lancs = lancs.filter(l => l.data <= ateFilt);
-    return lancs;
+  async function getDadosRelatorio() {
+    if(currentRole !== "ADMIN" && !canAcessarRelatorios()) throw new Error("Sem permissão para relatórios.");
+    // Captura única: prévia, PDF, e-mail e comprovantes usam a mesma seleção.
+    const filtros = {
+      obra: $("relObra")?.value || "", colaborador: $("relColab")?.value || "",
+      de: $("relDe")?.value || "", ate: $("relAte")?.value || "",
+      tipo: normalizarTipo($("relTipo")?.value),
+    };
+    const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+    const snap = await getDocs(collection(db,"lancamentos"));
+    const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
+    const obras = currentRole === "ADMIN" ? null : (prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []));
+    const lancs = filtrarDespesas(snap.docs.map(d=>({id:d.id,...d.data()})), filtros, obras)
+      .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+    return { lancs, filtros, tipo: filtros.tipo, obraNome,
+      deFmt: filtros.de ? formatDate(filtros.de) : "—", ateFmt: filtros.ate ? formatDate(filtros.ate) : "—",
+      resumo: resumirDespesas(lancs, filtros.tipo) };
+  }
+
+  function resumoDespesaTexto(lancs, tipo, brl) {
+    return resumirDespesas(lancs, tipo).linhas.map(([label, valor])=>label+": "+brl(valor)).join(" | ");
   }
 
   function formatDate(d) {
@@ -9477,23 +9489,19 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     cont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>';
     prev.classList.remove("hidden");
     try {
-      const lancs = await getLancsFiltrados();
+      const { lancs, filtros, tipo, obraNome, deFmt, ateFmt, resumo } = await getDadosRelatorio();
+      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       if(!lancs.length) {
-        cont.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>Nenhum lançamento no período.</p></div>';
+        cont.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>Nenhum lançamento no período.</p><p>Tipo de despesa: '+TIPOS_DESPESA[tipo]+'</p><p>'+resumoDespesaTexto(lancs, tipo, brl)+'</p></div>';
         return;
       }
-      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
-      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
-      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
-      const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat = {}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0, totalReemb=0, totalEmp=0;
+      const { total: totalGeral, reembolsaveis: totalReemb, empresa: totalEmp } = resumo;
       lancs.forEach(l => {
         const v = Number(l.valor||0);
         const cat = cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+        totCat[cat]+=v;
       });
       const rows = lancs.map(l =>
         "<tr><td>"+formatDate(l.data)+"</td><td>"+(l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(l.reembolsavel?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
@@ -9502,23 +9510,20 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         "<tr><td><span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:"+CATEGORIAS_CORES[c]+";margin-right:6px'></span>"+c+"</td><td style='text-align:right;font-weight:600'>"+brl(totCat[c])+"</td></tr>"
       ).join("");
       cont.innerHTML =
-        '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px"><div><h2 style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand)">🏗️ '+obraNome+'</h2><p style="font-size:.85rem;color:var(--muted)">Período: '+deFmt+' a '+ateFmt+'</p></div><div style="text-align:right"><div style="font-size:.78rem;color:var(--muted)">Total Geral</div><div style="font-family:Syne,sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)">'+brl(totalGeral)+'</div><div style="font-size:.75rem;color:var(--muted);margin-top:2px">Empresa: '+brl(totalEmp)+' · Reembolsável: '+brl(totalReemb)+'</div></div></div></div>' +
-        '<div style="overflow-x:auto;margin-bottom:24px"><table class="dash-table" style="font-size:.82rem"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Colaborador</th><th style="text-align:right">Valor</th><th style="text-align:center">Tipo</th><th style="text-align:center">Nota</th></tr></thead><tbody>'+rows+'</tbody><tr class="total-row"><td colspan="4">TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td><td colspan="2"></td></tr></table></div>' +
-        '<div style="max-width:360px"><table class="dash-table"><thead><tr><th>Monitoramento por Categoria</th><th style="text-align:right">Total Acumulado</th></tr></thead><tbody>'+catRows+'<tr class="total-row"><td>TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td></tr></tbody></table></div>';
+        '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px"><div><h2 style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand)">🏗️ '+obraNome+'</h2><p style="font-size:.85rem;color:var(--muted)">Período: '+deFmt+' a '+ateFmt+' · Tipo de despesa: '+TIPOS_DESPESA[tipo]+'</p></div><div style="text-align:right"><div style="font-size:.78rem;color:var(--muted)">'+resumo.tituloTotal+'</div><div style="font-family:Syne,sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)">'+brl(totalGeral)+'</div><div style="font-size:.75rem;color:var(--muted);margin-top:2px">'+(tipo === 'todas' ? 'Reembolsáveis: '+brl(totalReemb)+' · Empresa: '+brl(totalEmp) : '')+'</div></div></div></div>' +
+        '<div style="overflow-x:auto;margin-bottom:24px"><table class="dash-table" style="font-size:.82rem"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Colaborador</th><th style="text-align:right">Valor</th><th style="text-align:center">Tipo</th><th style="text-align:center">Nota</th></tr></thead><tbody>'+rows+'</tbody><tr class="total-row"><td colspan="4">'+resumo.tituloTotal+'</td><td style="text-align:right">'+brl(totalGeral)+'</td><td colspan="2"></td></tr></table></div>' +
+        '<div style="max-width:360px"><table class="dash-table"><thead><tr><th>Monitoramento por Categoria</th><th style="text-align:right">Total Acumulado</th></tr></thead><tbody>'+catRows+'<tr class="total-row"><td>'+resumo.tituloTotal+'</td><td style="text-align:right">'+brl(totalGeral)+'</td></tr></tbody></table></div>';
     } catch(e){ cont.innerHTML='<p style="color:var(--danger)">Erro ao gerar preview.</p>'; }
   }
 
   async function gerarPDF() {
     setMsg("relMsg","⏳ Gerando PDF...");
     try {
-      const lancs = await getLancsFiltrados();
+      const { lancs, filtros, tipo, obraNome, deFmt, ateFmt, resumo } = await getDadosRelatorio();
       if(!lancs.length) { setMsg("relMsg","⚠️ Nenhum lançamento no período."); return null; }
       const { jsPDF } = window.jspdf;
       const docPdf = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
       const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
-      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
-      const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
-      const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
       docPdf.setFillColor(15,52,96); docPdf.rect(0,0,210,28,"F");
       docPdf.setTextColor(255,255,255);
       docPdf.setFontSize(16); docPdf.setFont("helvetica","bold");
@@ -9528,7 +9533,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       docPdf.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
       docPdf.setTextColor(0,0,0);
       docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
-      docPdf.text("Lançamentos", 14, 38);
+      docPdf.text("Tipo de despesa: "+TIPOS_DESPESA[tipo], 14, 35);
       const porColab = {};
       lancs.forEach(l => {
         const nome = l.colaborador_nome || "Sem nome";
@@ -9543,7 +9548,6 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         startY += 5;
         const rows = lancColab.map(l => [formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),l.reembolsavel?"✓ REIMB.":"EMPRESA"]);
         const totalColab = lancColab.reduce((s,l)=>s+Number(l.valor||0),0);
-        const reembColab = lancColab.filter(l=>l.reembolsavel).reduce((s,l)=>s+Number(l.valor||0),0);
         rows.push(["","TOTAL","", brl(totalColab), ""]);
         docPdf.autoTable({
           startY,
@@ -9561,31 +9565,30 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         });
         const fy = docPdf.lastAutoTable.finalY + 3;
         docPdf.setFontSize(8); docPdf.setFont("helvetica","normal"); docPdf.setTextColor(80,80,80);
-        docPdf.text(`  Total: ${brl(totalColab)}  |  Empresa: ${brl(totalColab-reembColab)}  |  Reembolsável: ${brl(reembColab)}`, 14, fy);
+        docPdf.text(resumoDespesaTexto(lancColab, tipo, brl), 14, fy);
         startY = fy + 8;
         if(startY > 250) { docPdf.addPage(); startY = 20; }
       }
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat = {}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0,totalReemb=0,totalEmp=0;
+      const { total: totalGeral, reembolsaveis: totalReemb, empresa: totalEmp } = resumo;
       lancs.forEach(l=>{
         const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+        totCat[cat]+=v;
       });
-      const finalY = docPdf.lastAutoTable.finalY + 10;
+      const finalY = startY;
       docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
       docPdf.text("Monitoramento por Categoria", 14, finalY);
       const catRows = cats.map(c=>[c,brl(totCat[c])]);
-      catRows.push(["TOTAL GERAL",brl(totalGeral)]);
+      catRows.push(...resumo.linhas.map(([label, valor])=>[label,brl(valor)]));
       docPdf.autoTable({startY:finalY+4,head:[["Categoria","Total Acumulado"]],body:catRows,styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},columnStyles:{1:{halign:"right"}},didParseCell:(d)=>{if(d.row.index===catRows.length-1){d.cell.styles.fontStyle="bold";d.cell.styles.textColor=[233,69,96];}},margin:{left:14,right:14}});
       const pg = docPdf.internal.getNumberOfPages();
       for(let i=1;i<=pg;i++){
         docPdf.setPage(i); docPdf.setFontSize(7); docPdf.setTextColor(150,150,150);
         docPdf.text("GO — Relatório gerado em "+new Date().toLocaleDateString("pt-BR")+" · Pág. "+i+"/"+pg, 14, 292);
-        docPdf.text("Empresa: "+brl(totalEmp)+" · Reembolsável: "+brl(totalReemb), 196, 292, {align:"right"});
+        docPdf.text(TIPOS_DESPESA[tipo], 196, 292, {align:"right"});
       }
-      const fileName = "GO_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
+      const fileName = "GO_"+tipo+"_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
       docPdf.save(fileName);
       setMsg("relMsg","✅ PDF gerado com sucesso!",true);
       return docPdf.output("datauristring");
@@ -9659,25 +9662,17 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
   }
 
   async function enviarRelatorioEmail() {
+    if(currentRole !== "ADMIN") { setMsg("relMsg","Sem permissão para envio."); return; }
     setMsg("relMsg","⏳ Gerando PDF e preparando e-mail...");
     try {
-      const lancs = await getLancsFiltrados();
+      const { lancs, filtros, tipo, obraNome, deFmt, ateFmt, resumo } = await getDadosRelatorio();
       if(!lancs.length){ setMsg("relMsg","⚠️ Nenhum lançamento no período."); return; }
       const cfgSnap = await getDoc(doc(db,"configuracoes","email"));
       const emails  = cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
       if(!emails.length){ setMsg("relMsg","⚠️ Configure os e-mails primeiro."); return; }
-      const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
-      const deFmt    = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
-      const ateFmt   = $("relAte")?.value ? formatDate($("relAte").value) : "—";
       const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
       const cats = Object.keys(CATEGORIAS_CORES);
-      const totCat={}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0,totalReemb=0,totalEmp=0;
-      lancs.forEach(l=>{
-        const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
-      });
+      const totalGeral = resumo.total;
       const dataEnvio = new Date().toLocaleDateString("pt-BR");
       const { jsPDF } = window.jspdf;
       const doc2 = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
@@ -9691,12 +9686,9 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       doc2.setTextColor(0,0,0);
       let y = 36;
       doc2.setFontSize(10); doc2.setFont("helvetica","bold");
-      doc2.text("RESUMO FINANCEIRO", 14, y); y+=6;
+      doc2.text("Tipo de despesa: "+TIPOS_DESPESA[tipo], 14, y); y+=6;
       doc2.setFont("helvetica","normal"); doc2.setFontSize(9);
-      doc2.text("Empresa:       "+brl(totalEmp), 14, y); y+=5;
-      doc2.text("Reembolsável:  "+brl(totalReemb), 14, y); y+=5;
-      doc2.setFont("helvetica","bold");
-      doc2.text("TOTAL GERAL:   "+brl(totalGeral), 14, y); y+=5;
+      resumo.linhas.forEach(([label, valor])=>{ doc2.text(label+": "+brl(valor), 14, y); y+=5; });
       doc2.setFont("helvetica","normal");
       doc2.text("Lançamentos:   "+lancs.length, 14, y); y+=8;
       const porColab = {};
@@ -9728,16 +9720,16 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         doc2.text("Pág. "+i+"/"+pageCount, 196, 291, {align:"right"});
       }
       const pdfBase64 = doc2.output("datauristring").split(",")[1];
-      const nomeArquivo = "Relatorio_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+"_a_"+ateFmt.replace(/\//g,"-")+".pdf";
-      const deDate  = $("relDe")?.value  ? new Date($("relDe").value+"T12:00:00")  : new Date();
-      const ateDate = $("relAte")?.value ? new Date($("relAte").value+"T12:00:00") : new Date();
+      const nomeArquivo = "Relatorio_"+tipo+"_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+"_a_"+ateFmt.replace(/\//g,"-")+".pdf";
+      const deDate = filtros.de ? new Date(filtros.de+"T12:00:00") : new Date();
+      const ateDate = filtros.ate ? new Date(filtros.ate+"T12:00:00") : new Date();
       const meses   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
       const periodoLabel = meses[deDate.getMonth()]+"-"+deDate.getFullYear()+(deDate.getMonth()!==ateDate.getMonth()?" a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear():"");
       const comprovantes = lancs.filter(l=>l.comprovante?.url);
       const linksComp = comprovantes.length>0?comprovantes.map(l=>`<a href="${l.comprovante.url}" style="color:#0f3460">${l.comprovante.url}</a>`).join("<br>"):"Nenhum comprovante anexado.";
-      const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2><p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p><p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:4px 0"><strong>Empresa:</strong> ${brl(totalEmp)}</p><p style="margin:4px 0"><strong>Reembolsável:</strong> ${brl(totalReemb)}</p><p style="margin:8px 0 4px;font-size:16px;font-weight:bold;color:#e94560">TOTAL GERAL: ${brl(totalGeral)}</p><p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:0 0 6px"><strong>Comprovantes:</strong></p><p style="font-size:12px;line-height:1.8">${linksComp}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p></div></div>`;
+      const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2><p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p><p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:4px 0"><strong>Tipo de despesa:</strong> ${TIPOS_DESPESA[tipo]}</p>${resumo.linhas.map(([label, valor])=>`<p><strong>${label}:</strong> ${brl(valor)}</p>`).join("")}<p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:0 0 6px"><strong>Comprovantes:</strong></p><p style="font-size:12px;line-height:1.8">${linksComp}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p></div></div>`;
       setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
-      const payload = {emails,assunto:"Relatório GO — "+obraNome+" — "+periodoLabel,corpo:htmlBody,pdf:pdfBase64,nomeArquivo};
+      const payload = {emails,assunto:"Relatório GO — "+obraNome+" — "+periodoLabel+" — "+TIPOS_DESPESA[tipo],corpo:htmlBody,pdf:pdfBase64,nomeArquivo};
       const iframeName = "emailFrame_"+Date.now();
       const iframe = document.createElement("iframe");
       iframe.name = iframeName; iframe.style.display="none";
@@ -9750,7 +9742,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       form.submit(); document.body.removeChild(form);
       await new Promise(r=>setTimeout(r,4000));
       document.body.removeChild(iframe);
-      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome,periodo_de:$("relDe")?.value,periodo_ate:$("relAte")?.value,total:totalGeral,enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
+      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome,periodo_de:filtros.de,periodo_ate:filtros.ate,tipo_despesa:tipo,total:totalGeral,enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
       toast("✅ Relatório enviado para "+emails.length+" e-mail(s)!");
       setMsg("relMsg","✅ Enviado para "+emails.length+" destinatário(s) com PDF!",true);
     } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao enviar: "+e.message); }
