@@ -3912,7 +3912,7 @@
     obras.forEach(option=>{const copy=document.createElement("option");copy.value=option.value;copy.textContent=option.textContent;select.append(copy);});
     const atual=obras.some(option=>option.value===_eObraId)?_eObraId:obras[0].value;
     select.value=atual;
-    $("evolInformeData").value=validarDataReferencia(dataInicial)||_eHojeStr();
+    $("evolInformeData").value=validarDataReferencia(dataInicial)||"";
     setMsg("evolInformeSelecaoAviso","");
     const button=$("btnEvolInformeCarregar"); if(button){button.disabled=false;button.textContent="Carregar diário e fotos";}
     $("modalEvolInformeDia").classList.remove("hidden");
@@ -4628,17 +4628,18 @@
     if($("evolDiaPrintPreview"))    $("evolDiaPrintPreview").src="";
     if($("evolDiaPrintPreviewInfo"))$("evolDiaPrintPreviewInfo").textContent="";
     if($("btnEvolDiaRemoverPrint")) $("btnEvolDiaRemoverPrint").style.display="none";
-    if($("evolDiaData"))            $("evolDiaData").value=_eHojeStr();
+    if($("evolDiaData") && !validarDataReferencia($("evolDiaData").value)) $("evolDiaData").value=_eHojeStr();
     await evolCarregarDiarioData();
     $("modalEvolDiario").classList.remove("hidden");
   }
 
   async function evolCarregarDiarioData(){
     if(!_eObraId) return;
-    const data=$("evolDiaData")?.value||_eHojeStr();
+    const data=validarDataReferencia($("evolDiaData")?.value||"");
+    if(!data){toast("Selecione uma data de referência válida para consultar o diário.",false);return;}
     if($("evolDiaPrintUrlAtual")) $("evolDiaPrintUrlAtual").value="";
     try{
-      const snap=await getDoc(doc(db,"obras",_eObraId,"evolHistorico",data));
+      const snap=await getDocFromServer(doc(db,"obras",_eObraId,"evolHistorico",data));
       if(!snap.exists()){
         if($("evolDiaClima"))   $("evolDiaClima").value="ensolarado";
         if($("evolDiaChuva"))   $("evolDiaChuva").value="sem chuva";
@@ -4680,7 +4681,7 @@
         if($("btnEvolDiaRemoverPrint")) $("btnEvolDiaRemoverPrint").style.display="none";
       }
       evolAtualizarCamposDiario();
-    }catch(e){console.error(e);}
+    }catch(e){console.error(e);toast("Não foi possível consultar o diário mais recente no servidor. Verifique a conexão antes de corrigir.",false);}
   }
 
   function evolAtualizarCamposDiario(){
@@ -4721,14 +4722,16 @@
   }
 
   function evolConsultarDiarioData(){
-    const dt=$("evolClimaConsultaData")?.value||_eHojeStr();
+    const dt=validarDataReferencia($("evolClimaConsultaData")?.value||"");
+    if(!dt){toast("Selecione a data do diário que deseja consultar.",false);return;}
     if($("evolDiaData")) $("evolDiaData").value=dt;
     evolCarregarDiarioData().then(()=>{ const m=$("modalEvolDiario"); if(m) m.classList.remove("hidden"); });
   }
 
   async function evolSalvarDiario(){
     if(!_eObraId){toast("Selecione uma obra.",false);return;}
-    const data=$("evolDiaData")?.value||_eHojeStr();
+    const data=validarDataReferencia($("evolDiaData")?.value||"");
+    if(!data){toast("Selecione uma data de referência válida para salvar o diário.",false);return;}
     let printUrl=$("evolDiaPrintUrlAtual")?.value||"";
     let printNome=printUrl?"Print anexado":"";
     const btn=$("modalEvolDiario")?.querySelector(".btn-primary");
@@ -4769,6 +4772,7 @@
       closeModal("modalEvolDiario");
       toast("✅ Diário salvo!");
       await _eCarregarHistorico(_eObraId);
+      await evolPrepararInformeSalvo(_eObraId,data);
     }catch(e){
       console.error(e); toast("❌ "+(e.message||"Erro ao salvar diário."),false);
     }finally{
