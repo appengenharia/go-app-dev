@@ -5850,9 +5850,6 @@ async function _eSnapshotHist(id,g){
                 .find(u=>u.id===r.unidId);
 
 
-            const delta=
-              (Number(r.pctDepois)||0) -
-              (Number(r.pctAntes)||0);
 
 
             const tipo=
@@ -5977,13 +5974,13 @@ async function _eSnapshotHist(id,g){
                   ">
 
                     <span style="
-                      background:${delta>0?"#dcfce7":"#f3f4f6"};
-                      color:${delta>0?"var(--success)":"var(--muted)"};
+                      background:#f3f4f6;
+                      color:var(--muted);
                       padding:2px 7px;
                       border-radius:20px;
                       font-weight:600
                     ">
-                      ${_epModo(_eCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : "Registro fotográfico"}
+                      ${r.cancelado ? "Cancelado" : "Registro fotográfico"}
                     </span>
 
                     ${
@@ -14289,9 +14286,6 @@ function vFiltrarGaleria() {
           );
 
 
-      const delta=
-        (Number(r.pctDepois)||0) -
-        (Number(r.pctAntes)||0);
 
 
       const tipo=
@@ -14471,6 +14465,10 @@ function vFiltrarGaleria() {
             ${unid?.nome||r.unidNome||"—"}
           </div>
 
+          <div style="font-size:.63rem;color:rgba(255,255,255,.6);margin-top:2px">
+            ${r.svcDesc||"—"}
+          </div>
+
 
           <div
             style="
@@ -14484,7 +14482,7 @@ function vFiltrarGaleria() {
             <span
               style="color:#10b981"
             >
-            ${_epModo(_vCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : "Registro fotográfico"}
+            ${r.cancelado ? "Cancelado" : "Registro fotográfico"}
             </span>
 
           </div>

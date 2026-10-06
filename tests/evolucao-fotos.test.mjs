@@ -129,3 +129,73 @@ test('pacote ZIP contém os nomes organizados e os bytes reais dos arquivos rece
   ]);
   await assert.rejects(() => criarZipFotos([]), /Não há fotos carregadas/);
 });
+
+// Executa os renderizadores reais com DOM e registros locais, sem Firebase.
+import fs from 'node:fs';
+import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
+import { parametrizada, MODO } from '../evolucao-parametrizada.mjs';
+const pageSource = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+function trecho(inicio, fim) {
+  const start = pageSource.indexOf(inicio);
+  const end = pageSource.indexOf(fim, start);
+  assert.ok(start >= 0 && end > start);
+  return pageSource.slice(start, end);
+}
+const registroLegenda = {
+  id: 'foto1', unidId: 'u1', svcId: 's1', unidNome: 'Torre A', svcDesc: 'Pintura externa',
+  data: '2024-11-03', qtdHoje: 0.25, unidade: 'm²', pctAntes: 12, pctDepois: 37,
+  fotoUrl: 'https://images.test/antes.jpg', fotoUrlDepois: 'https://images.test/depois.jpg',
+};
+for (const modelo of ['V1', 'V2 relativo', 'V2 parametrizado']) for (const role of ['ADMIN', 'RESPONSAVEL', 'VISITANTE']) {
+  test(`legendas sem medição: modelo ${modelo}, perfil ${role}, galerias e ampliações`, () => {
+    const ids = ['evolGaleriaConteudo', 'evolGaleriaTotais', 'vGaleriaGrid', 'vGaleriaTotais',
+      'evolFotoAmpImg', 'evolFotoAmpInfo', 'modalEvolFotoAmp', 'vFotoAmpImg', 'vFotoAmpInfo', 'vModalFotoAmp'];
+    const dom = new JSDOM(ids.map(id => `<div id="${id}"></div>`).join(''));
+    const $ = id => dom.window.document.getElementById(id);
+    const cfg = {modeloEvolucao:modelo==='V1'?1:2, modoCalculo:modelo==='V2 parametrizado'?MODO:undefined, unidades:[], macros:[{micros:[{id:'s1'}]}]};
+    const registro = structuredClone(registroLegenda);
+    const ctx = vm.createContext({ $, document:dom.window.document, _eCfg:cfg, _vCfg:cfg, _eObraId:'obra', _vObraId:'obra',
+      _eGaleriaRegistros:[registro], _vGaleriaRegistros:[registro],
+      currentRole:role, currentProfile:{role}, canEvoluirObra:()=>role==='RESPONSAVEL',
+      _epModo:parametrizada, _epContext:()=>({profile:{role}}), _epPermissao:()=>role!=='VISITANTE',
+      dataReferenciaRegistro, formatarDataReferencia, dataCorteLocal,
+    });
+    vm.runInContext(trecho('function evolFiltrarGaleria(){', 'async function _evolApagarFotoAdm('), ctx);
+    vm.runInContext(trecho('function vFiltrarGaleria() {', 'async function vApagarFoto('), ctx);
+    vm.runInContext(trecho('function evolVerFotoAmp(', '// ──────────────────────────── RELATÓRIO PDF'), ctx);
+    vm.runInContext('evolFiltrarGaleria(); vFiltrarGaleria();', ctx);
+    for (const id of ['evolGaleriaConteudo', 'vGaleriaGrid']) {
+      const text = $(id).textContent;
+      for (const value of ['Antes', 'Depois', '03/11/2024', 'Torre A', 'Pintura externa']) assert.ok(text.includes(value), `${id}: ${value}`);
+      assert.doesNotMatch(text, /0[.,]25|m²|25%|37%/);
+      assert.equal($(id).querySelectorAll('img').length, 2);
+      for (const element of $(id).querySelectorAll('[onclick]')) {
+        if (/VerFotoAmp/.test(element.getAttribute('onclick'))) assert.doesNotMatch(element.getAttribute('onclick'), /0[.,]25|m²|25%/);
+      }
+    }
+    vm.runInContext(`evolVerFotoAmp('a','Torre A','Pintura externa','2024-11-03',25); vVerFotoAmp('b','Torre A','Pintura externa','2024-11-03',25,'depois');`, ctx);
+    for (const id of ['evolFotoAmpInfo','vFotoAmpInfo']) {
+      assert.match($(id).textContent, /Torre A.*Pintura externa.*03\/11\/2024/);
+      assert.doesNotMatch($(id).textContent, /0[.,]25|m²|25/);
+    }
+    assert.deepEqual(registro, registroLegenda);
+    registro.cancelado = true;
+    vm.runInContext('evolFiltrarGaleria(); vFiltrarGaleria();', ctx);
+    assert.match($('evolGaleriaConteudo').textContent, /Cancelado/);
+    assert.match($('vGaleriaGrid').textContent, /Cancelado/);
+  });
+}
+test('PDF mantém data, local e serviço em ambas as fotos, sem medição na legenda', async () => {
+  const texts = [];
+  const doc = new Proxy({}, {get:(_,method)=> (...args)=> { if(method==='text') texts.push(args[0]); }});
+  const ctx = vm.createContext({doc, regsRecentes:[registroLegenda], y:40,H:297,mg:14,cBrand:[1,2,3],cMuted:[1,2,3],
+    formatarDataReferencia, dataReferenciaRegistro, Image:class {set src(_) {this.onerror();}}, setTimeout:()=>{},
+  });
+  await vm.runInContext('(async()=>{'+trecho('const registrosComFoto=regsRecentes', '      const nomeArq=')+'})()',ctx);
+  assert.equal(texts.length,3);
+  for (const [index,tipo] of [[1,'Antes'],[2,'Depois']]) {
+    assert.equal(texts[index], `03/11/2024 · ${tipo} · Torre A · Pintura externa`);
+    assert.doesNotMatch(texts[index], /0[.,]25|m²|%/);
+  }
+});
