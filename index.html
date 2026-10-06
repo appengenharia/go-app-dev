@@ -1659,6 +1659,7 @@
           <button class="btn sm" id="btnEvolRelatorio" onclick="App.evolGerarRelatorio()" style="display:none;background:#f0fdf4;color:var(--success);border:1.5px solid #a7f3d0;font-size:.8rem">📄 Relatório PDF</button>
           <button class="btn btn-primary sm" id="btnEvolConfig" onclick="App.evolAbrirConfig()" style="display:none;font-size:.8rem">⚙️ Configurar</button>
           <button class="btn sm" id="btnEvolDiario" onclick="App.evolAbrirDiario()" style="display:none;background:#ecfeff;color:#0f766e;border:1.5px solid #99f6e4;font-size:.8rem">⛅ Preencher Diário</button>
+          <button class="btn sm" id="btnEvolInformeDia" onclick="App.evolAbrirPrepararInformeDia()" style="display:none;background:#f5f3ff;color:#6d28d9;border:1.5px solid #ddd6fe;font-size:.8rem">📲 Preparar informe do dia</button>
         </div>
       </div>
 
@@ -2112,6 +2113,23 @@
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
         <button class="btn btn-outline" onclick="App.closeModal('modalEvolDiario')">Cancelar</button>
         <button class="btn btn-primary" onclick="App.evolSalvarDiario()">💾 Salvar diário</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: Preparar informe consolidado por obra e dia ═══ -->
+  <div class="modal-overlay hidden" id="modalEvolInformeDia">
+    <div class="modal" style="max-width:540px;max-height:92vh;overflow-y:auto">
+      <h3 style="color:var(--brand);margin-bottom:8px">📲 Preparar informe do dia</h3>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">Os dados serão lidos novamente do Diário e dos lançamentos salvos da obra e data escolhidas.</p>
+      <label for="evolInformeObra">Obra</label>
+      <select id="evolInformeObra"></select>
+      <label for="evolInformeData">Data de referência</label>
+      <input type="date" id="evolInformeData">
+      <div id="evolInformeSelecaoAviso" class="msg" role="status"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="App.closeModal('modalEvolInformeDia')">Cancelar</button>
+        <button class="btn btn-primary" id="btnEvolInformeCarregar" type="button" onclick="App.evolPrepararInformeDia()">Carregar diário e fotos</button>
       </div>
     </div>
   </div>
@@ -2793,7 +2811,8 @@
   import { dataLocal as _epDataLocal } from './evolucao-parametrizada.mjs';
   import { calcularTotaisDespesas, filtrarLancamentos, limitarLancamentosPorPermissao, linhasResumoDespesas, normalizarTipoDespesa, ordenarLancamentosRecentes, rotuloTipoDespesa, tipoDespesa, TIPO_DESPESA } from './despesas.mjs';
   import { dataCorteLocal, dataReferenciaRegistro, formatarDataReferencia, hojeLocalISO, validarDataReferencia } from './evolucao-fotos.mjs';
-  import { montarInformeEvolucao } from './evolucao-compartilhamento.mjs';
+  import { carregarArquivosFotos, carregarDadosInformeDia, criarZipFotos, diarioDoDiaExiste, montarInformeDia, selecionarFotosDoDia } from './evolucao-compartilhamento.mjs';
+  import { abrirPreviaInformeDia } from './evolucao-compartilhamento-ui.mjs';
   import { registrarAcesso, loginAuditado, criarPainelAcessos } from './acessos.mjs';
   import { criarInterface } from './evolucao-parametrizada-ui.mjs';
   import { initializeApp }
@@ -2805,7 +2824,7 @@
   import {
     getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs,
     updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, limit,
-    getDocsFromServer, runTransaction
+    getDocFromServer, getDocsFromServer, runTransaction
   } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
   // ─────────────────────────────────────────
@@ -3875,35 +3894,88 @@
       if(!res.ok || !data.secure_url) throw new Error("Falha ao enviar foto. O lançamento não foi alterado; tente novamente.");
       return data.secure_url;
     },
-    onSaved: (registro, context, side, meta) => abrirInformeWhatsApp(registro, context, meta)
+    onSaved: (registro, context, side) => side === "e" ? evolPrepararInformeSalvo(context.obraId, registro.data) : undefined
   });
 
-  function abrirInformeWhatsApp(registro, context, meta = {}) {
-    const workName = [...( $("evolFiltroObra")?.options || [])].find(option=>option.value===context.obraId)?.textContent || _eCont?.nome || 'Obra';
-    const responsible = context.profile?.nome || context.user?.displayName || context.user?.email || currentProfile?.nome || currentUser?.email || pontoUser?.email || 'Responsável não informado';
-    const state = _eFisico;
-    const progress = state?.progresso?.[`${registro.unidId}_${registro.svcId}`];
-    const preview = document.createElement('div');
-    preview.className = 'modal-overlay';
-    preview.innerHTML = `<section class="modal" role="dialog" aria-modal="true" aria-label="Prévia para WhatsApp" style="max-width:560px;max-height:92vh;overflow:auto"><h3>Prévia para WhatsApp</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">Revise o informe. Ao abrir o WhatsApp, escolha o grupo e confirme o envio lá. Nada é enviado automaticamente.</p><textarea data-share-text rows="10" aria-label="Informe para compartilhar"></textarea><div class="modal-footer" style="flex-wrap:wrap"><button class="btn btn-outline" data-close>Fechar</button><button class="btn btn-outline" data-copy>Copiar informe</button><button class="btn btn-outline" data-open>Compartilhar no WhatsApp</button><button class="btn btn-primary" data-native>Compartilhar…</button></div><p data-status role="status" style="font-size:.8rem;color:var(--muted);margin-top:8px"></p></section>`;
-    document.body.append(preview);
-    const textarea = preview.querySelector('[data-share-text]');
-    textarea.value = montarInformeEvolucao({ obra: workName, registro, responsavel: responsible, percentual: progress?.pct ?? registro.pctDepois ?? registro.pct, correcao: meta.correcao });
-    preview.querySelector('[data-close]').onclick = () => preview.remove();
-    preview.querySelector('[data-copy]').onclick = async () => {
-      try { await navigator.clipboard.writeText(textarea.value); preview.querySelector('[data-status]').textContent = 'Informe copiado. Ainda não foi enviado.'; }
-      catch (_) { textarea.focus(); textarea.select(); preview.querySelector('[data-status]').textContent = 'Selecione e copie o informe. Ainda não foi enviado.'; }
-    };
-    preview.querySelector('[data-open]').onclick = () => {
-      window.open(`https://wa.me/?text=${encodeURIComponent(textarea.value)}`, '_blank', 'noopener,noreferrer');
-      preview.querySelector('[data-status]').textContent = 'WhatsApp aberto. Escolha o grupo e confirme o envio; o sistema não registra envio.';
-    };
-    const nativeButton = preview.querySelector('[data-native]');
-    if (!navigator.share) nativeButton.hidden = true;
-    nativeButton.onclick = async () => {
-      try { await navigator.share({ text: textarea.value }); preview.querySelector('[data-status]').textContent = 'Se o informe foi compartilhado, o aplicativo escolhido confirma o envio.'; }
-      catch (e) { if (e.name !== 'AbortError') preview.querySelector('[data-status]').textContent = 'Não foi possível compartilhar. Use Copiar informe ou Continuar no WhatsApp.'; }
-    };
+  function evolObrasPermitidasInforme(){
+    const select=$("evolFiltroObra");
+    if(!select || !currentUser) return [];
+    const atribuidas=[currentProfile?.obra_id,...(Array.isArray(currentProfile?.obras)?currentProfile.obras:[])].filter(Boolean);
+    return [...select.options].filter(option=>option.value && (currentRole==="ADMIN" || (currentRole==="USER" && currentProfile?.ativo!==false && canEvoluirObra(currentProfile) && atribuidas.includes(option.value))));
+  }
+
+  function evolAbrirPrepararInformeDia(dataInicial=""){
+    const obras=evolObrasPermitidasInforme();
+    if(!obras.length){toast("Você não tem permissão para preparar informe nessas obras.",false);return;}
+    const select=$("evolInformeObra");
+    select.innerHTML="";
+    obras.forEach(option=>{const copy=document.createElement("option");copy.value=option.value;copy.textContent=option.textContent;select.append(copy);});
+    const atual=obras.some(option=>option.value===_eObraId)?_eObraId:obras[0].value;
+    select.value=atual;
+    $("evolInformeData").value=validarDataReferencia(dataInicial)||_eHojeStr();
+    setMsg("evolInformeSelecaoAviso","");
+    const button=$("btnEvolInformeCarregar"); if(button){button.disabled=false;button.textContent="Carregar diário e fotos";}
+    $("modalEvolInformeDia").classList.remove("hidden");
+  }
+
+  async function evolValidarPermissaoInforme(obraId){
+    const option=evolObrasPermitidasInforme().find(item=>item.value===obraId);
+    if(!option || !currentUser) return false;
+    if(currentRole==="ADMIN") return true;
+    if(currentRole!=="USER") return false;
+    const profileSnap=await getDocFromServer(doc(db,"usuarios",currentUser.uid));
+    if(!profileSnap.exists()) return false;
+    const profile=profileSnap.data();
+    const atribuidas=[profile.obra_id,...(Array.isArray(profile.obras)?profile.obras:[])].filter(Boolean);
+    return profile.ativo!==false && profile.role==="USER" && canEvoluirObra(profile) && atribuidas.includes(obraId);
+  }
+
+  function evolNomeResponsavelInforme(){
+    return currentProfile?.nome?.trim() || currentUser?.displayName?.trim() || currentUser?.email?.trim() || "";
+  }
+
+  async function evolCarregarPreviaDia(obraId,data){
+    if(!await evolValidarPermissaoInforme(obraId)) throw new Error("Seu acesso à obra não permite preparar este informe.");
+    const salvo=await carregarDadosInformeDia({db,obraId,data,sdk:{doc,getDocFromServer,collection,getDocsFromServer}});
+    if(!salvo.obra) throw new Error("A obra selecionada não está disponível.");
+    if(salvo.obra.ativa===false) throw new Error("A obra selecionada está inativa.");
+    const diario=diarioDoDiaExiste(salvo.diario)?salvo.diario:null;
+    const report=montarInformeDia({data,local:{cidade:salvo.obra.cidade,estado:salvo.obra.estado},responsavel:evolNomeResponsavelInforme(),diario});
+    const selecao=selecionarFotosDoDia(salvo.registros,data);
+    const fotosCarregadas=await carregarArquivosFotos(selecao.fotos);
+    let zip=null;
+    if(fotosCarregadas.arquivos.length){
+      try{zip=await criarZipFotos(fotosCarregadas.arquivos);}
+      catch(error){report.avisos.push(`Não foi possível preparar o arquivo ZIP para anexação manual: ${error?.message||"erro desconhecido"}`);}
+    }
+    if(!fotosCarregadas.arquivos.length&&selecao.fotos.length) report.avisos.push("Nenhuma foto carregou como arquivo. Confira a falha de cada imagem antes de continuar.");
+    const nomeBase=["fotos-informe",salvo.obra.nome,data].join("_").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,90);
+    return abrirPreviaInformeDia({report,fotos:fotosCarregadas.fotos,falhas:fotosCarregadas.falhas,fotosSemData:selecao.semDataConfiavel,zip,nomeZip:`${nomeBase||"fotos-informe"}.zip`});
+  }
+
+  async function evolPrepararInformeDia(){
+    const obraId=$("evolInformeObra")?.value||"", data=$("evolInformeData")?.value||"";
+    const button=$("btnEvolInformeCarregar"), aviso=$("evolInformeSelecaoAviso");
+    if(button){button.disabled=true;button.textContent="⏳ Buscando dados salvos…";}
+    if(aviso) aviso.setAttribute("role","status");
+    setMsg("evolInformeSelecaoAviso","");
+    try{
+      if(!validarDataReferencia(data)) throw new Error("Selecione uma data válida.");
+      await evolCarregarPreviaDia(obraId,data);
+      closeModal("modalEvolInformeDia");
+    }catch(error){
+      console.error("evolPrepararInformeDia:",error);
+      setMsg("evolInformeSelecaoAviso",error?.message||"Não foi possível preparar o informe.");
+      if(aviso) aviso.setAttribute("role","alert");
+    }finally{
+      if(button){button.disabled=false;button.textContent="Carregar diário e fotos";}
+    }
+  }
+
+  async function evolPrepararInformeSalvo(obraId,data){
+    if(!validarDataReferencia(data)) return;
+    try{await evolCarregarPreviaDia(obraId,data);}
+    catch(error){console.error("Informe atualizado salvo, mas a prévia não pôde ser preparada:",error);toast("A evolução foi salva, mas não foi possível preparar o informe: "+(error?.message||"erro desconhecido"),false);}
   }
   function _epResumo(side="e") {
     const anchor=$(side==="v" ? "vListaUnidades" : "evolListaUnidades");
@@ -3963,6 +4035,9 @@
           sel.appendChild(o);
         }
       });
+
+      const btnInforme=$("btnEvolInformeDia");
+      if(btnInforme) btnInforme.style.display=evolObrasPermitidasInforme().length?"":"none";
 
       // Se a obra atual ainda pertence ao usuário, mantém.
       // Caso contrário, abre a primeira obra permitida.
@@ -5619,9 +5694,10 @@ async function _eSnapshotHist(id,g){
       let savedRegistro=null;
       try { const savedSnap=await getDoc(savedRef); if(savedSnap.exists()) savedRegistro={id:savedSnap.id,...savedSnap.data()}; }
       catch(error){ console.warn("Registro salvo; falha ao reler para preparar o compartilhamento.",error); }
-      setTimeout(()=>{
+      const obraSalva=_eObraId;
+      setTimeout(async()=>{
         evolAbrirUnidade(uid);
-        if(savedRegistro) abrirInformeWhatsApp(savedRegistro,_epContext("e"),{correcao:false});
+        if(savedRegistro) await evolPrepararInformeSalvo(obraSalva,savedRegistro.data);
         else toast("Lançamento salvo; não foi possível preparar a prévia do WhatsApp.","err");
       },300);
 
@@ -16663,6 +16739,7 @@ async function finObterReembolsos() {
     visitanteInicializar, vFiltrarGaleria, vVerFotoAmp, vVerClimaAmp, vFiltrarGrupo,
     vApagarFoto, vTrocarFoto,
     evolAbrirDiario, evolSalvarDiario, evolCarregarDiarioData, evolAtualizarCamposDiario,
+    evolAbrirPrepararInformeDia, evolPrepararInformeDia,
     evolClimaFotoSel, evolRemoverClimaFoto, evolConsultarDiarioData, evolVerClimaFoto,
 
     // Cadastro de EPIs

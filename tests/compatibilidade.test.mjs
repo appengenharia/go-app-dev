@@ -16,7 +16,8 @@ test('salvamento legado preserva progresso e timestamp técnico, e editor V2 seg
   const saveBlock=block(source,'    const uid=$("evolRegUnidId").value;','  // ──────────────────────────── GALERIA DE FOTOS');
   assert.ok(saveBlock.includes('data:hoje')); assert.ok(saveBlock.includes('criadoEm:\n          serverTimestamp()'));
   assert.ok(saveBlock.includes('await setDoc(')); assert.ok(saveBlock.includes('const savedRef=await addDoc('));
-  assert.ok(saveBlock.includes('getDoc(savedRef)')); assert.ok(saveBlock.includes('abrirInformeWhatsApp('));
+  assert.ok(saveBlock.includes('getDoc(savedRef)')); assert.ok(saveBlock.includes('evolPrepararInformeSalvo(obraSalva,savedRegistro.data)'));
+  assert.ok(!saveBlock.includes('abrirInformeWhatsApp('));
   for(const [start,end] of [
     ['  function _eGarantirDraftV2(){','    async function evolCfgSalvarV2(){'],
     ['    // ─────────────────────────────────────────────\n    // SEGURANÇA — configuração estrutural','  async function evolAnalisarIA()'],
@@ -40,4 +41,27 @@ test('API App antiga preservada e galeria continua sem deleteDoc',()=>{
     const content=block(source,start,end);
     assert.ok(content.includes('updateDoc')); assert.ok(!content.includes('deleteDoc('));
   }
+});
+
+test('preparação consolidada está disponível no Evolução e consulta apenas dados salvos da obra/data escolhidas',()=>{
+  const sharing=fs.readFileSync(new URL('../evolucao-compartilhamento.mjs',import.meta.url),'utf8');
+  assert.match(source,/id="btnEvolInformeDia"/);
+  assert.match(source,/App\.evolAbrirPrepararInformeDia\(\)/);
+  assert.match(source,/id="evolInformeObra"/);
+  assert.match(source,/id="evolInformeData"/);
+  assert.match(sharing,/doc\(db, 'obras', obraId, 'evolHistorico', referencia\)/);
+  assert.match(sharing,/collection\(db, 'obras', obraId, 'evolRegistros'\)/);
+  assert.match(sharing,/getDocFromServer\(obraRef\), getDocFromServer\(diarioRef\), getDocsFromServer\(registrosRef\)/);
+  assert.match(source,/diarioDoDiaExiste\(salvo\.diario\)/);
+  assert.match(source,/montarInformeDia\(\{data,local:\{cidade:salvo\.obra\.cidade,estado:salvo\.obra\.estado\},responsavel:evolNomeResponsavelInforme\(\),diario\}\)/);
+});
+
+test('compartilhamento prepara arquivos reais, exibe falhas, e mantém WhatsApp via link como alternativa só de texto',()=>{
+  const ui=fs.readFileSync(new URL('../evolucao-compartilhamento-ui.mjs',import.meta.url),'utf8');
+  assert.match(ui,/navigatorObject\.canShare\(\{ files \}\)/);
+  assert.match(ui,/navigatorObject\.share\(\{ text: textarea\.value, files \}\)/);
+  assert.match(ui,/Abrir WhatsApp \(somente texto\)/);
+  assert.match(ui,/Baixar fotos organizadas \(\.zip\)/);
+  assert.match(ui,/photo\.error/);
+  assert.match(source,/evolPrepararInformeSalvo\(context\.obraId, registro\.data\)/);
 });
