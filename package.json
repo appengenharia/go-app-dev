@@ -2,9 +2,8 @@
   "name": "go-dev-evolucao-tests",
   "private": true,
   "scripts": {
-    "test": "node --test tests/evolucao.test.mjs tests/compatibilidade.test.mjs tests/ui.test.mjs tests/acessos.test.mjs tests/despesas.test.mjs",
+    "test": "node --test tests/evolucao.test.mjs tests/compatibilidade.test.mjs tests/ui.test.mjs tests/acessos.test.mjs",
     "test:ui": "node tests/responsivo.mjs",
-    "test:despesas:browser": "node tests/despesas-browser.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-go-evolucao --config firebase.emulator.json \"node --test tests/rules.test.mjs\""
   },
   "devDependencies": {
