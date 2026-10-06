@@ -1,12 +1,12 @@
 import { abrirPlanejamento } from './evolucao-planejamento-ui.mjs';
-import { parametrizada, micros, podeProduzir, chave, ativo, modoApontamento, quantidadeApontada } from './evolucao-parametrizada.mjs';
+import { parametrizada, micros, podeProduzir, chave, ativo, modoApontamento, quantidadeApontada, dataLocal } from './evolucao-parametrizada.mjs';
 import { criarStore } from './evolucao-parametrizada-store.mjs';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = value => Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const stamp = value => value?.toDate ? value.toDate().toLocaleString('pt-BR') : '';
 
-export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto }) {
+export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto, onSaved = null }) {
   const store = criarStore(sdk);
   let modal;
   const usuarioCache = new Map();
@@ -106,6 +106,7 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
     const photo = { fotoUrl: anterior?.fotoUrl || '', fotoUrlDepois: anterior?.fotoUrlDepois || '' };
     body.innerHTML = `${historicoRetirado ? '<p class="ep-muted">Serviço retirado do escopo — histórico preservado</p>' : ''}<label>Local<select data-local>${cfg.unidades.filter(u=>!historicoRetirado || servicoAnterior.metasPorLocal[u.id]>0).map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('')}</select></label>
       <label>Etapa<select data-macro></select></label><label>Serviço<select data-micro></select></label>
+      <label>Data de referência<input data-reference-date type="date" value="${esc(anterior?.data || (anterior ? '' : dataLocal()))}" required></label>
       <p class="ep-muted" data-balance></p>
       <label>${porPercentual ? 'Avanço (%)' : 'Quantidade executada'} ${anterior ? 'neste lançamento' : 'hoje'}<input data-quantity type="number" min="0" step="any" value="${anterior ? (porPercentual ? anterior.qtdHoje / all.find(s=>s.id===anterior.svcId).metasPorLocal[anterior.unidId] * 100 : anterior.qtdHoje) : ''}" inputmode="decimal"></label>
       <p class="ep-muted" data-preview></p>
@@ -163,14 +164,17 @@ export function criarInterface({ sdk, getContext, getState, refresh, uploadPhoto
       if (!qtyInput.value.trim() || !qtyInput.validity.valid) throw new Error('Informe uma quantidade válida.');
       const motivo = body.querySelector('[data-reason]')?.value.trim() || '';
       if (anterior && !motivo) throw new Error('Informe o motivo da correção.');
+      const dataReferencia = body.querySelector('[data-reference-date]').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dataReferencia)) throw new Error('Informe a data de referência.');
       for (const field of ['fotoUrl','fotoUrlDepois']) {
         const input = body.querySelector(`[data-photo="${field}"]`);
         if (input.files[0]) { photo[field] = await uploadPhoto(input.files[0]); input.value = ''; }
       }
-      await store.salvarRegistro(context, { id, operacaoId, revisaoEsperada: anterior?.revisao || 0, motivo,
-        entrada: { unidId: localSel.value, svcId: microSel.value, qtdHoje: quantidadeApontada(cfg,all.find(s=>s.id===microSel.value).metasPorLocal[localSel.value],Number(qtyInput.value)), obs: body.querySelector('[data-obs]').value.trim(), ...photo } });
+      const salvo = await store.salvarRegistro(context, { id, operacaoId, revisaoEsperada: anterior?.revisao || 0, motivo,
+        entrada: { unidId: localSel.value, svcId: microSel.value, data: dataReferencia, qtdHoje: quantidadeApontada(cfg,all.find(s=>s.id===microSel.value).metasPorLocal[localSel.value],Number(qtyInput.value)), obs: body.querySelector('[data-obs]').value.trim(), ...photo } });
       body.innerHTML = '<p>Lançamento salvo. Atualizando os totais…</p>';
       await refresh(side); host.remove();
+      if (salvo) await onSaved?.(salvo, context, side, { correcao: Boolean(anterior) });
     });
   }
 

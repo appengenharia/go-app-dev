@@ -12,9 +12,12 @@ test('JavaScript principal continua sintaticamente válido',()=>{
   const result=spawnSync(process.execPath,['--check','--input-type=module'],{input:script,encoding:'utf8'});
   assert.equal(result.status,0,result.stderr);
 });
-test('corpo de salvamento V1/V2 legado e editor V2 preservados',()=>{
+test('salvamento legado preserva progresso e timestamp técnico, e editor V2 segue compatível',()=>{
+  const saveBlock=block(source,'    const uid=$("evolRegUnidId").value;','  // ──────────────────────────── GALERIA DE FOTOS');
+  assert.ok(saveBlock.includes('data:hoje')); assert.ok(saveBlock.includes('criadoEm:\n          serverTimestamp()'));
+  assert.ok(saveBlock.includes('await setDoc(')); assert.ok(saveBlock.includes('const savedRef=await addDoc('));
+  assert.ok(saveBlock.includes('getDoc(savedRef)')); assert.ok(saveBlock.includes('abrirInformeWhatsApp('));
   for(const [start,end] of [
-    ['    const uid=$("evolRegUnidId").value;', '  // ──────────────────────────── GALERIA DE FOTOS'],
     ['  function _eGarantirDraftV2(){','    async function evolCfgSalvarV2(){'],
     ['    // ─────────────────────────────────────────────\n    // SEGURANÇA — configuração estrutural','  async function evolAnalisarIA()'],
   ]) assert.equal(block(source,start,end),block(baseline,start,end));

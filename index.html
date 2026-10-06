@@ -770,12 +770,18 @@
         <div class="card-header">
           <div><h3>Lançamentos</h3></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <select id="filterLancObra" style="padding:6px 10px;font-size:.82rem;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto" onchange="App.loadLancs()">
+            <select id="filterLancObra" aria-label="Obra" style="padding:6px 10px;font-size:.82rem;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto" onchange="App.loadLancs()">
               <option value="">Todas as obras</option>
+            </select>
+            <select id="filterLancTipo" aria-label="Tipo de despesa" style="padding:6px 10px;font-size:.82rem;border-radius:8px;border:1.5px solid var(--border);background:#fff;width:auto" onchange="App.loadLancs()">
+              <option value="todas">Todas</option>
+              <option value="reembolsaveis">Reembolsáveis</option>
+              <option value="empresa">Empresa</option>
             </select>
             <button class="btn btn-outline sm" onclick="App.loadLancs()">🔄</button>
           </div>
         </div>
+        <div id="lancResumoTipo" style="display:flex;gap:14px;flex-wrap:wrap;margin:0 0 12px;font-size:.82rem;color:var(--muted)" aria-live="polite"></div>
         <div id="lancList"><div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div></div>
       </div>
     </div>
@@ -1055,6 +1061,14 @@
           <div style="flex:1;min-width:120px">
             <label style="margin-top:0">Até</label>
             <input type="date" id="relAte">
+          </div>
+          <div style="flex:1;min-width:150px">
+            <label style="margin-top:0" for="relTipo">Tipo de despesa</label>
+            <select id="relTipo">
+              <option value="todas">Todas</option>
+              <option value="reembolsaveis">Reembolsáveis</option>
+              <option value="empresa">Empresa</option>
+            </select>
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -2492,7 +2506,9 @@
           <div style="font-size:.69rem;color:var(--muted);margin-top:2px" id="evolRegQtdTxt"></div>
         </div>
       </div>
-      <label>Quantidade executada <strong>hoje</strong></label>
+      <label style="margin-top:8px">Data de referência</label>
+      <input id="evolRegData" type="date" required>
+      <label>Quantidade executada</label>
       <div style="display:flex;gap:9px;align-items:center">
         <input id="evolRegQtd" type="number" min="0" step="0.01" placeholder="0" style="text-align:center;font-size:1.2rem;font-weight:800;color:var(--brand);flex:1">
         <span id="evolRegUnidTxt" style="font-size:.9rem;color:var(--muted);white-space:nowrap;font-weight:700;min-width:34px"></span>
@@ -2774,6 +2790,10 @@
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
   import { parametrizada as _epModo, calcular as _epCalcular, historicoCalculado as _epHistorico, podeProduzir as _epPermissao } from './evolucao-parametrizada.mjs';
+  import { dataLocal as _epDataLocal } from './evolucao-parametrizada.mjs';
+  import { calcularTotaisDespesas, filtrarLancamentos, limitarLancamentosPorPermissao, linhasResumoDespesas, normalizarTipoDespesa, ordenarLancamentosRecentes, rotuloTipoDespesa, tipoDespesa, TIPO_DESPESA } from './despesas.mjs';
+  import { dataCorteLocal, dataReferenciaRegistro, formatarDataReferencia, hojeLocalISO, validarDataReferencia } from './evolucao-fotos.mjs';
+  import { montarInformeEvolucao } from './evolucao-compartilhamento.mjs';
   import { registrarAcesso, loginAuditado, criarPainelAcessos } from './acessos.mjs';
   import { criarInterface } from './evolucao-parametrizada-ui.mjs';
   import { initializeApp }
@@ -3854,8 +3874,37 @@
       const data=await res.json();
       if(!res.ok || !data.secure_url) throw new Error("Falha ao enviar foto. O lançamento não foi alterado; tente novamente.");
       return data.secure_url;
-    }
+    },
+    onSaved: (registro, context, side, meta) => abrirInformeWhatsApp(registro, context, meta)
   });
+
+  function abrirInformeWhatsApp(registro, context, meta = {}) {
+    const workName = [...( $("evolFiltroObra")?.options || [])].find(option=>option.value===context.obraId)?.textContent || _eCont?.nome || 'Obra';
+    const responsible = context.profile?.nome || context.user?.displayName || context.user?.email || currentProfile?.nome || currentUser?.email || pontoUser?.email || 'Responsável não informado';
+    const state = _eFisico;
+    const progress = state?.progresso?.[`${registro.unidId}_${registro.svcId}`];
+    const preview = document.createElement('div');
+    preview.className = 'modal-overlay';
+    preview.innerHTML = `<section class="modal" role="dialog" aria-modal="true" aria-label="Prévia para WhatsApp" style="max-width:560px;max-height:92vh;overflow:auto"><h3>Prévia para WhatsApp</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">Revise o informe. Ao abrir o WhatsApp, escolha o grupo e confirme o envio lá. Nada é enviado automaticamente.</p><textarea data-share-text rows="10" aria-label="Informe para compartilhar"></textarea><div class="modal-footer" style="flex-wrap:wrap"><button class="btn btn-outline" data-close>Fechar</button><button class="btn btn-outline" data-copy>Copiar informe</button><button class="btn btn-outline" data-open>Compartilhar no WhatsApp</button><button class="btn btn-primary" data-native>Compartilhar…</button></div><p data-status role="status" style="font-size:.8rem;color:var(--muted);margin-top:8px"></p></section>`;
+    document.body.append(preview);
+    const textarea = preview.querySelector('[data-share-text]');
+    textarea.value = montarInformeEvolucao({ obra: workName, registro, responsavel: responsible, percentual: progress?.pct ?? registro.pctDepois ?? registro.pct, correcao: meta.correcao });
+    preview.querySelector('[data-close]').onclick = () => preview.remove();
+    preview.querySelector('[data-copy]').onclick = async () => {
+      try { await navigator.clipboard.writeText(textarea.value); preview.querySelector('[data-status]').textContent = 'Informe copiado. Ainda não foi enviado.'; }
+      catch (_) { textarea.focus(); textarea.select(); preview.querySelector('[data-status]').textContent = 'Selecione e copie o informe. Ainda não foi enviado.'; }
+    };
+    preview.querySelector('[data-open]').onclick = () => {
+      window.open(`https://wa.me/?text=${encodeURIComponent(textarea.value)}`, '_blank', 'noopener,noreferrer');
+      preview.querySelector('[data-status]').textContent = 'WhatsApp aberto. Escolha o grupo e confirme o envio; o sistema não registra envio.';
+    };
+    const nativeButton = preview.querySelector('[data-native]');
+    if (!navigator.share) nativeButton.hidden = true;
+    nativeButton.onclick = async () => {
+      try { await navigator.share({ text: textarea.value }); preview.querySelector('[data-status]').textContent = 'Se o informe foi compartilhado, o aplicativo escolhido confirma o envio.'; }
+      catch (e) { if (e.name !== 'AbortError') preview.querySelector('[data-status]').textContent = 'Não foi possível compartilhar. Use Copiar informe ou Continuar no WhatsApp.'; }
+    };
+  }
   function _epResumo(side="e") {
     const anchor=$(side==="v" ? "vListaUnidades" : "evolListaUnidades");
     if(!anchor) return;
@@ -5184,6 +5233,7 @@ async function _eSnapshotHist(id,g){
 
     $("evolRegQtd").value="";
     $("evolRegObs").value="";
+    $("evolRegData").value=hojeLocalISO();
 
     $("evolRegPreview").textContent="";
     $("evolRegPreview").style.background="transparent";
@@ -5377,10 +5427,8 @@ async function _eSnapshotHist(id,g){
         ((nq/qt)*100).toFixed(2)
       );
 
-      const hoje=
-        new Date()
-          .toISOString()
-          .split("T")[0];
+      const hoje=$("evolRegData")?.value||"";
+      if(!validarDataReferencia(hoje)) throw new Error("Informe uma data de referência válida.");
 
       // Mantemos a mesma chave usada pelo V1.
       // No V2, sid corresponde ao ID do Microserviço.
@@ -5543,7 +5591,7 @@ async function _eSnapshotHist(id,g){
       }
 
 
-      await addDoc(
+      const savedRef=await addDoc(
         collection(
           db,
           "obras",
@@ -5568,11 +5616,14 @@ async function _eSnapshotHist(id,g){
       );
 
       _eRenderPainel();
-
-      setTimeout(
-        ()=>evolAbrirUnidade(uid),
-        300
-      );
+      let savedRegistro=null;
+      try { const savedSnap=await getDoc(savedRef); if(savedSnap.exists()) savedRegistro={id:savedSnap.id,...savedSnap.data()}; }
+      catch(error){ console.warn("Registro salvo; falha ao reler para preparar o compartilhamento.",error); }
+      setTimeout(()=>{
+        evolAbrirUnidade(uid);
+        if(savedRegistro) abrirInformeWhatsApp(savedRegistro,_epContext("e"),{correcao:false});
+        else toast("Lançamento salvo; não foi possível preparar a prévia do WhatsApp.","err");
+      },300);
 
     }catch(e){
 
@@ -5611,8 +5662,7 @@ async function _eSnapshotHist(id,g){
     try{
       const snap=await getDocs(query(
         collection(db,"obras",_eObraId,"evolRegistros"),
-        orderBy("criadoEm","desc"),
-        limit(200)
+        // Não usar orderBy(criadoEm): isso oculta registros antigos sem carimbo técnico.
       ));
       _eGaleriaRegistros=[];
       snap.forEach(d=>{ const r={id:d.id,...d.data()}; if(r.fotoUrl||r.fotoUrlDepois) _eGaleriaRegistros.push(r); });
@@ -5625,17 +5675,13 @@ async function _eSnapshotHist(id,g){
  function evolFiltrarGaleria(){
   const filtroUnid = $("evolGaleriaFiltroUnid")?.value||"";
   const filtroDias = parseInt($("evolGaleriaFiltroPeriodo")?.value)||0;
-  const corte = filtroDias>0
-    ? new Date(Date.now()-filtroDias*86400000)
-    : null;
+  const corte = filtroDias>0 ? dataCorteLocal(filtroDias) : "";
 
   const regs = _eGaleriaRegistros.filter(r => {
     if(filtroUnid && r.unidId!==filtroUnid) return false;
 
-    if(corte && r.data){
-      const d=new Date(r.data+"T12:00:00");
-      if(d<corte) return false;
-    }
+    const dataRef=dataReferenciaRegistro(r);
+    if(corte && (!dataRef || dataRef<corte)) return false;
 
     return true;
   });
@@ -5695,7 +5741,7 @@ async function _eSnapshotHist(id,g){
 
   fotosGaleria.forEach(r=>{
 
-    const d=r.data||"?";
+    const d=dataReferenciaRegistro(r)||"?";
 
     if(!porData[d]){
       porData[d]=[];
@@ -5717,19 +5763,7 @@ async function _eSnapshotHist(id,g){
     Object.entries(porData)
       .map(([data,fotos])=>{
 
-        const dtFmt =
-          data==="?"
-            ? "Sem data"
-            : new Date(data+"T12:00:00")
-                .toLocaleDateString(
-                  "pt-BR",
-                  {
-                    weekday:"short",
-                    day:"2-digit",
-                    month:"short",
-                    year:"numeric"
-                  }
-                );
+        const dtFmt = data==="?" ? "Data não informada" : formatarDataReferencia(data);
 
 
         const cards=
@@ -5793,7 +5827,7 @@ async function _eSnapshotHist(id,g){
                   '${(r.unidNome||"").replace(/'/g,"&#39;")}',
                   '${(r.svcDesc||"").replace(/'/g,"&#39;")}',
                   '${data}',
-                  '${delta.toFixed(1)}'
+                  ''
                 )"
               >
 
@@ -5873,7 +5907,7 @@ async function _eSnapshotHist(id,g){
                       border-radius:20px;
                       font-weight:600
                     ">
-                      ${_epModo(_eCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : `${delta>0?"+":""}${delta.toFixed(1)}%`}
+                      ${_epModo(_eCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : "Registro fotográfico"}
                     </span>
 
                     ${
@@ -6235,8 +6269,8 @@ async function _evolTrocarFotoAdm(
 
   function evolVerFotoAmp(url,unid,svc,data,delta){
     $("evolFotoAmpImg").src=url;
-    const dtFmt=new Date(data+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
-    $("evolFotoAmpInfo").innerHTML=`<strong>${unid}</strong> · ${svc} · ${dtFmt} · <span style="color:#86efac">+${delta}%</span>`;
+    const dtFmt=formatarDataReferencia(data);
+    $("evolFotoAmpInfo").innerHTML=`<strong>${unid}</strong> · ${svc} · ${dtFmt}`;
     $("modalEvolFotoAmp").classList.remove("hidden");
   }
 
@@ -6413,13 +6447,11 @@ async function _evolTrocarFotoAdm(
 
       // Buscar registros recentes
       let regsRecentes=[];
-      if(_epModo(_eCfg)) regsRecentes=[..._eRegistrosFisicos].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,20);
+      if(_epModo(_eCfg)) regsRecentes=[..._eRegistrosFisicos].sort((a,b)=>String(b.data||"").localeCompare(String(a.data||""))).slice(0,200);
       else try{
-        const snap=await getDocs(query(
-          collection(db,"obras",_eObraId,"evolRegistros"),
-          orderBy("criadoEm","desc"), limit(20)
-        ));
+        const snap=await getDocs(collection(db,"obras",_eObraId,"evolRegistros"));
         snap.forEach(d=>regsRecentes.push({id:d.id,...d.data()}));
+        regsRecentes.sort((a,b)=>String(b.data||"").localeCompare(String(a.data||"")));
       }catch(e){}
 
       if(regsRecentes.length){
@@ -6440,7 +6472,7 @@ async function _evolTrocarFotoAdm(
 
         regsRecentes.slice(0,15).forEach((r,i)=>{
           if(y>H-20){ doc.addPage(); y=mg; }
-          const dtFmt=new Date((r.data||"")+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+          const dtFmt=formatarDataReferencia(dataReferenciaRegistro(r));
           const delta=r.pctDepois-r.pctAntes;
           doc.setFontSize(7.2); doc.setFont("helvetica","normal");
           if(i%2===0){ doc.setFillColor(248,249,252); doc.rect(mg, y-2.5, W-mg*2, 6, "F"); }
@@ -6468,6 +6500,26 @@ async function _evolTrocarFotoAdm(
         doc.text("Pág. "+i+"/"+totalPags, W-mg, H-4, {align:"right"});
       }
 
+      const registrosComFoto=regsRecentes.filter(r=>r.fotoUrl||r.fotoUrlDepois).slice(0,12);
+      if(registrosComFoto.length){
+        if(y>H-25){doc.addPage();y=mg;}
+        doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(cBrand[0],cBrand[1],cBrand[2]);
+        doc.text("Registro Fotográfico",mg,y); y+=7;
+        const fotos=[];
+        for(const r of registrosComFoto){ for(const [campo,tipo] of [["fotoUrl","Antes"],["fotoUrlDepois","Depois"]]) if(r[campo]) fotos.push({r,url:r[campo],tipo}); }
+        for(let i=0;i<fotos.length;i++){
+          const item=fotos[i], col=i%2, x=mg+col*91;
+          if(col===0 && y>H-52){doc.addPage();y=mg;}
+          const dataFoto=formatarDataReferencia(dataReferenciaRegistro(item.r));
+          doc.setFontSize(7.5);doc.setFont("helvetica","bold");doc.setTextColor(cMuted[0],cMuted[1],cMuted[2]);
+          doc.text(`${dataFoto} · ${item.tipo} · ${(item.r.unidNome||"—").slice(0,22)} · ${(item.r.svcDesc||"—").slice(0,25)}`,x,y); y+=3;
+          try{
+            const imageData=await new Promise(resolve=>{const image=new Image();image.crossOrigin="anonymous";image.onload=()=>{try{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;canvas.getContext("2d").drawImage(image,0,0);resolve(canvas.toDataURL("image/jpeg",.82));}catch(_){resolve("");}};image.onerror=()=>resolve("");image.src=item.url;setTimeout(()=>resolve(""),3500);});
+            if(imageData) doc.addImage(imageData,"JPEG",x,y,78,42,undefined,"FAST");
+          }catch(_){}
+          if(col===1 || i===fotos.length-1) y+=46;
+        }
+      }
       const nomeArq="evolucao_"+nomeObra.replace(/[^a-zA-Z0-9]/g,"_").slice(0,30)+"_"+new Date().toISOString().slice(0,10)+".pdf";
       doc.save(nomeArq);
       toast("✅ Relatório PDF gerado!");
@@ -8539,7 +8591,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       sel.innerHTML  = `<option value="">— Selecione a obra —</option>`;
       if(filt) filt.innerHTML = `<option value="">Todas as obras</option>`;
       const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
-      const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+      const obrasDoColab = [...new Set([...(Array.isArray(prof?.obras) ? prof.obras : []), ...(prof?.obra_id ? [prof.obra_id] : [])])];
       snap.forEach(d => {
         const o = d.data();
         if(o.ativa === false) return;
@@ -8555,7 +8607,9 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       });
       if(currentRole !== "ADMIN" && prof?.obra_id) {
         sel.value = prof.obra_id;
-        if(filt) filt.value = prof.obra_id;
+        // A lista deve começar em todas as obras alocadas ao usuário.
+        // obra_id continua sendo apenas a obra padrão do formulário.
+        if(filt) filt.value = "";
       }
     } catch(_){}
   }
@@ -8762,21 +8816,26 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
 
   let allLancs = [];
 
+  async function carregarLancamentosPermitidos() {
+    // Não ordenar no Firestore: orderBy omite documentos históricos sem o campo
+    // ordenado e fazia a lista divergir dos relatórios.
+    const snap = await getDocs(collection(db,"lancamentos"));
+    const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const profile = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
+    return limitarLancamentosPorPermissao(rows,currentRole,profile);
+  }
+
   async function loadLancs() {
     const el=$("lancList"); if(!el) return;
     el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>`;
     try {
-      let q = query(collection(db,"lancamentos"), orderBy("criadoEm","desc"));
-      const snap = await getDocs(q);
-      allLancs = snap.docs.map(d=>({id:d.id,...d.data()}));
+      allLancs = ordenarLancamentosRecentes(await carregarLancamentosPermitidos());
       const filtObra = $("filterLancObra")?.value || "";
-      let list = allLancs;
-      if(currentRole !== "ADMIN") {
-        const prof = await loadProfile(currentUser.uid);
-        if(prof?.obra_id) list = list.filter(l=>l.obra_id===prof.obra_id);
-      } else if(filtObra) {
-        list = list.filter(l=>l.obra_id===filtObra);
-      }
+      const tipoFilt = normalizarTipoDespesa($("filterLancTipo")?.value);
+      const list = filtrarLancamentos(allLancs,{obraId:filtObra,tipo:tipoFilt});
+      const listTotals=calcularTotaisDespesas(list), listSummary=linhasResumoDespesas(listTotals,tipoFilt);
+      const summaryEl=$("lancResumoTipo");
+      if(summaryEl) summaryEl.innerHTML=listSummary.map(x=>`<span><strong>${x.label}:</strong> ${Number(x.value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</span>`).join("");
       if(!list.length){
         el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Nenhuma despesa registrada ainda.</p></div>`;
         return;
@@ -8797,7 +8856,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
               <div class="lanc-item-desc">${l.descricao||"—"}</div>
               <div class="lanc-item-sub">📅 ${dataFmt} · 🏗️ ${l.obra_nome||"—"} · 👤 ${l.colaborador_nome||"—"}</div>
               <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                <span class="badge-reemb ${l.reembolsavel?"sim":"nao"}">${l.reembolsavel?"🔄 Reembolsável":"✅ Empresa"}</span>
+                <span class="badge-reemb ${tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS?"sim":"nao"}">${tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS?"🔄 Reembolsável":"✅ Empresa"}</span>
                 ${compLink}
               </div>
             </div>
@@ -9065,7 +9124,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       const obrasSnap = await getDocs(collection(db,"obras"));
       const prof = currentRole !== "ADMIN" ? await loadProfile(currentUser.uid) : null;
       if(currentRole !== "ADMIN") {
-        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        const obrasDoColab = [...new Set([...(Array.isArray(prof?.obras) ? prof.obras : []), ...(prof?.obra_id ? [prof.obra_id] : [])])];
         selObra.innerHTML = `<option value="">Todas as minhas obras</option>`;
         obrasSnap.forEach(d => {
           if(d.data().ativa === false) return;
@@ -9133,7 +9192,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       let lancs = snap.docs.map(d => d.data());
       if(currentRole !== "ADMIN") {
         const prof = await loadProfile(currentUser.uid);
-        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        const obrasDoColab = [...new Set([...(Array.isArray(prof?.obras) ? prof.obras : []), ...(prof?.obra_id ? [prof.obra_id] : [])])];
         lancs = obraFilt ? lancs.filter(l=>l.obra_id===obraFilt) : lancs.filter(l=>obrasDoColab.includes(l.obra_id));
         if(colabFilt) lancs = lancs.filter(l=>l.colaborador_uid===colabFilt);
       } else {
@@ -9422,7 +9481,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         loadEmailConfig();
       } else {
         const prof = await loadProfile(currentUser.uid);
-        const obrasDoColab = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
+        const obrasDoColab = [...new Set([...(Array.isArray(prof?.obras) ? prof.obras : []), ...(prof?.obra_id ? [prof.obra_id] : [])])];
         selObra.innerHTML = '<option value="">Todas as minhas obras</option>';
         obrasSnap.forEach(d => {
           if(d.data().ativa === false) return;
@@ -9449,18 +9508,11 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
     const colabFilt = $("relColab")?.value || "";
     const deFilt    = $("relDe")?.value    || "";
     const ateFilt   = $("relAte")?.value   || "";
-    let snap = await getDocs(query(collection(db,"lancamentos"), orderBy("data","asc")));
-    let lancs = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    if(currentRole !== "ADMIN") {
-      const prof = await loadProfile(currentUser.uid);
-      const obras = prof?.obras?.length ? prof.obras : (prof?.obra_id ? [prof.obra_id] : []);
-      lancs = lancs.filter(l => obras.includes(l.obra_id));
-    }
-    if(obraFilt)  lancs = lancs.filter(l => l.obra_id === obraFilt);
-    if(colabFilt) lancs = lancs.filter(l => l.colaborador_uid === colabFilt);
-    if(deFilt)    lancs = lancs.filter(l => l.data >= deFilt);
-    if(ateFilt)   lancs = lancs.filter(l => l.data <= ateFilt);
-    return lancs;
+    const tipoFilt  = normalizarTipoDespesa($("relTipo")?.value);
+    const rows = await carregarLancamentosPermitidos();
+    return filtrarLancamentos(rows,{
+      obraId:obraFilt,colaboradorUid:colabFilt,de:deFilt,ate:ateFilt,tipo:tipoFilt
+    }).sort((a,b)=>String(a.data||"").localeCompare(String(b.data||"")) || String(a.id||"").localeCompare(String(b.id||"")));
   }
 
   function formatDate(d) {
@@ -9483,28 +9535,29 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         return;
       }
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+      const tipoFiltro=normalizarTipoDespesa($("relTipo")?.value);
+      const tipoLabel=rotuloTipoDespesa(tipoFiltro);
       const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
       const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
       const brl = n => Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat = {}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0, totalReemb=0, totalEmp=0;
       lancs.forEach(l => {
         const v = Number(l.valor||0);
         const cat = cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+        totCat[cat]+=v;
       });
+      const totais=calcularTotaisDespesas(lancs), resumo=linhasResumoDespesas(totais,tipoFiltro);
       const rows = lancs.map(l =>
-        "<tr><td>"+formatDate(l.data)+"</td><td>"+(l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(l.reembolsavel?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
+        "<tr><td>"+formatDate(l.data)+"</td><td>"+(l.categoria||"—")+"</td><td>"+(l.descricao||"—")+"</td><td>"+(l.colaborador_nome||"—")+"</td><td style='text-align:right;font-weight:600'>"+brl(l.valor)+"</td><td style='text-align:center'>"+(tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS?'<span style="color:#f59e0b;font-size:.75rem;font-weight:600">REIMB.</span>':'<span style="color:#10b981;font-size:.75rem;font-weight:600">EMP.</span>')+"</td><td style='text-align:center'>"+(l.comprovante?.url?'<a href="'+l.comprovante.url+'" target="_blank" style="color:var(--brand);font-size:.78rem">📎</a>':"—")+"</td></tr>"
       ).join("");
       const catRows = cats.map(c =>
         "<tr><td><span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:"+CATEGORIAS_CORES[c]+";margin-right:6px'></span>"+c+"</td><td style='text-align:right;font-weight:600'>"+brl(totCat[c])+"</td></tr>"
       ).join("");
       cont.innerHTML =
-        '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px"><div><h2 style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand)">🏗️ '+obraNome+'</h2><p style="font-size:.85rem;color:var(--muted)">Período: '+deFmt+' a '+ateFmt+'</p></div><div style="text-align:right"><div style="font-size:.78rem;color:var(--muted)">Total Geral</div><div style="font-family:Syne,sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)">'+brl(totalGeral)+'</div><div style="font-size:.75rem;color:var(--muted);margin-top:2px">Empresa: '+brl(totalEmp)+' · Reembolsável: '+brl(totalReemb)+'</div></div></div></div>' +
-        '<div style="overflow-x:auto;margin-bottom:24px"><table class="dash-table" style="font-size:.82rem"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Colaborador</th><th style="text-align:right">Valor</th><th style="text-align:center">Tipo</th><th style="text-align:center">Nota</th></tr></thead><tbody>'+rows+'</tbody><tr class="total-row"><td colspan="4">TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td><td colspan="2"></td></tr></table></div>' +
-        '<div style="max-width:360px"><table class="dash-table"><thead><tr><th>Monitoramento por Categoria</th><th style="text-align:right">Total Acumulado</th></tr></thead><tbody>'+catRows+'<tr class="total-row"><td>TOTAL GERAL</td><td style="text-align:right">'+brl(totalGeral)+'</td></tr></tbody></table></div>';
+        '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px"><div><h2 style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand)">🏗️ '+obraNome+'</h2><p style="font-size:.85rem;color:var(--muted)">Período: '+deFmt+' a '+ateFmt+' · Tipo de despesa: '+tipoLabel+'</p></div><div style="text-align:right">'+resumo.map(x=>'<div style="font-size:.78rem;color:var(--muted)">'+x.label+'</div><div style="font-family:Syne,sans-serif;font-size:1.2rem;font-weight:800;color:var(--accent)">'+brl(x.value)+'</div>').join('')+'</div></div></div>' +
+        '<div style="overflow-x:auto;margin-bottom:24px"><table class="dash-table" style="font-size:.82rem"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Colaborador</th><th style="text-align:right">Valor</th><th style="text-align:center">Tipo</th><th style="text-align:center">Nota</th></tr></thead><tbody>'+rows+'</tbody><tr class="total-row"><td colspan="4">'+resumo.at(-1).label+'</td><td style="text-align:right">'+brl(resumo.at(-1).value)+'</td><td colspan="2"></td></tr></table></div>' +
+      (tipoFiltro===TIPO_DESPESA.TODAS ? '<div style="max-width:360px"><table class="dash-table"><thead><tr><th>Monitoramento por Categoria</th><th style="text-align:right">Total Acumulado</th></tr></thead><tbody>'+catRows+'<tr class="total-row"><td>'+resumo.at(-1).label+'</td><td style="text-align:right">'+brl(resumo.at(-1).value)+'</td></tr></tbody></table></div>' : '');
     } catch(e){ cont.innerHTML='<p style="color:var(--danger)">Erro ao gerar preview.</p>'; }
   }
 
@@ -9519,13 +9572,16 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
       const deFmt  = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
       const ateFmt = $("relAte")?.value ? formatDate($("relAte").value) : "—";
+      const tipoFiltro=normalizarTipoDespesa($("relTipo")?.value);
+      const tipoLabel=rotuloTipoDespesa(tipoFiltro);
+      const totais=calcularTotaisDespesas(lancs), resumo=linhasResumoDespesas(totais,tipoFiltro);
       docPdf.setFillColor(15,52,96); docPdf.rect(0,0,210,28,"F");
       docPdf.setTextColor(255,255,255);
       docPdf.setFontSize(16); docPdf.setFont("helvetica","bold");
       docPdf.text("GO — Gestão de Obras", 14, 12);
       docPdf.setFontSize(10); docPdf.setFont("helvetica","normal");
       docPdf.text("Obra: "+obraNome, 14, 20);
-      docPdf.text("Período: "+deFmt+" a "+ateFmt, 14, 26);
+      docPdf.text("Período: "+deFmt+" a "+ateFmt+" | Tipo de despesa: "+tipoLabel, 14, 26);
       docPdf.setTextColor(0,0,0);
       docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
       docPdf.text("Lançamentos", 14, 38);
@@ -9541,9 +9597,8 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         docPdf.setTextColor(15,52,96);
         docPdf.text("Colaborador: " + colaborador, 14, startY);
         startY += 5;
-        const rows = lancColab.map(l => [formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),l.reembolsavel?"✓ REIMB.":"EMPRESA"]);
+        const rows = lancColab.map(l => [formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS?"✓ REIMB.":"EMPRESA"]);
         const totalColab = lancColab.reduce((s,l)=>s+Number(l.valor||0),0);
-        const reembColab = lancColab.filter(l=>l.reembolsavel).reduce((s,l)=>s+Number(l.valor||0),0);
         rows.push(["","TOTAL","", brl(totalColab), ""]);
         docPdf.autoTable({
           startY,
@@ -9561,29 +9616,31 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         });
         const fy = docPdf.lastAutoTable.finalY + 3;
         docPdf.setFontSize(8); docPdf.setFont("helvetica","normal"); docPdf.setTextColor(80,80,80);
-        docPdf.text(`  Total: ${brl(totalColab)}  |  Empresa: ${brl(totalColab-reembColab)}  |  Reembolsável: ${brl(reembColab)}`, 14, fy);
+        const totalColabReemb=lancColab.filter(l=>tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS).reduce((s,l)=>s+Number(l.valor||0),0);
+        const totalColabEmp=totalColab-totalColabReemb;
+        const resumoColab=tipoFiltro===TIPO_DESPESA.TODAS?`Empresa: ${brl(totalColabEmp)} | Reembolsáveis: ${brl(totalColabReemb)} | Total: ${brl(totalColab)}`:`Total ${tipoLabel}: ${brl(totalColab)}`;
+        docPdf.text("  "+resumoColab, 14, fy);
         startY = fy + 8;
         if(startY > 250) { docPdf.addPage(); startY = 20; }
       }
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat = {}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0,totalReemb=0,totalEmp=0;
       lancs.forEach(l=>{
         const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+        totCat[cat]+=v;
       });
+      const totalGeral=totais.geral;
       const finalY = docPdf.lastAutoTable.finalY + 10;
       docPdf.setFontSize(11); docPdf.setFont("helvetica","bold");
       docPdf.text("Monitoramento por Categoria", 14, finalY);
       const catRows = cats.map(c=>[c,brl(totCat[c])]);
-      catRows.push(["TOTAL GERAL",brl(totalGeral)]);
+      resumo.forEach(item=>catRows.push([item.label,brl(item.value)]));
       docPdf.autoTable({startY:finalY+4,head:[["Categoria","Total Acumulado"]],body:catRows,styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},columnStyles:{1:{halign:"right"}},didParseCell:(d)=>{if(d.row.index===catRows.length-1){d.cell.styles.fontStyle="bold";d.cell.styles.textColor=[233,69,96];}},margin:{left:14,right:14}});
       const pg = docPdf.internal.getNumberOfPages();
       for(let i=1;i<=pg;i++){
         docPdf.setPage(i); docPdf.setFontSize(7); docPdf.setTextColor(150,150,150);
         docPdf.text("GO — Relatório gerado em "+new Date().toLocaleDateString("pt-BR")+" · Pág. "+i+"/"+pg, 14, 292);
-        docPdf.text("Empresa: "+brl(totalEmp)+" · Reembolsável: "+brl(totalReemb), 196, 292, {align:"right"});
+        docPdf.text(resumo.map(x=>x.label+": "+brl(x.value)).join(" · "), 196, 292, {align:"right"});
       }
       const fileName = "GO_"+obraNome.replace(/\s+/g,"_")+"_"+deFmt.replace(/\//g,"-")+".pdf";
       docPdf.save(fileName);
@@ -9667,17 +9724,19 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       const emails  = cfgSnap.exists()?(cfgSnap.data().destinatarios||[]):[];
       if(!emails.length){ setMsg("relMsg","⚠️ Configure os e-mails primeiro."); return; }
       const obraNome = $("relObra")?.selectedOptions[0]?.text || "Todas as obras";
+      const tipoFiltro=normalizarTipoDespesa($("relTipo")?.value);
+      const tipoLabel=rotuloTipoDespesa(tipoFiltro);
       const deFmt    = $("relDe")?.value  ? formatDate($("relDe").value)  : "—";
       const ateFmt   = $("relAte")?.value ? formatDate($("relAte").value) : "—";
       const brl = n => "R$ "+Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
       const cats = Object.keys(CATEGORIAS_CORES);
       const totCat={}; cats.forEach(c=>totCat[c]=0);
-      let totalGeral=0,totalReemb=0,totalEmp=0;
       lancs.forEach(l=>{
         const v=Number(l.valor||0), cat=cats.includes(l.categoria)?l.categoria:"Outros gastos";
-        totCat[cat]+=v; totalGeral+=v;
-        if(l.reembolsavel) totalReemb+=v; else totalEmp+=v;
+        totCat[cat]+=v;
       });
+      const totais=calcularTotaisDespesas(lancs), resumo=linhasResumoDespesas(totais,tipoFiltro);
+      const totalGeral=totais.geral;
       const dataEnvio = new Date().toLocaleDateString("pt-BR");
       const { jsPDF } = window.jspdf;
       const doc2 = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
@@ -9687,16 +9746,14 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       doc2.text("GO — Gestão de Obras", 14, 11);
       doc2.setFontSize(10); doc2.setFont("helvetica","normal");
       doc2.text("Relatório de Despesas — "+obraNome, 14, 18);
-      doc2.text("Período: "+deFmt+" a "+ateFmt+" | Emitido em: "+dataEnvio, 14, 24);
+      doc2.text("Período: "+deFmt+" a "+ateFmt+" | Tipo: "+tipoLabel+" | Emitido em: "+dataEnvio, 14, 24);
       doc2.setTextColor(0,0,0);
       let y = 36;
       doc2.setFontSize(10); doc2.setFont("helvetica","bold");
       doc2.text("RESUMO FINANCEIRO", 14, y); y+=6;
       doc2.setFont("helvetica","normal"); doc2.setFontSize(9);
-      doc2.text("Empresa:       "+brl(totalEmp), 14, y); y+=5;
-      doc2.text("Reembolsável:  "+brl(totalReemb), 14, y); y+=5;
+      for(const item of resumo){ doc2.text(item.label+": "+brl(item.value),14,y); y+=5; }
       doc2.setFont("helvetica","bold");
-      doc2.text("TOTAL GERAL:   "+brl(totalGeral), 14, y); y+=5;
       doc2.setFont("helvetica","normal");
       doc2.text("Lançamentos:   "+lancs.length, 14, y); y+=8;
       const porColab = {};
@@ -9704,7 +9761,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         const nome = l.colaborador_nome || "Sem nome";
         if(!porColab[nome]) porColab[nome] = {empresa:0, reemb:0, itens:[]};
         const v = Number(l.valor||0);
-        if(l.reembolsavel) porColab[nome].reemb+=v; else porColab[nome].empresa+=v;
+        if(tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS) porColab[nome].reemb+=v; else porColab[nome].empresa+=v;
         porColab[nome].itens.push(l);
       });
       for(const [colaborador, dados] of Object.entries(porColab)) {
@@ -9712,7 +9769,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
         doc2.setTextColor(15,52,96);
         doc2.text("Colaborador: "+colaborador, 14, y); y+=4;
         doc2.setTextColor(0,0,0);
-        const rows = dados.itens.map(l=>[formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),l.reembolsavel?"REIMB.":"EMPRESA"]);
+        const rows = dados.itens.map(l=>[formatDate(l.data),l.categoria||"—",(l.descricao||"—").substring(0,35),brl(l.valor),tipoDespesa(l)===TIPO_DESPESA.REEMBOLSAVEIS?"REIMB.":"EMPRESA"]);
         const totalColab = dados.empresa+dados.reemb;
         rows.push(["","TOTAL","",brl(totalColab),""]);
         doc2.autoTable({startY:y,head:[["Data","Categoria","Descrição","Valor","Tipo"]],body:rows,styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[15,52,96],textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[245,247,250]},columnStyles:{3:{halign:"right",fontStyle:"bold"},4:{halign:"center"}},didParseCell:(data)=>{if(data.column.index===4&&data.cell.raw==="REIMB."){data.cell.styles.textColor=[180,120,0];data.cell.styles.fillColor=[255,251,230];}if(data.row.index===rows.length-1){data.cell.styles.fontStyle="bold";data.cell.styles.fillColor=[230,240,255];}},margin:{left:14,right:14}});
@@ -9735,9 +9792,10 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       const periodoLabel = meses[deDate.getMonth()]+"-"+deDate.getFullYear()+(deDate.getMonth()!==ateDate.getMonth()?" a "+meses[ateDate.getMonth()]+"-"+ateDate.getFullYear():"");
       const comprovantes = lancs.filter(l=>l.comprovante?.url);
       const linksComp = comprovantes.length>0?comprovantes.map(l=>`<a href="${l.comprovante.url}" style="color:#0f3460">${l.comprovante.url}</a>`).join("<br>"):"Nenhum comprovante anexado.";
-      const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2><p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p><p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:4px 0"><strong>Empresa:</strong> ${brl(totalEmp)}</p><p style="margin:4px 0"><strong>Reembolsável:</strong> ${brl(totalReemb)}</p><p style="margin:8px 0 4px;font-size:16px;font-weight:bold;color:#e94560">TOTAL GERAL: ${brl(totalGeral)}</p><p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:0 0 6px"><strong>Comprovantes:</strong></p><p style="font-size:12px;line-height:1.8">${linksComp}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p></div></div>`;
+      const resumoHtml=resumo.map(x=>`<p style="margin:4px 0"><strong>${x.label}:</strong> ${brl(x.value)}</p>`).join("");
+      const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0f3460;color:white;padding:20px 24px;border-radius:8px 8px 0 0"><h2 style="margin:0;font-size:18px">GO — Gestão de Obras</h2><p style="margin:6px 0 0;font-size:13px;opacity:.85">Relatório de Despesas — ${obraNome} · Tipo: ${tipoLabel}</p></div><div style="padding:20px 24px;border:1px solid #e0e0e0;border-top:none"><p style="margin:0 0 4px"><strong>Período:</strong> ${deFmt} a ${ateFmt}</p><p style="margin:0 0 16px"><strong>Emitido em:</strong> ${dataEnvio}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0">${resumoHtml}<p style="margin:4px 0"><strong>Lançamentos:</strong> ${lancs.length}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="margin:0 0 6px"><strong>Comprovantes das despesas selecionadas:</strong></p><p style="font-size:12px;line-height:1.8">${linksComp}</p><hr style="border:none;border-top:1px solid #eee;margin:12px 0"><p style="font-size:11px;color:#888">O relatório completo está anexado em PDF.<br>GO — Gestão de Obras · Gerado automaticamente em ${dataEnvio}</p></div></div>`;
       setMsg("relMsg","⏳ Enviando e-mail com PDF anexado...");
-      const payload = {emails,assunto:"Relatório GO — "+obraNome+" — "+periodoLabel,corpo:htmlBody,pdf:pdfBase64,nomeArquivo};
+      const payload = {emails,assunto:"Relatório GO — "+obraNome+" — "+tipoLabel+" — "+periodoLabel,corpo:htmlBody,pdf:pdfBase64,nomeArquivo};
       const iframeName = "emailFrame_"+Date.now();
       const iframe = document.createElement("iframe");
       iframe.name = iframeName; iframe.style.display="none";
@@ -9750,7 +9808,7 @@ Retorne APENAS JSON válido, sem markdown, sem texto adicional, sem explicaçõe
       form.submit(); document.body.removeChild(form);
       await new Promise(r=>setTimeout(r,4000));
       document.body.removeChild(iframe);
-      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome,periodo_de:$("relDe")?.value,periodo_ate:$("relAte")?.value,total:totalGeral,enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
+      await setDoc(doc(db,"relatorios_enviados","REL_"+Date.now()),{obra_nome:obraNome,periodo_de:$("relDe")?.value,periodo_ate:$("relAte")?.value,tipo_despesa:tipoFiltro,total:totalGeral,enviado_por:currentUser.uid,enviado_em:serverTimestamp(),destinatarios:emails});
       toast("✅ Relatório enviado para "+emails.length+" e-mail(s)!");
       setMsg("relMsg","✅ Enviado para "+emails.length+" destinatário(s) com PDF!",true);
     } catch(e){ console.error(e); setMsg("relMsg","❌ Erro ao enviar: "+e.message); }
@@ -13998,10 +14056,7 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 
   async function _vCarregarGaleria() {
     try {
-      const snap = await getDocs(query(
-        collection(db,"obras",_vObraId,"evolRegistros"),
-        orderBy("criadoEm","desc"), limit(200)
-      ));
+      const snap = await getDocs(collection(db,"obras",_vObraId,"evolRegistros"));
       _vGaleriaRegistros = [];
       snap.forEach(d=>{ const r={id:d.id,...d.data()}; if(r.fotoUrl||r.fotoUrlDepois) _vGaleriaRegistros.push(r); });
 
@@ -14017,15 +14072,13 @@ Todos os dados preenchidos e documentos vinculados serão removidos. Esta ação
 function vFiltrarGaleria() {
   const filtroUnid = $("vGaleriaFiltroUnid")?.value||"";
   const filtroDias = parseInt($("vGaleriaFiltroPeriodo")?.value)||0;
-  const corte = filtroDias>0 ? new Date(Date.now()-filtroDias*86400000) : null;
+  const corte = filtroDias>0 ? dataCorteLocal(filtroDias) : "";
 
   const regs = _vGaleriaRegistros.filter(r=>{
     if(filtroUnid && r.unidId!==filtroUnid) return false;
 
-    if(corte && r.data){
-      const d=new Date(r.data+"T12:00:00");
-      if(d<corte) return false;
-    }
+    const dataRef=dataReferenciaRegistro(r);
+    if(corte && (!dataRef || dataRef<corte)) return false;
 
     return true;
   });
@@ -14092,9 +14145,7 @@ function vFiltrarGaleria() {
 
   fotosGaleria.forEach(r=>{
 
-    const d=
-      r.data||
-      "sem-data";
+    const d=dataReferenciaRegistro(r)||"sem-data";
 
 
     if(!porData[d]){
@@ -14151,18 +14202,8 @@ function vFiltrarGaleria() {
   grid.innerHTML=
     regsLimitadas.map(r=>{
 
-      const dtFmt=
-        r.data
-          ? new Date(
-              r.data+"T12:00:00"
-            ).toLocaleDateString(
-              "pt-BR",
-              {
-                day:"2-digit",
-                month:"2-digit"
-              }
-            )
-          : "—";
+      const dataFoto=dataReferenciaRegistro(r);
+      const dtFmt=formatarDataReferencia(dataFoto);
 
 
       const unid=
@@ -14297,8 +14338,8 @@ function vFiltrarGaleria() {
             '${fotoUrl}',
             '${(r.unidNome||"").replace(/'/g,"&#39;")}',
             '${(r.svcDesc||"").replace(/'/g,"&#39;")}',
-            '${r.data||""}',
-            '${delta.toFixed(1)}',
+            '${dataFoto}',
+            '',
             '${tipo}'
           )"
         >
@@ -14367,7 +14408,7 @@ function vFiltrarGaleria() {
             <span
               style="color:#10b981"
             >
-              ${_epModo(_vCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : `${delta>0?"+":""}${delta.toFixed(1)}%`}
+            ${_epModo(_vCfg) ? (r.cancelado ? "Cancelado" : `${Number(r.qtdHoje)||0} ${_eEscV2(r.unidade||"")}`) : "Registro fotográfico"}
             </span>
 
           </div>
@@ -14453,19 +14494,7 @@ function vVerFotoAmp(
     url;
 
 
-  const dtFmt=
-    data
-      ? new Date(
-          data+"T12:00:00"
-        ).toLocaleDateString(
-          "pt-BR",
-          {
-            day:"2-digit",
-            month:"2-digit",
-            year:"numeric"
-          }
-        )
-      : "";
+  const dtFmt=formatarDataReferencia(data);
 
 
   const tipoLabel=
@@ -14502,10 +14531,7 @@ function vVerFotoAmp(
     `${tipoLabel} `+
     `<strong>${unid}</strong> · `+
     `${svc} · `+
-    `${dtFmt} · `+
-    `<span style="color:#86efac">`+
-    `${Number(delta)>0?"+":""}${delta}%`+
-    `</span>`;
+    `${dtFmt}`;
 
 
   $("vModalFotoAmp")

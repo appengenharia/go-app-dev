@@ -23,6 +23,7 @@ export function retirarServico(macro, id, motivo, novoId = null) {
   return novo;
 }
 export const dataLocal = (date = new Date()) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+const dataISOValida = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00Z`).toISOString().slice(0,10) === value;
 
 const exigir = (ok, message, detail = {}) => { if (!ok) throw Object.assign(new Error(message), detail); };
 const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(id) && !['__proto__', 'constructor', 'prototype'].includes(id);
@@ -167,6 +168,8 @@ export function prepararRegistro(cfg, entrada, anterior, { uid, timestamp, motiv
   const historicoRetirado = anterior && !ativo(micros(cfg).find(s => s.id === anterior.svcId));
   exigir(!historicoRetirado || entrada.svcId === anterior.svcId, 'Não transfira o histórico de Serviço retirado para outro Serviço.');
   const { micro, local } = validarLancamento(cfg, entrada, Boolean(anterior && permitirInativo && anterior.svcId === entrada.svcId));
+  const dataReferencia = entrada.data || anterior?.data || data;
+  exigir(dataISOValida(dataReferencia), 'Informe uma data de referência válida.');
   exigir(!historicoRetirado || (micro.id === anterior.microId && micro.macroId === anterior.macroId), 'Preserve os vínculos de Serviço e Etapa do histórico retirado.');
   const registro = {
     ...(anterior || {}),
@@ -177,7 +180,7 @@ export function prepararRegistro(cfg, entrada, anterior, { uid, timestamp, motiv
     qtdHoje: entrada.qtdHoje, qtdTotal: micro.metasPorLocal[local.id], obs: entrada.obs,
     fotoUrl: entrada.fotoUrl, fotoUrlDepois: entrada.fotoUrlDepois,
     tipoFoto: entrada.fotoUrl && entrada.fotoUrlDepois ? 'ambos' : entrada.fotoUrl ? 'antes' : entrada.fotoUrlDepois ? 'depois' : '',
-    data: anterior?.data || data, criadoPor: anterior?.criadoPor || uid,
+    data: dataReferencia, criadoPor: anterior?.criadoPor || uid,
     criadoEm: anterior?.criadoEm || timestamp, atualizadoEm: timestamp,
     revisao: (anterior?.revisao || 0) + 1, cancelado: cancelar,
   };

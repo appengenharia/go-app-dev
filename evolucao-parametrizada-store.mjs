@@ -40,7 +40,7 @@ export function criarStore(sdk) {
       ]);
       if (!podeProduzir(perfil.data(), obraId)) throw new Error('Você não tem permissão de Evolução nesta obra.');
       // Repetição após perda da resposta: a mesma operação nunca duplica produção.
-      if (auditSnap.exists() && auditSnap.data().operacaoId === operacaoId) return;
+      if (auditSnap.exists() && auditSnap.data().operacaoId === operacaoId) return snap.exists() ? { ...snap.data(), id } : null;
       const atualCfg = configSnap.data();
       if (!parametrizada(atualCfg) || atualCfg.revisaoConfig !== cfg.revisaoConfig) throw new Error('O planejamento mudou. Atualize a obra antes de lançar.');
       const anterior = snap.exists() ? snap.data() : null;
@@ -52,6 +52,7 @@ export function criarStore(sdk) {
       });
       tx.set(ref, registro);
       tx.set(auditRef, { ...auditoria, operacaoId });
+      return { ...registro, id };
     });
   }
   async function carregarAuditoria(db, obraId, id) {

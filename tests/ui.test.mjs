@@ -5,7 +5,7 @@ import { criarInterface } from '../evolucao-parametrizada-ui.mjs';
 import { calcular } from '../evolucao-parametrizada.mjs';
 import { config, autorizado, registro } from './fixture.mjs';
 
-function setup(profile=autorizado, cfg=config(), registros=[]) {
+function setup(profile=autorizado, cfg=config(), registros=[], onSaved=null) {
   const dom=new JSDOM('<!doctype html><body><div id="summary"></div></body>',{url:'http://127.0.0.1/'});
   globalThis.document=dom.window.document;
   let i=0, offline=false, state=cfg?calcular(cfg,registros):null, refreshed=0;
@@ -22,15 +22,16 @@ function setup(profile=autorizado, cfg=config(), registros=[]) {
     runTransaction:async (_,fn)=>{
       if(offline) throw new Error('Sem rede');
       const writes=[];
-      await fn({get:async ref=>snapshot(ref.path),set:(ref,value)=>writes.push([ref.path,value])});
+      const result=await fn({get:async ref=>snapshot(ref.path),set:(ref,value)=>writes.push([ref.path,value])});
       writes.forEach(([path,value])=>docs.set(path,value));
+      return result;
     },
   };
   const context={db,obraId:'obra',cfg,user:{uid:'autor'},profile};
   const ui=criarInterface({sdk,getContext:()=>context,getState:()=>state,refresh:async()=>{
     refreshed++; context.cfg=docs.get('obras/obra/evolConfig/main');
     state=calcular(context.cfg,await ui.carregarRegistros(db,'obra'));
-  },uploadPhoto:async()=>{if(offline)throw new Error('Falha no upload');return 'https://example.test/foto';}});
+  },uploadPhoto:async()=>{if(offline)throw new Error('Falha no upload');return 'https://example.test/foto';},onSaved});
   const el=s=>document.querySelector(s);
   const input=(selector,value)=>{const e=el(selector); e.value=value; e.dispatchEvent(new dom.window.Event('input',{bubbles:true}));};
   const change=(selector,value)=>{const e=el(selector); e.value=value; e.dispatchEvent(new dom.window.Event('change',{bubbles:true}));};
@@ -56,6 +57,16 @@ test('erros de rede mantêm formulário e não apresentam gravação parcial',as
   assert.equal(t.el('[data-quantity]').value,'1'); assert.equal(t.el('[data-save]').disabled,false);
   assert.equal([...t.docs.keys()].filter(p=>p.includes('evolRegistros')).length,0);
   t.setOffline(false); t.el('[data-save]').click(); await t.settle(); assert.equal(t.refreshed,1);
+});
+test('data retroativa persistida alimenta prévia de compartilhamento; correção prepara versão atualizada',async()=>{
+  const shared=[]; const t=setup(autorizado,config(),[],(...args)=>shared.push(args));
+  t.ui.openRecord({unidId:'u1',svcId:'s1'}); t.input('[data-quantity]','1'); t.el('[data-reference-date]').value='2023-04-03';
+  t.el('[data-save]').click(); await t.settle();
+  const [path,created]=[...t.docs].find(([p])=>/^obras\/obra\/evolRegistros\/[^/]+$/.test(p));
+  assert.equal(created.data,'2023-04-03'); assert.equal(shared.length,1); assert.equal(shared[0][0].data,'2023-04-03'); assert.equal(shared[0][3].correcao,false);
+  t.ui.openRecord({},'e',{...created,id:path.split('/').at(-1)}); t.el('[data-quantity]').value='2'; t.el('[data-reason]').value='Ajuste'; t.el('[data-reference-date]').value='2023-04-04';
+  t.el('[data-save]').click(); await t.settle();
+  assert.equal(t.docs.get(path).data,'2023-04-04'); assert.equal(shared.length,2); assert.equal(shared[1][0].data,'2023-04-04'); assert.equal(shared[1][3].correcao,true);
 });
 test('Visitante vê metas e histórico, sem controles de escrita',()=>{
   const t=setup({...autorizado,role:'VISITANTE'}); t.ui.openUnit('u1','v');
